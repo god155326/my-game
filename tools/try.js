@@ -389,7 +389,10 @@ function rowsToObjectsSkipBlank(name) {
     }).filter(o => typeof o[idKey] === 'number');
   }
 
-  const CARD_ICON_MAP = require('./transforms/card_icon_map.json');
+  // 註：card 的 icon 欄位在 2026-09 的圖片命名規則整理後改為公式產生
+  // (assets/images/card/card_<id>.png + CARD_ICON_STYLE_MAP 的縮放比例)，
+  // 不再是這裡比對的固定字串，所以下面 gen.icon 這個欄位僅供歷史參考，不代表目前實際輸出。
+  const CARD_ICON_STYLE_MAP = require('./transforms/card_icon_style_map.json');
   const CARD_ICONBG_MAP = require('./transforms/card_iconbg_map.json');
   const CARD_POSITION_MAP = require('./transforms/card_position_map.json');
   const CARD_SYSTEM_OVERRIDE = { 60001: '20.0' }; // original literal quirk (all other state cards render as plain "N", this one has "N.0")
@@ -411,7 +414,7 @@ function rowsToObjectsSkipBlank(name) {
       id,
       rare: s.rare === null ? '' : s.rare,
       name: (s['角色名稱'] === null ? '' : s['角色名稱']).trim(),
-      icon: CARD_ICON_MAP[id] !== undefined ? CARD_ICON_MAP[id] : '',
+      icon: (() => { const pct = CARD_ICON_STYLE_MAP[id] !== undefined ? CARD_ICON_STYLE_MAP[id] : 80; return `<img src='assets/images/card/card_${id}.png' style='max-width:${pct}%;max-height:${pct}%;width:auto;height:auto;object-fit:contain;pointer-events:none;' onerror="this.style.display='none'">`; })(),
       iconBg: CARD_ICONBG_MAP[id] !== undefined ? CARD_ICONBG_MAP[id] : '#000000',
     };
     if (s.tag !== null) o.tag = parseNumList(s.tag);
