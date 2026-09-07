@@ -177,6 +177,21 @@ function buildIconWithFallback(category, id, fallbackHtml) {
     `</span>`;
 }
 
+// ---- 給「穿插在一般文字/句子裡」的小圖示用(例如「消耗 [圖示] 金幣 x100」這種提示文字) ----
+// 跟 buildIconWithFallback 的差別：後者是給本身就有固定寬高的方框容器用(圖片鋪滿100%寬高)，
+// 這個版本的寬高用 em(相對於當下文字的 font-size)自己定義，不依賴外層容器有沒有設定固定尺寸，
+// 所以可以安全地嵌在一句話中間，不會因為外層是不定寬高的 <span> 而讓圖片消失或跑版。
+// sizeEm 可微調顯示大小(預設 1.5 倍字高，比純文字 emoji 明顯一點，圖片也才看得清楚細節)。
+function buildInlineIconWithFallback(category, id, fallbackHtml, sizeEm) {
+  const size = sizeEm || 1.5;
+  const dip = (size * 0.22).toFixed(2);
+  return `<span style="display:inline-flex;position:relative;width:${size}em;height:${size}em;vertical-align:-${dip}em;align-items:center;justify-content:center;">` +
+    `<img src="assets/images/${category}/${category}_${id}.png" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;" ` +
+    `onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">` +
+    `<span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;">${fallbackHtml}</span>` +
+    `</span>`;
+}
+
 function buildItemDatabase(wb) {
   const gen = {};
   xlsxSheetToObjects(wb, 'item').forEach(o => {

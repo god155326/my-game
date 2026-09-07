@@ -2039,7 +2039,7 @@
     }
     .class-equip-slot-item.selected { border-color: #e63946; box-shadow: 0 0 8px #e63946; }
     .class-equip-slot-item.filled { border-color: #7a6350; }
-    .class-equip-slot-icon { font-size: 26px; }
+    .class-equip-slot-icon { width: 34px; height: 34px; font-size: 26px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .class-equip-slot-label { font-size: 9px; color: #a89a80; }
     .class-equip-slot-lv { font-size: 9px; color: #ffd700; font-weight: bold; }
     .class-equip-rare-badge {
@@ -2364,7 +2364,7 @@
       font-size: 9px;
       color: #a89a80;
     }
-    .idle-reward-mini .icon { font-size: 16px; }
+    .idle-reward-mini .icon { width: 22px; height: 22px; font-size: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
     /* ============ 召喚(抽卡)演出影片 ============ */
     .gacha-video-modal {
@@ -6467,7 +6467,10 @@ let TALENT_CURVE = [
     function spendItem(itemId, amount) { gameState.items[itemId] = Math.max(0, getItemAmount(itemId) - amount); }
     function hasEnoughItem(itemId, amount) { return getItemAmount(itemId) >= amount; }
     function itemName(itemId) { return (ITEM_DATABASE[itemId] && ITEM_DATABASE[itemId].name) || `道具#${itemId}`; }
-    function itemIcon(itemId) {
+    // 純 emoji 版本(不含任何 HTML 標籤)，給 itemIcon() 在找不到圖片時當 fallback，
+    // 也直接給 'text' 模式使用(innerText/textContent 情境絕對不能混到 HTML 標籤)。
+    function itemIconEmoji(itemId) {
+      itemId = Number(itemId);
       if (itemId === 8000) return '✨';
       if (itemId === 8001) return '📗';
       if (itemId === 8002) return '🔷';
@@ -6480,6 +6483,21 @@ let TALENT_CURVE = [
       if (card) return card.icon;
       if (itemId >= 9101 && itemId <= 9130) return '📜';
       return '📦';
+    }
+    // 道具圖示：itemId 為道具id，mode 決定輸出格式，因為呼叫端有三種不同情境：
+    //   'box'    —— 放進本身已有固定寬高的容器(例如 .icon / .reward-icon)，圖片鋪滿整個容器
+    //   'inline' —— (預設)穿插在一般文字/句子的 innerHTML 裡(例如「消耗 [圖示] 金幣 x100」)，
+    //                用固定 em 大小的小圖示，不依賴外層有沒有設定寬高
+    //   'text'   —— 純文字情境(innerText/textContent，例如結算彈窗、確認彈窗)，不能輸出任何 HTML，
+    //                只能回傳 emoji，否則畫面會把 HTML 原始碼直接當文字印出來
+    function itemIcon(itemId, mode) {
+      mode = mode || 'inline';
+      if (mode === 'text') return itemIconEmoji(itemId);
+      let data = ITEM_DATABASE[itemId];
+      let fallback = itemIconEmoji(itemId);
+      if (!data || !data.icon) return fallback;
+      if (mode === 'box') return data.icon;
+      return buildInlineIconWithFallback('item', itemId, fallback);
     }
 
     // ============ 職業經驗值/等級系統 ============
@@ -7553,7 +7571,7 @@ let TALENT_CURVE = [
     function renderIdleRewardPreviewHtml(rewards) {
       return expandIdleRewardsForDisplay(rewards).map(r => `
         <div class="idle-reward-mini">
-          <div class="icon">${itemIcon(r.id)}</div>
+          <div class="icon">${itemIcon(r.id, 'box')}</div>
           <div>${Math.round(r.rate * 100)}%</div>
         </div>
       `).join('');
@@ -7821,7 +7839,7 @@ let TALENT_CURVE = [
         <div class="idle-reward-preview" style="border-top:none;">
           ${zone ? expandIdleRewardsForDisplay(zone.rewards).map(r => `
             <div class="idle-reward-mini" style="width:auto;flex-direction:row;gap:4px;">
-              <span class="icon">${itemIcon(r.id)}</span>
+              <span class="icon">${itemIcon(r.id, 'box')}</span>
               <span>${itemName(r.id)} x${r.amount}（${Math.round(r.rate * 100)}%）</span>
             </div>
           `).join('<br>') : ''}
@@ -7854,7 +7872,7 @@ let TALENT_CURVE = [
       gameState.idle.lastClaimTime += intervals * 5 * 60 * 1000;
       updateTopHeader();
       closeRewardPreviewModal();
-      let text = Object.keys(totals).map(id => `${itemIcon(id)} ${itemName(id)} x${totals[id]}`).join('、') || '（本次未獲得任何獎勵）';
+      let text = Object.keys(totals).map(id => `${itemIcon(id, 'text')} ${itemName(id)} x${totals[id]}`).join('、') || '（本次未獲得任何獎勵）';
       showGenericInfoModal('探索獎勵領取', `累積 ${intervals} 次 (每5分鐘一次)：\n${text}`);
       renderMainlineIdleWidget();
     }
@@ -7864,7 +7882,7 @@ let TALENT_CURVE = [
       const list = document.getElementById('gift-list');
       list.innerHTML = START_GIFT_DATABASE.map(g => {
         let card = CARD_DATABASE.find(c => c.id === g.id);
-        let icon = card ? card.icon : itemIcon(g.id);
+        let icon = card ? card.icon : itemIcon(g.id, 'box');
         let bg = card ? elementIconBg(card) : '#241d18';
         let name = card ? elName(card) : itemName(g.id);
         return `
@@ -9045,7 +9063,7 @@ let TALENT_CURVE = [
         showGenericInfoModal('洗鍊', `${itemName(CLASS_GEAR_REFORGE_COST_ITEM)}不足，洗鍊需要 ${CLASS_GEAR_REFORGE_COST_AMOUNT} 個！`);
         return;
       }
-      showConfirmModal(`花費 ${itemIcon(CLASS_GEAR_REFORGE_COST_ITEM)} ${itemName(CLASS_GEAR_REFORGE_COST_ITEM)} x${CLASS_GEAR_REFORGE_COST_AMOUNT} 重新洗鍊此裝備的4條詞條，確定要繼續嗎？`, () => {
+      showConfirmModal(`花費 ${itemIcon(CLASS_GEAR_REFORGE_COST_ITEM, 'text')} ${itemName(CLASS_GEAR_REFORGE_COST_ITEM)} x${CLASS_GEAR_REFORGE_COST_AMOUNT} 重新洗鍊此裝備的4條詞條，確定要繼續嗎？`, () => {
         spendItem(CLASS_GEAR_REFORGE_COST_ITEM, CLASS_GEAR_REFORGE_COST_AMOUNT);
         inst.rolledStats = rollNewGearStats(inst.equipId);
         renderClassEquipScreen();
@@ -9076,7 +9094,7 @@ let TALENT_CURVE = [
             <div>${target.name}</div>
           </div>
         </div>
-        <div class="enhance-cost-line ${ok ? '' : 'insufficient'}"><span>消耗 ${eq.icon} ${eq.name}（未裝備）</span><span>x${needed} (${have}/${needed})</span></div>
+        <div class="enhance-cost-line ${ok ? '' : 'insufficient'}"><span>消耗 ${buildInlineIconWithFallback('equipment', eq.id, EQUIP_ICON_MAP[eq.id] !== undefined ? EQUIP_ICON_MAP[eq.id] : '❔', 1.8)} ${eq.name}（未裝備）</span><span>x${needed} (${have}/${needed})</span></div>
         <div class="enhance-rate-line">成功機率：${Math.round(target.recipeRate * 100)}%<br><span style="font-size:9px;color:#a89a80;font-weight:normal;">(失敗將返還1個 ${eq.name})</span></div>
       `;
       gameState.synthesizeUI = { sourceEquipId: inst.equipId, targetEquipId: target.id, needed, rate: target.recipeRate, canAfford: ok };
@@ -10346,10 +10364,12 @@ let TALENT_CURVE = [
         } else {
           grantGear(lootId, amount || 1);
         }
-        return { icon: eq.icon, name: eq.name, amount: amount || 1 };
+        // icon 這裡固定回傳純 emoji：目前唯一的呼叫端(showResultModal)是用 innerText 顯示戰利品清單，
+        // 不能塞 HTML 標籤(圖片)進去，否則畫面會把 HTML 原始碼直接當文字印出來
+        return { icon: EQUIP_ICON_MAP[lootId] !== undefined ? EQUIP_ICON_MAP[lootId] : '❔', name: eq.name, amount: amount || 1 };
       }
       addItem(lootId, amount || 1);
-      return { icon: itemIcon(lootId), name: itemName(lootId), amount: amount || 1 };
+      return { icon: itemIcon(lootId, 'text'), name: itemName(lootId), amount: amount || 1 };
     }
 
     function showResultModal(isWin) {
