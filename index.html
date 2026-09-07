@@ -12922,19 +12922,27 @@ let TALENT_CURVE = [
     // ============ 劇情演出系統 + 新手引導系統 (依 text 工作表建置，v2 修正版) ============
     // ================================================================
 
-    // ---------- 角色立繪(僅提供艾琳/主角/公會長三張，其餘角色沒有立繪則不顯示) ----------
-    // 圖片依角色名稱動態組成 assets/images/text/text_<角色名稱>.png，不需要在這裡填 src。
-    // 要新增一個有立繪的角色：在下面加一行 { 側邊位置 }，並把對應的 text_<角色名稱>.png 放進
-    // assets/images/text/ 資料夾即可。side 決定對話時要顯示在畫面左/右/中間，需要人工指定。
+    // ---------- 角色立繪 ----------
+    // 圖片依角色名稱動態組成 assets/images/text/<角色名稱>.png(檔名不用加 text_ 前綴)，
+    // 不需要在這裡填 src。要新增一個有立繪的角色：在下面加一行 { side }，並把對應的
+    // <角色名稱>.png 放進 assets/images/text/ 資料夾即可。角色名稱要跟 text 分頁對話裡
+    // 「角色名：」的名稱完全一致(逐字比對，包含全形/半形冒號前的文字)，否則抓不到圖。
+    // side 決定對話時要顯示在畫面左/右/中間，這是導演選擇，沒辦法從檔名自動判斷，需要人工指定。
     const STORY_PORTRAITS = {
       'hero': { side: 'right' },
       '艾琳': { side: 'left' },
       '公會長': { side: 'left' },
       '魔王': { side: 'left' },
-      '永恆聖鏡': { side: 'center' }
+      '魔王奧斯維德': { side: 'left' }, // 與「魔王」共用同一張立繪美術，供劇情之後改用全名時直接生效
+      '永恆聖鏡': { side: 'center' },
+      '教官': { side: 'left' },
+      '露娜': { side: 'left' },
+      '艾德蒙': { side: 'center' }, // 與露娜常在同一幕交替對話，用不同側避免互相蓋掉
+      '村民': { side: 'left' },
+      '農夫': { side: 'left' }
     };
     function storyPortraitSrc(name) {
-      return `assets/images/text/text_${name}.png`;
+      return `assets/images/text/${name}.png`;
     }
 
     const RESULT_VICTORY_LOGO = 'assets/images/img_c14e72d0dde2.png';
