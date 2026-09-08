@@ -64,7 +64,30 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      position: relative; /* 讓 #cooldown-banner 可以絕對定位蓋在整個戰場(我方/敵方卡牌)正中央 */
     }
+
+    /* 技能冷卻中/MP不足時，選擇該技能會讓全場卡牌壓黑，同時在最上層置中顯示原因提示 */
+    #cooldown-banner {
+      display: none;
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 60;
+      padding: 8px 22px;
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: #ffb4b4;
+      background: rgba(20, 12, 12, 0.82);
+      border: 2px solid #ff5c5c;
+      border-radius: 10px;
+      text-shadow: 0 0 8px rgba(0,0,0,0.9);
+      box-shadow: 0 0 18px rgba(255,0,0,0.35);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #cooldown-banner.visible { display: block; }
 
     /* 頂部行動排序列 (固定顯示 5 名) */
     .timeline-vertical-col {
@@ -4053,6 +4076,8 @@
 
     <!-- 畫面3：戰鬥畫面 (原本內容) -->
     <div id="screen-battle" style="display:none;">
+    <!-- 技能冷卻中/MP不足時，全場壓黑並在最上層顯示原因(見 syncActionDimVisual) -->
+    <div class="cooldown-banner" id="cooldown-banner"></div>
     <!-- 敵方區域 -->
     <div>
       <div class="role-hp-block" id="enemy-role-hp-block">
@@ -6489,6 +6514,8 @@ let TALENT_CURVE = [
       pendingTargets: [],
       pendingTargetCount: 0,
       pendingMode: null,
+      previewOnly: false,
+      previewReasonText: null, // 技能冷卻中/MP不足時，於戰場上層顯示的提示文字(見 onSkillBtnClick / syncActionDimVisual)
       pendingExtraCount: 0,
       speedMultiplier: 1,
       selectedQuest: null,
@@ -6713,7 +6740,7 @@ let TALENT_CURVE = [
     }
     function canAffordWeaponLevelUp(cardId) {
       let card = CARD_DATABASE.find(c => c.id === cardId);
-      if (!card || getCardType(card) === 'monster') return false; // 魔物卡片的強化功能尚未開放
+      if (!card) return false;
       let cost = getWeaponLevelUpCost(cardId);
       return cost != null && getItemAmount(8001) >= cost;
     }
@@ -7158,17 +7185,20 @@ let TALENT_CURVE = [
           `;
         }
 
+        // 上鎖的職業也要能預覽內容(圖示+技能)，只是不能真正選用/替換：
+        // 圖示與技能圖示一律照真實內容顯示(不再用🔒/空白格擋掉)，技能圖示點擊後一樣能看到完整技能說明；
+        // 唯獨等級(未擁有無等級可言)、職業加成/套裝摘要、裝備格(需要實際擁有並裝備才有意義)仍只在已解鎖時顯示。
         el.innerHTML = `
           <div class="class-avatar-col">
-            <div class="class-avatar" style="background-color:${elementIconBg(c)}">${isUnlocked ? c.icon : '🔒'}${isUnlocked ? cardFrameHtml(c, 'square') : ''}</div>
+            <div class="class-avatar" style="background-color:${elementIconBg(c)}">${c.icon}${isUnlocked ? cardFrameHtml(c, 'square') : ''}</div>
             <div class="class-name-lv">${elName(c)}<br>${isUnlocked ? `lv.${lv}` : '未解鎖'}</div>
             ${isActive ? '<div class="class-active-tag">使用中</div>' : ''}
             ${isUnlocked ? '' : '<div class="class-locked-tag">🔒 未解鎖</div>'}
           </div>
           <div class="class-skill-grid">
-            ${isUnlocked ? skillSlotHtml(c.s0) : `<div class="class-skill-slot empty"></div>`}
-            ${isUnlocked ? skillSlotHtml(c.s1) : `<div class="class-skill-slot empty"></div>`}
-            ${isUnlocked ? skillSlotHtml(c.s2) : `<div class="class-skill-slot empty"></div>`}
+            ${skillSlotHtml(c.s0)}
+            ${skillSlotHtml(c.s1)}
+            ${skillSlotHtml(c.s2)}
           </div>
           ${statsSummaryHtml}
           <div class="class-equip-grid" ${isUnlocked ? `onclick="event.stopPropagation(); openClassEquipScreenFor(${cid});"` : ''}>
@@ -7198,14 +7228,39 @@ let TALENT_CURVE = [
       openClassEquipScreen();
     }
 
-    // 點選尚未解鎖的職業時顯示提示：告知需要學習哪個天賦節點才能解鎖
+    // 初階職業(90001~90006，扣除新手引導已選的那一個)解鎖消耗：破碎的轉職推薦書(item 2008) x100，
+    // 剩餘5個初階職業需求都相同；此item尚未存在xlsx的item分頁中(Wei後續會補上)，itemName()/itemIcon()
+    // 對未定義的item id都有防呆(顯示"道具#2008")，不會因為資料還沒到位就報錯，資料補上後名稱/圖示會自動正確顯示
+    const BASE_CLASS_UNLOCK_ITEM = 2008;
+    const BASE_CLASS_UNLOCK_AMOUNT = 100;
+
+    // 點選尚未解鎖的職業時顯示提示：
+    // - 進階職業(90008以上)：告知需要學習哪個天賦節點才能解鎖(維持原本規則不變)
+    // - 初階職業(90001~90006)：改為可直接在這裡消耗「破碎的轉職推薦書」x100解鎖，不需要天賦樹
     function showClassLockedInfo(cid) {
       let node = Object.values(TALENT_DATABASE).find(t => t.roleCardUnlock === cid);
       let roleCard = CARD_DATABASE.find(c => c.id === cid);
-      let msg = node
-        ? `此職業尚未解鎖，需先在天賦樹中學習「${node.name}」節點才能使用。`
-        : '此職業尚未解鎖。';
-      showGenericInfoModal(`🔒 ${roleCard ? elName(roleCard) : '未知職業'}`, msg);
+      let roleLabel = roleCard ? elName(roleCard) : '未知職業';
+
+      if (node) {
+        showGenericInfoModal(`🔒 ${roleLabel}`, `此職業尚未解鎖，需先在天賦樹中學習「${node.name}」節點才能使用。`);
+        return;
+      }
+
+      let have = getItemAmount(BASE_CLASS_UNLOCK_ITEM);
+      showConfirmModal(
+        `此職業尚未解鎖。是否消耗 ${BASE_CLASS_UNLOCK_AMOUNT} 個「${itemName(BASE_CLASS_UNLOCK_ITEM)}」解鎖【${roleLabel}】？\n目前持有：${have}/${BASE_CLASS_UNLOCK_AMOUNT}`,
+        () => {
+          if (getItemAmount(BASE_CLASS_UNLOCK_ITEM) < BASE_CLASS_UNLOCK_AMOUNT) {
+            showGenericInfoModal('轉職', `「${itemName(BASE_CLASS_UNLOCK_ITEM)}」數量不足，無法解鎖！`);
+            return;
+          }
+          spendItem(BASE_CLASS_UNLOCK_ITEM, BASE_CLASS_UNLOCK_AMOUNT);
+          gameState.ownedClasses.add(cid);
+          renderClassSelectScreen();
+          showGenericInfoModal('轉職成功', `已解鎖新職業：【${roleLabel}】！`);
+        }
+      );
     }
 
     // 技能圖示以簡易文字符號代表(依技能主要效果類型顯示不同符號)，點擊後另外彈窗顯示完整名稱與說明
@@ -7612,11 +7667,17 @@ let TALENT_CURVE = [
 
     function renderMainStageDetail(quest) {
       const el = document.getElementById('mainline-stage-detail');
-      const idleZone = IDLEZONE_DATABASE[quest.mapId];
+      // 掛機獎勵一律顯示「目前實際掛機中」的關卡內容(gameState.idle.mapId，由 startMainlineIdleLoop()
+      // 自動鎖定為玩家已通關的最後一個主線關卡)，而不是這張卡片本身顯示的「即將挑戰」關卡(quest)。
+      // 這兩者在玩家尚未通關quest之前通常不同一關，之前誤用quest.mapId查詢，會顯示「還沒真正在累積」的獎勵，
+      // 讓玩家誤以為那就是目前掛機拿到的獎勵；改用idle.mapId後並附上該關卡名稱，讓畫面所見即所得。
+      const idleMapId = gameState.idle.mapId;
+      const idleZone = idleMapId ? IDLEZONE_DATABASE[idleMapId] : null;
+      const idleQuest = idleMapId ? QUEST_DATABASE.find(q => q.mapId === idleMapId) : null;
       const idlePreview = idleZone ? expandIdleRewardsForDisplay(idleZone.rewards) : [];
 
       el.innerHTML = buildQuestCardHtml(quest, '主線', true) + (idlePreview.length ? `
-        <div class="reward-bar-label">🧭 掛機獎勵</div>
+        <div class="reward-bar-label">🧭 掛機獎勵${idleQuest ? `（目前掛機：${idleQuest.hint}）` : ''}</div>
         <div class="idle-reward-preview">${renderIdleRewardPreviewHtml(idlePreview)}</div>
       ` : '');
     }
@@ -7728,9 +7789,9 @@ let TALENT_CURVE = [
     function startMainlineIdleLoop() {
       const zones = getUnlockedIdleZones();
       if (zones.length === 0) return;
-      if (!gameState.idle.mapId || !zones.includes(gameState.idle.mapId)) {
-        gameState.idle.mapId = zones[0];
-      }
+      // 掛機地區一律自動鎖定為「玩家已通關的最後一個有掛機資料的主線關卡」(zones[0])，
+      // 不再保留玩家手動選擇後卡住舊地區的邏輯：只要通關新關卡，下次進主線畫面就會自動跟著往前推進
+      gameState.idle.mapId = zones[0];
       if (gameState.idle.exploring) return; // 已在執行中，不重複啟動
       gameState.idle.exploring = true;
       gameState.idle.visible = false;
@@ -7909,7 +7970,7 @@ let TALENT_CURVE = [
     // 判斷武器是否有足夠材料可以進行下一次升星(尚未達最高星等，且素材數量足夠)
     function canAffordWeaponStarUp(cardId) {
       let card = CARD_DATABASE.find(c => c.id === cardId);
-      if (!card || getCardType(card) === 'monster' || !card.starRefineId || !card.starCostId) return false; // 魔物卡片的升星功能尚未開放
+      if (!card || !card.starRefineId || !card.starCostId) return false; // 沒有填寫 star_refine_id/star_cost_id(尚未設定升星資料)的卡片一律無法升星，武器/魔物共用同一套判斷
       let curLevel = gameState.weaponStars[cardId] || 0;
       let maxLv = REFINE_DATABASE[card.starRefineId] ? Object.keys(REFINE_DATABASE[card.starRefineId]).length : 10;
       if (curLevel >= maxLv) return false;
@@ -7935,30 +7996,19 @@ let TALENT_CURVE = [
     function updateWeaponNavRedDot() {
       const dot = document.getElementById('nav-weapon-dot');
       if (!dot) return;
-      let anyReady = CARD_DATABASE.some(c => getCardType(c) === 'weapon' && gameState.ownedCards.has(c.id) && (canAffordWeaponStarUp(c.id) || canAffordWeaponLevelUp(c.id)));
+      let anyReady = CARD_DATABASE.some(c => (getCardType(c) === 'weapon' || getCardType(c) === 'monster') && gameState.ownedCards.has(c.id) && (canAffordWeaponStarUp(c.id) || canAffordWeaponLevelUp(c.id)));
       dot.style.display = anyReady ? 'block' : 'none';
     }
 
     // 每10秒刷新一次主線掛機小狀態列(讓文字/可領取次數即時更新)
     setInterval(() => { if (gameState.idle.exploring) renderMainlineIdleWidget(); }, 10000);
 
-    // 探索地區選擇彈窗：僅在左側「目前探索地區」文字被點擊時開啟
+    // 探索地區選擇功能已關閉(依需求：掛機地區一律自動鎖定為已通關的最後主線關卡，
+    // 玩家不能再手動選擇要領取哪一關的獎勵，見 startMainlineIdleLoop())。
+    // 按鈕(#mainline-idle-status)本身與底下彈窗HTML/CSS都保留不動，只是點擊後不再有任何反應；
+    // selectExploreZone()/closeZonePicker() 也一併保留但不會再被呼叫到，方便日後若要恢復手動選擇可以直接復原這裡即可。
     function openZonePicker() {
-      const zones = getUnlockedIdleZones();
-      if (zones.length <= 1) return;
-      const body = document.getElementById('zone-picker-body');
-      body.innerHTML = zones.map(z => {
-        let quest = QUEST_DATABASE.find(q => q.mapId === z);
-        let zone = IDLEZONE_DATABASE[z];
-        let isCurrent = z === gameState.idle.mapId;
-        return `
-          <div class="explore-zone-picker-item" style="${isCurrent ? 'border-color:#ffd700;' : ''}" onclick="selectExploreZone(${z})">
-            <span>${quest ? quest.hint : z}${isCurrent ? '（目前）' : ''}</span>
-            <div class="idle-reward-preview" style="margin-top:0;">${renderIdleRewardPreviewHtml(zone.rewards)}</div>
-          </div>
-        `;
-      }).join('');
-      document.getElementById('zone-picker-modal').style.display = 'flex';
+      // 已停用，維持空函式
     }
     function closeZonePicker() {
       document.getElementById('zone-picker-modal').style.display = 'none';
@@ -9470,7 +9520,6 @@ let TALENT_CURVE = [
       let card = cardId ? CARD_DATABASE.find(c => c.id === cardId) : null;
       if (!card) { showGenericInfoModal('升級', '請先選擇要升級的武器！'); return; }
       if (!gameState.ownedCards.has(cardId)) { showGenericInfoModal('升級', '尚未擁有此武器！'); return; }
-      if (getCardType(card) === 'monster') { showGenericInfoModal('升級', '魔物卡片的強化功能尚未開放，敬請期待未來更新！'); return; }
 
       let curLevel = getWeaponLevel(cardId);
       let curStats = applyLevelScaling(card, curLevel);
@@ -9542,7 +9591,6 @@ let TALENT_CURVE = [
       let card = cardId ? CARD_DATABASE.find(c => c.id === cardId) : null;
       if (!card) { showGenericInfoModal('升星', '請先選擇要升星的武器！'); return; }
       if (!gameState.ownedCards.has(cardId)) { showGenericInfoModal('升星', '尚未擁有此武器！'); return; }
-      if (getCardType(card) === 'monster') { showGenericInfoModal('升星', '魔物卡片的升星功能尚未開放，敬請期待未來更新！'); return; }
 
       let curLevel = gameState.weaponStars[cardId] || 0;
       let maxLv = card.starRefineId && REFINE_DATABASE[card.starRefineId] ? Object.keys(REFINE_DATABASE[card.starRefineId]).length : 10;
@@ -10128,7 +10176,8 @@ let TALENT_CURVE = [
       return computePowerScore(hero);
     }
     function autoFillFormation() {
-      let ownedWeapons = CARD_DATABASE.filter(c => getCardType(c) === 'weapon' && gameState.ownedCards.has(c.id));
+      // 上陣名單：一般武器 + 黑暗契約捕捉成功並已發放的魔物卡片，兩者皆可上陣(與「武器選單」畫面的清單邏輯一致)
+      let ownedWeapons = CARD_DATABASE.filter(c => (getCardType(c) === 'weapon' || getCardType(c) === 'monster') && gameState.ownedCards.has(c.id));
       if (ownedWeapons.length === 0) {
         showGenericInfoModal('自動上陣', '尚未擁有任何武器，請先前往「召喚」抽取武器！');
         return;
@@ -10152,7 +10201,8 @@ let TALENT_CURVE = [
     function renderFormationScreen() {
       const roster = document.getElementById('formation-roster');
       roster.innerHTML = '';
-      let ownedWeapons = CARD_DATABASE.filter(c => getCardType(c) === 'weapon' && gameState.ownedCards.has(c.id));
+      // 上陣名單：一般武器 + 黑暗契約捕捉成功並已發放的魔物卡片，兩者皆可上陣(與「武器選單」畫面的清單邏輯一致)
+      let ownedWeapons = CARD_DATABASE.filter(c => (getCardType(c) === 'weapon' || getCardType(c) === 'monster') && gameState.ownedCards.has(c.id));
 
       // tag_limit：關卡若有設定，入場僅能使用擁有該tag的card進行佈陣(其餘武器不會列出可選)
       let tagLimit = gameState.pendingArrangementQuest && gameState.pendingArrangementQuest.tagLimit;
@@ -11361,6 +11411,7 @@ let TALENT_CURVE = [
       gameState.selectedAction = null;
       gameState.pendingMode = null;
       gameState.previewOnly = false;
+      gameState.previewReasonText = null;
       syncActionDimVisual(); // 每次輪到新的行動者都先清掉上一位遺留的壓黑效果
 
       // 輪到主角行動時，操作彈窗底色換成不同顏色，明顯區分於武器角色的回合
@@ -11684,6 +11735,7 @@ let TALENT_CURVE = [
       gameState.selectedAction = null;
       gameState.pendingMode = null;
       gameState.previewOnly = false;
+      gameState.previewReasonText = null;
       document.querySelectorAll('.card').forEach(c => c.classList.remove('targetable', 'selected', 'preview-random', 'preview-all'));
       removeTargetMask();
       if (defaultType) {
@@ -11744,6 +11796,16 @@ let TALENT_CURVE = [
         let eligible = el.classList.contains('targetable-enemy') || el.classList.contains('targetable-self');
         el.classList.toggle('action-dim', !eligible);
       });
+      // 技能冷卻中/MP不足時(previewOnly且有設定原因文字)，在全場壓黑的最上層顯示原因提示
+      let banner = document.getElementById('cooldown-banner');
+      if (banner) {
+        if (gameState.previewOnly && gameState.previewReasonText) {
+          banner.innerText = gameState.previewReasonText;
+          banner.classList.add('visible');
+        } else {
+          banner.classList.remove('visible');
+        }
+      }
     }
 
     function setButtonsDisabled(disabled) {
@@ -11833,6 +11895,7 @@ let TALENT_CURVE = [
       gameState.pendingTargets = [];
       gameState.pendingTargetCount = 1;
       gameState.previewOnly = false;
+      gameState.previewReasonText = null;
       candidates.forEach(u => {
         let el = document.getElementById(`card-${u.id}`);
         if (el) el.classList.add('targetable');
@@ -11886,17 +11949,20 @@ let TALENT_CURVE = [
       let notEnoughMp = activeUnit.currentMp < skillObj.cost;
 
       if (onCooldown || notEnoughMp) {
-        // 冷卻中或MP不足：技能分頁仍可點擊查看說明，但無法真正選擇目標，我方與敵方卡牌(含角色框)一律壓黑無法點選
+        // 冷卻中或MP不足：技能分頁仍可點擊查看說明，但無法真正選擇目標，我方與敵方卡牌(含角色框)一律壓黑無法點選，
+        // 並在畫面最上層顯示原因(技能冷卻中/MP不足)，讓玩家清楚知道為什麼整場都點不了
         document.querySelectorAll('.card').forEach(c => c.classList.remove('targetable', 'selected', 'preview-random', 'preview-all'));
         removeTargetMask();
         gameState.selectedAction = null;
         gameState.pendingMode = null;
         gameState.previewOnly = true;
+        gameState.previewReasonText = onCooldown ? `技能冷卻中(剩餘${cds[skillObj.id]}回合)` : 'MP不足，無法使用';
         syncActionDimVisual();
         return;
       }
 
       gameState.previewOnly = false;
+      gameState.previewReasonText = null;
       proceedWithAction(type);
       syncActionDimVisual();
     }
@@ -11905,6 +11971,7 @@ let TALENT_CURVE = [
     // 並讓卡牌壓黑效果同步解除；函式名稱與既有呼叫時機保持不變，避免動到其餘呼叫點
     function closeSkillModal() {
       gameState.previewOnly = false;
+      gameState.previewReasonText = null;
       syncActionDimVisual();
     }
 
@@ -13157,6 +13224,7 @@ let TALENT_CURVE = [
           gameState.selectedAction = null;
           gameState.pendingMode = null;
           gameState.previewOnly = false;
+          gameState.previewReasonText = null;
           syncActionDimVisual();
           autoExecuteTurn(activeUnit);
         }
