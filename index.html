@@ -3052,6 +3052,14 @@
       margin: 0;
       padding: 12px 8px;
     }
+    /* 自動下一關倒數文字：顯示於結算彈窗按鈕列下方 */
+    .result-auto-next-countdown {
+      display: none;
+      margin-top: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #ffd700;
+    }
 
     .battle-start-overlay {
       display: none;
@@ -3202,6 +3210,16 @@
     .btn-restart:hover {
       background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
       transform: scale(1.05);
+    }
+
+    /* 「自動下一關」開關按鈕：ON時改為綠色系，與自動戰鬥按鈕的配色邏輯一致 */
+    .btn-restart.toggle-on {
+      background: linear-gradient(180deg, #2e7d32 0%, #1b5e20 100%);
+      border-color: #81c784;
+      box-shadow: 0 0 12px rgba(46, 125, 50, 0.6);
+    }
+    .btn-restart.toggle-on:hover {
+      background: linear-gradient(180deg, #388e3c 0%, #1b5e20 100%);
     }
 
     .btn-restart-dark {
@@ -3520,6 +3538,8 @@
           <button class="btn-restart" id="btn-result-next-stage" style="display:none;" onclick="goToNextMainStage()">下一關</button>
           <button class="btn-restart" id="btn-result-retry" style="display:none;" onclick="retryCurrentQuest()">重新挑戰</button>
         </div>
+        <!-- 自動下一關倒數文字：僅在「自動下一關」設定為ON、且戰鬥勝利有下一關可接續時才會顯示與倒數 -->
+        <div class="result-auto-next-countdown" id="result-auto-next-countdown"></div>
       </div>
     </div>
 
@@ -3595,6 +3615,7 @@
           <button class="btn" onclick="performNav('quest')">返回</button>
           <button class="btn-restart" id="btn-quest-type-formation" style="display:none;" onclick="openFormationScreen()">佈陣</button>
           <button class="btn-restart" id="btn-quest-type-challenge" style="display:none;" onclick="challengeCurrentQuestTypeStage()">挑戰</button>
+          <button class="btn-restart" id="btn-quest-type-autonext" style="display:none;" onclick="toggleAutoNextStage()">自動下一關: OFF</button>
         </div>
       </div>
 
@@ -3846,6 +3867,7 @@
         <div class="action-bar">
           <button class="btn-restart" onclick="openFormationScreen()">佈陣<span class="red-dot-badge" id="btn-mainline-formation-dot" style="display:none;"></span></button>
           <button class="btn-restart" id="btn-mainline-challenge" onclick="challengeCurrentMainStage()">挑戰</button>
+          <button class="btn-restart" id="btn-mainline-autonext" onclick="toggleAutoNextStage()">自動下一關: OFF</button>
         </div>
       </div>
 
@@ -6548,6 +6570,7 @@ let TALENT_CURVE = [
       currentTurnIdx: 0,
       selectedAction: null,
       isAuto: false,
+      autoNextStage: false, // 自動下一關(僅用於main/tower連續性關卡)：戰鬥勝利、結算彈窗出現「下一關」按鈕時，倒數3秒後自動接續下一關；戰鬥失敗一律自動關閉
       isAnimating: false,
       turnCount: 1,
       pendingTargets: [],
@@ -7583,6 +7606,7 @@ let TALENT_CURVE = [
       startMainlineIdleLoop();
       renderMainlineIdleWidget();
       renderMainStageDetail(stage);
+      syncAutoNextStageUI();
     }
 
     // 戰鬥區域：探索(掛機)戰鬥進行中時，顯示真實引擎的敵我雙方即時狀態(卡片縮小、無戰鬥log)；
@@ -9856,6 +9880,7 @@ let TALENT_CURVE = [
       if (animOverlay) animOverlay.innerHTML = '';
       closeSkillModal(); // 技能說明浮窗(若開啟中)
       removeTargetMask(); // 選擇目標用的疊層遮罩(若開啟中)
+      clearAutoNextStageCountdown(); // 若正處於自動下一關倒數中途被中斷，取消計時器避免殘留
       document.getElementById('result-modal').style.display = 'none';
       hideNextWaveOverlayIfAny(); // 多波次戰鬥的NEXT WAVE蓋板(若正在播放中)
       gameState.activeBattleType = null;
@@ -10606,8 +10631,58 @@ let TALENT_CURVE = [
       return { icon: itemIcon(lootId, 'text'), name: itemName(lootId), amount: amount || 1 };
     }
 
+    // ============ 自動下一關(main/tower連續性關卡專用) ============
+    // 開關按鈕統一建立於主線畫面、試煉之塔內層選單(佈陣/挑戰按鈕旁)，兩處共用同一份 gameState.autoNextStage 設定
+    let autoNextStageTimerId = null;
+    let autoNextStageCountdownVal = 0;
+
+    function syncAutoNextStageUI() {
+      const label = gameState.autoNextStage ? '自動下一關: ON' : '自動下一關: OFF';
+      ['btn-mainline-autonext', 'btn-quest-type-autonext'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.innerText = label;
+        btn.classList.toggle('toggle-on', gameState.autoNextStage);
+      });
+    }
+
+    function toggleAutoNextStage() {
+      gameState.autoNextStage = !gameState.autoNextStage;
+      syncAutoNextStageUI();
+      if (!gameState.autoNextStage) clearAutoNextStageCountdown(); // 玩家在倒数過程中途手動關閉，立即取消倒數
+    }
+
+    function clearAutoNextStageCountdown() {
+      if (autoNextStageTimerId) { clearInterval(autoNextStageTimerId); autoNextStageTimerId = null; }
+      const el = document.getElementById('result-auto-next-countdown');
+      if (el) { el.style.display = 'none'; el.innerText = ''; }
+    }
+
+    // 戰鬥勝利、結算彈窗的「下一關」按鈕確實顯示時才會呼叫：於按鈕列下方倒數3秒，倒數結束後直接觸發「下一關」按鈕當下的行為(goToNextMainStage)
+    function startAutoNextStageCountdown() {
+      clearAutoNextStageCountdown();
+      const el = document.getElementById('result-auto-next-countdown');
+      if (!el) return;
+      autoNextStageCountdownVal = 3;
+      el.style.display = 'block';
+      el.innerText = `自動下一關：${autoNextStageCountdownVal} 秒後自動開始`;
+      autoNextStageTimerId = setInterval(() => {
+        autoNextStageCountdownVal--;
+        if (autoNextStageCountdownVal <= 0) {
+          clearAutoNextStageCountdown();
+          const nextBtn = document.getElementById('btn-result-next-stage');
+          if (nextBtn && nextBtn.style.display !== 'none' && typeof nextBtn.onclick === 'function') {
+            nextBtn.onclick();
+          }
+          return;
+        }
+        el.innerText = `自動下一關：${autoNextStageCountdownVal} 秒後自動開始`;
+      }, 1000);
+    }
+
     function showResultModal(isWin) {
       gameState.activeBattleType = null; // 戰鬥已分出勝負，副本/主線可自由切換
+      clearAutoNextStageCountdown(); // 每次開啟結算彈窗都先清掉上一次殘留的倒數(理論上不會有殘留，防呆)
       const modal = document.getElementById('result-modal');
       const logo = document.getElementById('result-logo');
       const subtitle = document.getElementById('result-subtitle');
@@ -10703,6 +10778,11 @@ let TALENT_CURVE = [
             }
           }
           lootEl.innerText = gained.length ? gained.map(g => `${g.icon} ${g.name} x${g.amount}`).join(' · ') : '沒有獲得獎勵';
+
+          // 自動下一關：僅main/tower這兩種連續性關卡適用，且結算彈窗確實有顯示「下一關」按鈕(找得到下一關)時，才倒數3秒後自動接續
+          if (gameState.autoNextStage && quest && (quest.type === 'main' || quest.type === 'tower') && nextBtn.style.display === 'block') {
+            startAutoNextStageCountdown();
+          }
         }
       } else {
         modal.className = 'result-modal lose';
@@ -10710,6 +10790,11 @@ let TALENT_CURVE = [
         subtitle.innerText = (hint ? hint + ' ' : '') + '挑戰失敗';
         lootEl.innerText = '沒有獲得獎勵';
         retryBtn.style.display = 'block'; // 戰敗額外提供「重新挑戰」，直接重新進入同一關卡
+        // 停止條件：只要戰鬥失敗，就自動關閉「自動下一關」設定(戰敗畫面本來就不會顯示下一關按鈕，故不會有倒數)
+        if (gameState.autoNextStage) {
+          gameState.autoNextStage = false;
+          syncAutoNextStageUI();
+        }
       }
 
       modal.style.display = 'flex';
@@ -10717,6 +10802,7 @@ let TALENT_CURVE = [
 
     // 重新挑戰：關閉結算彈窗後，直接重新進入剛剛失敗的同一個關卡(戰前劇情已播放過的話不會重複播放)
     function retryCurrentQuest() {
+      clearAutoNextStageCountdown();
       const quest = gameState.selectedQuest;
       document.getElementById('result-modal').style.display = 'none';
       if (!quest) { returnToQuestMenu(); return; }
@@ -10738,6 +10824,7 @@ let TALENT_CURVE = [
 
     // 點擊「下一關」：關閉結果彈窗，直接接續挑戰下一個主線關卡(不需玩家手動重新選擇關卡)
     function goToNextMainStage() {
+      clearAutoNextStageCountdown(); // 不論是玩家手動點擊、還是倒數結束後自動觸發，都先確保計時器不會殘留
       let nextMapId = parseInt(document.getElementById('btn-result-next-stage').dataset.nextMapId, 10);
       let nextQuest = QUEST_DATABASE.find(q => q.mapId === nextMapId);
       document.getElementById('result-modal').style.display = 'none';
@@ -10749,6 +10836,7 @@ let TALENT_CURVE = [
 
     // 戰鬥結束後返回關卡選單(依剛才挑戰的關卡類型返回副本或主線畫面)
     function returnToQuestMenu() {
+      clearAutoNextStageCountdown();
       document.getElementById('result-modal').style.display = 'none';
       let backType = gameState.selectedQuest ? gameState.selectedQuest.type : 'dungeon';
       gameState.selectedQuest = null;
@@ -10827,6 +10915,7 @@ let TALENT_CURVE = [
       const body = document.getElementById('quest-type-list-body');
       const formationBtn = document.getElementById('btn-quest-type-formation');
       const challengeBtn = document.getElementById('btn-quest-type-challenge');
+      const autoNextBtn = document.getElementById('btn-quest-type-autonext');
 
       if (cat.type === 'tower') {
         // 試煉之塔：與主線相同規則，畫面上永遠只顯示「目前這一關」，戰勝後(該關被記入clearedMainMapIds)才會自動換成下一關
@@ -10834,6 +10923,8 @@ let TALENT_CURVE = [
         gameState.currentTowerStageId = stage ? stage.mapId : null;
         formationBtn.style.display = 'block';
         challengeBtn.style.display = stage ? 'block' : 'none';
+        autoNextBtn.style.display = 'block'; // 「自動下一關」屬於連續性關卡功能，試煉之塔一律顯示(殲滅任務不顯示)
+        syncAutoNextStageUI();
         if (!stage) {
           body.innerHTML = `<div class="explore-empty-hint">此分類尚未有可挑戰的關卡，敬請期待！</div>`;
           return;
@@ -10845,6 +10936,7 @@ let TALENT_CURVE = [
       // 其餘分類(殲滅任務)：維持清單模式，列出所有尚未通關的關卡，點擊即可直接挑戰
       formationBtn.style.display = 'none';
       challengeBtn.style.display = 'none';
+      autoNextBtn.style.display = 'none'; // 殲滅任務不是連續性關卡，不提供自動下一關
       let quests = QUEST_DATABASE.filter(q => q.type === cat.type && !gameState.clearedMainMapIds.has(q.mapId));
       if (quests.length === 0) {
         body.innerHTML = `<div class="explore-empty-hint">此分類尚未有可挑戰的關卡，敬請期待！</div>`;
