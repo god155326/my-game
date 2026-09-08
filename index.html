@@ -607,8 +607,17 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 6px;
       padding: 0 2px;
       flex-shrink: 0;
+    }
+    .log-header-text-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      min-width: 0;
+      overflow: hidden;
+      flex: 1;
     }
 
     .log-header-text {
@@ -660,15 +669,7 @@
       z-index: 2;
     }
 
-    /* 戰場日誌下方一整排：左側為契約卷數量顯示，右側為自動戰鬥按鈕 */
-    .log-bottom-row {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-    /* 戰鬥中顯示玩家擁有的暗黑契約卷數量(道具ICON : 數字)，位置緊鄰自動戰鬥按鈕左側 */
+    /* 戰鬥中顯示玩家擁有的暗黑契約卷數量(道具ICON : 數字)，2026-09-08起移到手動操作彈窗內、緊鄰CD顯示 */
     .capture-item-display {
       display: flex;
       align-items: center;
@@ -692,15 +693,15 @@
     }
     .btn-auto-float {
       flex-shrink: 0;
-      width: 40%;
-      min-width: 62px;
-      padding: 8px 2px;
-      font-size: 9px;
+      width: auto;
+      min-width: 88px;
+      padding: 7px 12px;
+      font-size: 11px;
       line-height: 1.3;
       text-align: center;
       background: linear-gradient(180deg, #4a3c31 0%, #292019 100%);
       border: 1px solid #7a6350;
-      border-radius: 6px;
+      border-radius: 20px;
       color: #e5d4c0;
       font-weight: bold;
       cursor: pointer;
@@ -715,7 +716,7 @@
     .log-msg.buff { color: #a855f7; font-weight: bold; }
     .log-msg.sys { color: #fcc419; }
 
-    /* 控制面板 (配合移除跳過按鈕後，3個按鈕平均分配) */
+    /* 控制面板 (現在只放技能分頁按鈕，說明/CD移到上方的 action-popup-preview) */
     .control-panel {
       display: flex;
       gap: 4px;
@@ -730,6 +731,149 @@
     .control-panel.role-turn .btn:not(:disabled) {
       background: linear-gradient(180deg, #7a5c1f 0%, #4a3a12 100%);
       border-color: #ffd700;
+    }
+
+    /* ============ 手動回合操作彈窗(取代原本底部固定按鈕列)：圖示+技能說明/CD 在上，分頁按鈕在下 ============ */
+    /* 手動回合操作彈窗：絕對定位蓋滿整個 .log-box-wrap(跟底下的戰鬥LOG同一塊區域、互斥顯示)，
+       預設隱藏，只有輪到手動玩家回合時才會顯示(見 setActionPopupVisible())；
+       自動戰鬥/敵方回合時完全不顯示，玩家看到的就是底下的戰鬥LOG */
+    .action-popup {
+      display: none;
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      flex-direction: column;
+      gap: 5px;
+      padding: 6px;
+      border-radius: 6px;
+      background: linear-gradient(180deg, #241c16 0%, #14100d 100%);
+      border: 1px solid #5a4638;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.7);
+      z-index: 10;
+      box-sizing: border-box;
+      transition: background 0.2s ease, box-shadow 0.2s ease;
+    }
+    .action-popup.visible {
+      display: flex;
+    }
+    .action-popup.role-turn {
+      /* 底色要完全不透明：這個彈窗是絕對定位蓋住底下戰鬥LOG的，半透明會讓LOG文字透出來 */
+      background: linear-gradient(180deg, #5c4a1f 0%, #2e2410 100%);
+      box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.5) inset;
+    }
+    .action-popup-preview {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+      flex: 1;
+      min-height: 0;
+    }
+    .action-popup-icon {
+      width: 30%;
+      max-width: 96px;
+      flex-shrink: 0;
+      border-radius: 10px;
+      border: 2px solid #7a6350;
+      background: rgba(0,0,0,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 34px;
+      box-shadow: inset 0 0 6px rgba(0,0,0,0.8);
+      position: relative;
+      overflow: hidden;
+    }
+    .action-popup-icon-label {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      font-size: 9px;
+      line-height: 1.2;
+      text-align: center;
+      color: #ffe9c2;
+      background: rgba(0,0,0,0.55);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding: 2px 2px;
+    }
+    .action-popup-info {
+      flex: 1;
+      min-width: 0;
+      background: rgba(24,21,19,0.85);
+      border: 1px solid #4a382c;
+      border-radius: 6px;
+      padding: 4px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      position: relative;
+    }
+    .action-popup-title {
+      font-size: 13px;
+      font-weight: bold;
+      color: #ffd700;
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
+    .action-popup-desc {
+      font-size: 12px;
+      color: #d1c7bd;
+      line-height: 1.35;
+      flex: 1;
+      overflow-y: auto;
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
+    .action-popup-bottom-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      flex-shrink: 0;
+      min-height: 20px;
+    }
+    .action-popup-cd {
+      font-size: 11px;
+      font-weight: 900;
+      color: #ffe9c2;
+      border: 1px solid #7a6350;
+      border-radius: 5px;
+      padding: 2px 8px;
+      background: rgba(0,0,0,0.4);
+      white-space: nowrap;
+      margin-left: auto;
+    }
+    .control-panel.action-popup-tabs .btn {
+      position: relative;
+    }
+    .control-panel.action-popup-tabs .btn.tab-active:not(:disabled) {
+      background: linear-gradient(180deg, #7a5c1f 0%, #4a3a12 100%);
+      border-color: #ffd700;
+      box-shadow: 0 0 6px rgba(255,215,0,0.6);
+    }
+    .tab-cd-badge {
+      position: absolute;
+      top: -6px;
+      right: -4px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 900;
+      border-radius: 8px;
+      min-width: 15px;
+      line-height: 14px;
+      padding: 0 3px;
+      border: 1px solid #7a1414;
+    }
+
+    /* 技能選擇/預覽期間：非可選對象的卡牌與角色框一律壓黑，只留下真正可選的目標維持原有高亮 */
+    .card.action-dim {
+      filter: brightness(0.32) grayscale(0.5);
+      pointer-events: none;
+    }
+    .role-hp-block.action-dim {
+      filter: brightness(0.32) grayscale(0.5);
+      pointer-events: none;
     }
 
     /* ============ 探索模式狀態列(取代手動操作按鈕列，玩家無法操作) ============ */
@@ -2775,47 +2919,9 @@
     .crystal-notice-float.notice-blue { color: #38bdf8; text-shadow: 0 0 8px #000, 0 0 6px #0ea5e9; }
     .crystal-notice-float.notice-orange { color: #fb923c; text-shadow: 0 0 8px #000, 0 0 6px #f97316; }
 
-    /* 技能提示浮窗 (非全螢幕蓋板，大小與戰鬥 LOG 區域相符，附帶 X 關閉按鈕) */
-    .skill-info-modal {
-      display: none;
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(24, 21, 19, 0.95);
-      border: 2px solid #b38f58;
-      border-radius: 8px;
-      padding: 8px 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.8);
-      z-index: 150;
-      flex-direction: column;
-      justify-content: space-between;
-      animation: fadeIn 0.2s ease-out forwards;
-      overflow: hidden;
-      box-sizing: border-box;
-    }
-
-    .skill-info-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 6px;
-      border-bottom: 1px solid #4a382c;
-      padding-bottom: 2px;
-      min-width: 0;
-    }
-
-    .skill-info-title {
-      font-size: 12px;
-      font-weight: bold;
-      color: #ffd700;
-      flex: 1;
-      min-width: 0;
-      overflow-wrap: break-word;
-      word-break: break-word;
-    }
-
+    /* 技能提示浮窗已於2026-09-08整合進戰鬥畫面的 action-popup(見.action-popup系列樣式)，
+       原本這個獨立覆蓋在戰鬥LOG上方的版本已移除；.skill-close-x / .btn-confirm-skill 是共用樣式，
+       仍被其餘許多彈窗(職業/裝備/召喚/事件...)使用，不能一併刪除 */
     .skill-close-x {
       font-size: 12px;
       color: #aaa;
@@ -2828,23 +2934,6 @@
     .skill-close-x:hover {
       background: #c62828;
       color: #fff;
-    }
-
-    .skill-info-desc {
-      font-size: 20px;
-      color: #d1c7bd;
-      line-height: 1.3;
-      overflow-y: auto;
-      overflow-x: hidden;
-      max-height: 50px;
-      text-align: left;
-      overflow-wrap: break-word;
-      word-break: break-word;
-    }
-
-    .skill-info-footer {
-      display: flex;
-      justify-content: flex-end;
     }
 
     .btn-confirm-skill {
@@ -3978,33 +4067,44 @@
     </div>
 
 
-    <!-- 行動順序(左側直排) + 戰場日誌 -->
+    <!-- 行動順序(左側直排) + 戰場日誌(自動/敵方回合時顯示) / 手動操作彈窗(手動玩家回合時顯示，兩者互斥、蓋在同一塊區域) -->
     <div class="battle-grid">
       <div class="timeline-vertical-col">
         <div class="timeline-list" id="timeline-list"></div>
       </div>
       <div class="log-col">
         <div class="log-header">
-          <span class="log-header-quest" id="quest-hint-info"></span><span class="log-header-wave" id="wave-info" style="margin-left:5px;"></span>
-          <span class="log-header-text" id="turn-info">第1回合</span>
+          <div class="log-header-text-group">
+            <span class="log-header-quest" id="quest-hint-info"></span><span class="log-header-wave" id="wave-info" style="margin-left:5px;"></span>
+            <span class="log-header-text" id="turn-info">第1回合</span>
+          </div>
+          <button class="btn-auto-float" id="btn-auto" onclick="toggleAuto()">自動戰鬥: OFF</button>
         </div>
         <div class="log-box-wrap">
           <div class="log-box" id="log-box"></div>
-          <!-- 技能資訊提示浮窗：固定疊在戰鬥LOG正上方，大小與戰鬥LOG完全一致 -->
-          <div class="skill-info-modal" id="skill-info-modal">
-            <div class="skill-info-header">
-              <div class="skill-info-title" id="skill-modal-title">技能名稱</div>
-              <div class="skill-close-x" onclick="closeSkillModal()">✕</div>
+          <!-- 手動回合操作彈窗：僅在手動玩家回合時顯示，完全蓋住底下的戰鬥LOG；自動戰鬥中或敵方回合時整個隱藏，
+               玩家從頭到尾看到的都是戰鬥LOG(見 setActionPopupVisible()) -->
+          <div class="action-popup" id="action-popup">
+            <div class="action-popup-preview">
+              <div class="action-popup-icon" id="action-popup-icon">
+                <div class="action-popup-icon-label" id="action-popup-icon-label"></div>
+              </div>
+              <div class="action-popup-info">
+                <div class="action-popup-title" id="action-popup-title"></div>
+                <div class="action-popup-desc" id="action-popup-desc"></div>
+                <div class="action-popup-bottom-row">
+                  <div class="capture-item-display" id="capture-item-display"></div>
+                  <div class="action-popup-cd" id="action-popup-cd" style="display:none;"></div>
+                </div>
+              </div>
             </div>
-            <div class="skill-info-desc" id="skill-modal-desc">技能說明內容文字……</div>
-            <div class="skill-info-footer">
-              <button class="btn-confirm-skill" onclick="closeSkillModal()">關閉提示</button>
+            <div class="control-panel action-popup-tabs" id="control-panel">
+              <button class="btn" id="btn-capture" onclick="onCaptureBtnClick()">黑暗契約</button>
+              <button class="btn" id="btn-atk" onclick="onSkillBtnClick('ATK')">Skill0</button>
+              <button class="btn" id="btn-skill1" onclick="onSkillBtnClick('SKILL1')">skill1</button>
+              <button class="btn" id="btn-skill2" onclick="onSkillBtnClick('SKILL2')">skill2</button>
             </div>
           </div>
-        </div>
-        <div class="log-bottom-row">
-          <div class="capture-item-display" id="capture-item-display"></div>
-          <button class="btn-auto-float" id="btn-auto" onclick="toggleAuto()">自動戰鬥: OFF</button>
         </div>
       </div>
     </div>
@@ -4022,13 +4122,6 @@
       </div>
     </div>
 
-    <!-- 控制按鈕 -->
-    <div class="control-panel" id="control-panel">
-      <button class="btn" id="btn-atk" onclick="onSkillBtnClick('ATK')">普通攻擊</button>
-      <button class="btn" id="btn-skill1" onclick="onSkillBtnClick('SKILL1')">技能1</button>
-      <button class="btn" id="btn-skill2" onclick="onSkillBtnClick('SKILL2')">技能2</button>
-      <button class="btn" id="btn-capture" onclick="onCaptureBtnClick()">黑暗契約</button>
-    </div>
     <!-- 預留分頁系統空間(未來擴充用，目前先保留版位) -->
     <div class="bottom-tab-reserved" id="bottom-tab-reserved"></div>
     </div>
@@ -11265,16 +11358,21 @@ let TALENT_CURVE = [
 
       document.querySelectorAll('.card').forEach(c => c.classList.remove('targetable', 'selected', 'preview-random', 'preview-all'));
       removeTargetMask();
+      gameState.selectedAction = null;
+      gameState.pendingMode = null;
+      gameState.previewOnly = false;
+      syncActionDimVisual(); // 每次輪到新的行動者都先清掉上一位遺留的壓黑效果
 
-      // 輪到主角行動時，控制面板底色換成不同顏色，明顯區分於武器角色的回合
-      const controlPanel = document.querySelector('.control-panel');
-      if (controlPanel) controlPanel.classList.toggle('role-turn', !!activeUnit.isRole);
+      // 輪到主角行動時，操作彈窗底色換成不同顏色，明顯區分於武器角色的回合
+      const actionPopup = document.getElementById('action-popup');
+      if (actionPopup) actionPopup.classList.toggle('role-turn', !!activeUnit.isRole);
 
       // 控制型負面狀態(麻痺/暈眩)：該回合直接跳過行動，不論手動或自動模式都不可操控
       let controlBuff = getControlBuff(activeUnit);
       if (controlBuff) {
         gameState.isAnimating = true; // 跳過行動的900ms展示期間也視為動畫進行中，避免這段空檔被其他操作意外重複觸發同一位單位的行動
         setButtonsDisabled(true);
+        setActionPopupVisible(false); // 這回合直接跳過行動，無法操作，彈窗隱藏改看戰鬥LOG
         showBuffProcNotice(activeUnit, controlBuff.name, 'notice-red');
         let el = activeUnit.isRole
           ? document.getElementById(`${activeUnit.side}-role-hp-block`)
@@ -11294,10 +11392,19 @@ let TALENT_CURVE = [
 
       if (gameState.isAuto || activeUnit.side === 'enemy') {
         setButtonsDisabled(true);
+        setActionPopupVisible(false); // 自動戰鬥/敵方回合：彈窗整個隱藏，玩家看到的是底下的戰鬥LOG
         setTimeout(() => autoExecuteTurn(activeUnit), td(500));
       } else {
+        setActionPopupVisible(true); // 手動玩家回合：顯示彈窗，蓋住戰鬥LOG
         updateActionButtons(activeUnit);
       }
+    }
+
+    // 手動回合操作彈窗的顯示/隱藏：跟戰鬥LOG是同一塊區域的互斥顯示(見 #action-popup 的CSS絕對定位)，
+    // 只有這裡跟 toggleAuto() 把彈窗切走時會呼叫，其餘地方一律不動它的顯示狀態
+    function setActionPopupVisible(visible) {
+      const actionPopup = document.getElementById('action-popup');
+      if (actionPopup) actionPopup.classList.toggle('visible', !!visible);
     }
 
     // 行動結束後呼叫：扣除本次行動消耗的AGI(保留溢出量)，並判斷是否所有存活角色都已在本回合行動過一次
@@ -11542,38 +11649,101 @@ let TALENT_CURVE = [
 
     function updateActionButtons(unit) {
       if (!unit) return;
+
       let s0 = unit.s0 ? SKILL_DATABASE[unit.s0] : null;
       let s1 = SKILL_DATABASE[unit.s1];
       let s2 = SKILL_DATABASE[unit.s2];
       let cds = unit.skillCooldowns || {};
 
-      // 主角沒有普通攻擊(skill0)，該按鈕直接隱藏停用
+      // 主角沒有普通攻擊(skill0)，該按鈕直接隱藏(不再因冷卻/MP不足而停用其餘按鈕——冷卻中仍可點擊瀏覽說明，只是無法真正選擇目標)
       let btnAtk = document.getElementById('btn-atk');
-      btnAtk.disabled = !s0;
+      btnAtk.disabled = false;
       btnAtk.style.display = s0 ? '' : 'none';
       btnAtk.innerText = s0 ? s0.name : '無';
 
       let s1OnCooldown = s1 && cds[s1.id] > 0;
       let s2OnCooldown = s2 && cds[s2.id] > 0;
-      document.getElementById('btn-skill1').disabled = unit.currentMp < s1.cost || s1OnCooldown;
-      document.getElementById('btn-skill2').disabled = unit.currentMp < s2.cost || s2OnCooldown;
+      document.getElementById('btn-skill1').disabled = false;
+      document.getElementById('btn-skill2').disabled = false;
 
       document.getElementById('btn-skill1').innerText = s1OnCooldown
         ? `${s1.name} (冷卻${cds[s1.id]})` : `${s1.name} (${s1.cost}MP)`;
       document.getElementById('btn-skill2').innerText = s2OnCooldown
         ? `${s2.name} (冷卻${cds[s2.id]})` : `${s2.name} (${s2.cost}MP)`;
 
-      // 黑暗契約(捕捉)按鈕：僅玩家主角(role)回合才顯示；需同時擁有契約卷數量與至少一名可捕捉的敵方對象才能點擊
+      // 黑暗契約(捕捉)按鈕：僅玩家主角(role)回合才顯示；即使目前沒有可捕捉對象/契約卷不足也維持可點擊(由 onCaptureBtnClick 內部彈窗告知原因)
       let btnCapture = document.getElementById('btn-capture');
       if (btnCapture) {
         let showCapture = !!(unit.isRole && unit.side === 'player');
         btnCapture.style.display = showCapture ? '' : 'none';
-        if (showCapture) {
-          let oppTeam = gameState.enemyTeam;
-          let hasCaptureTarget = oppTeam.some(u => !u.isDead && !u.isRole && typeof u.captureRate === 'number' && u.captureRate > 0);
-          btnCapture.disabled = !hasCaptureTarget || getItemAmount(2007) <= 0;
-        }
+        btnCapture.disabled = false;
       }
+
+      // 彈窗預設顯示的技能說明：優先序 技能2 > 技能1 > 普通攻擊(與下方「自動戰鬥施放優先序」一致)，讓彈窗一出現就有內容可看
+      let defaultType = s2 ? 'SKILL2' : (s1 ? 'SKILL1' : (s0 ? 'ATK' : null));
+      gameState.selectedAction = null;
+      gameState.pendingMode = null;
+      gameState.previewOnly = false;
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('targetable', 'selected', 'preview-random', 'preview-all'));
+      removeTargetMask();
+      if (defaultType) {
+        renderActionPreview(unit, defaultType);
+      } else {
+        setActiveTab(null);
+      }
+      syncActionDimVisual();
+    }
+
+    // 依目前輪到行動的單位，更新彈窗上方「圖示+ID」顯示區：輪到主角(role)時顯示玩家自己的圖示+ID，其餘(武器)維持顯示該武器的圖示+名稱
+    function renderActionPreviewIcon(unit) {
+      let iconEl = document.getElementById('action-popup-icon');
+      if (!iconEl || !unit) return;
+      // 輪到主角(role)時顯示玩家自己的圖示+ID；其餘(武器)維持顯示該武器的圖示+名稱
+      // (每次都重新產生內含的 label div，避免innerHTML整個覆寫導致原本寫死在HTML裡的label節點消失)
+      let label = unit.isRole ? (gameState.profile.name || '匿名的勇者') : elName(unit);
+      iconEl.innerHTML = `${unit.icon || ''}${positionBadgeHtml(unit.position)}<div class="action-popup-icon-label" id="action-popup-icon-label">${label}</div>`;
+    }
+
+    // 更新彈窗上方的技能名稱/說明/CD顯示，並將對應分頁按鈕標示為目前選取中(不會觸發目標選擇，純粹更新顯示)
+    function renderActionPreview(unit, type) {
+      renderActionPreviewIcon(unit);
+      setActiveTab(type);
+      if (!type) return;
+      let skillObj = type === 'SKILL1' ? SKILL_DATABASE[unit.s1] : (type === 'SKILL2' ? SKILL_DATABASE[unit.s2] : SKILL_DATABASE[unit.s0]);
+      if (!skillObj) return;
+      let titleEl = document.getElementById('action-popup-title');
+      let descEl = document.getElementById('action-popup-desc');
+      let cdEl = document.getElementById('action-popup-cd');
+      if (titleEl) titleEl.innerText = skillObj.cost > 0 ? `技能：${skillObj.name} (消耗MP: ${skillObj.cost})` : `技能：${skillObj.name}`;
+      if (descEl) descEl.innerText = formatSkillDesc(skillObj) || "無詳細說明";
+      if (cdEl) { cdEl.innerText = `CD:${skillObj.cooldown || 0}`; cdEl.style.display = ''; }
+    }
+
+    // 標示目前選取中的分頁按鈕(黃框醒目提示)，type為null時全部取消醒目提示(例如武器完全沒有可用技能的保底狀況)
+    function setActiveTab(type) {
+      const idMap = { ATK: 'btn-atk', SKILL1: 'btn-skill1', SKILL2: 'btn-skill2', CAPTURE: 'btn-capture' };
+      Object.values(idMap).forEach(id => {
+        let el = document.getElementById(id);
+        if (el) el.classList.toggle('tab-active', idMap[type] === id);
+      });
+    }
+
+    // 技能選擇/預覽期間：把「目前不是可選目標」的我方與敵方卡牌(含角色框)一律壓黑且無法點擊，
+    // 只留下真正可被選取的目標(targetable/selected/preview-random/preview-all)維持原有高亮，兩者同步交由這個函式統一判斷
+    function syncActionDimVisual() {
+      let active = !!gameState.selectedAction || gameState.pendingMode === 'CAPTURE_SELECT' || !!gameState.previewOnly;
+      document.querySelectorAll('.card').forEach(c => {
+        if (!active) { c.classList.remove('action-dim'); return; }
+        let eligible = c.classList.contains('targetable') || c.classList.contains('selected') || c.classList.contains('preview-random') || c.classList.contains('preview-all');
+        c.classList.toggle('action-dim', !eligible);
+      });
+      ['player-role-hp-block', 'enemy-role-hp-block'].forEach(id => {
+        let el = document.getElementById(id);
+        if (!el) return;
+        if (!active) { el.classList.remove('action-dim'); return; }
+        let eligible = el.classList.contains('targetable-enemy') || el.classList.contains('targetable-self');
+        el.classList.toggle('action-dim', !eligible);
+      });
     }
 
     function setButtonsDisabled(disabled) {
@@ -11620,8 +11790,31 @@ let TALENT_CURVE = [
       let activeUnit = gameState.turnQueue[gameState.currentTurnIdx];
       if (!activeUnit || !activeUnit.isRole || activeUnit.side !== 'player' || gameState.isAuto) return;
 
+      setActiveTab('CAPTURE');
+      let skillObj = SKILL_DATABASE[110000];
+      let cdEl = document.getElementById('action-popup-cd');
+      if (skillObj) {
+        document.getElementById('action-popup-title').innerText = `技能：${skillObj.name}`;
+        document.getElementById('action-popup-desc').innerText = formatSkillDesc(skillObj) || "無詳細說明";
+        cdEl.innerText = `CD:${skillObj.cooldown || 0}`;
+        cdEl.style.display = '';
+      } else {
+        // SKILL_DATABASE目前沒有對應這個捕捉用技能id的資料列，改顯示固定的通用說明，避免殘留上一個分頁的舊文字
+        document.getElementById('action-popup-title').innerText = '黑暗契約';
+        document.getElementById('action-popup-desc').innerText = '消耗一張「暗黑契約卷」，對可捕捉的敵方魔物進行契約嘗試(依該魔物的捕捉率判定成功與否)。';
+        cdEl.style.display = 'none';
+      }
+
+      // 不論底下判斷結果如何，先清掉舊的目標標記，確保接下來壓黑/高亮狀態是乾淨的
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('targetable', 'selected', 'preview-random', 'preview-all'));
+      removeTargetMask();
+      gameState.selectedAction = null;
+      gameState.pendingMode = null;
+
       if (getItemAmount(2007) <= 0) {
         showGenericInfoModal('黑暗契約', '「暗黑契約卷」數量不足，無法進行捕捉！');
+        gameState.previewOnly = true; // 只能瀏覽技能說明，我方與敵方卡牌全部壓黑
+        syncActionDimVisual();
         return;
       }
 
@@ -11630,27 +11823,21 @@ let TALENT_CURVE = [
       let candidates = oppTeam.filter(u => !u.isDead && !u.isRole && typeof u.captureRate === 'number' && u.captureRate > 0);
       if (candidates.length === 0) {
         showGenericInfoModal('黑暗契約', '目前沒有可以捕捉的對象！');
+        gameState.previewOnly = true;
+        syncActionDimVisual();
         return;
       }
-
-      let skillObj = SKILL_DATABASE[110000];
-      if (skillObj) {
-        document.getElementById('skill-modal-title').innerText = `技能：${skillObj.name}`;
-        document.getElementById('skill-modal-desc').innerText = formatSkillDesc(skillObj) || "無詳細說明";
-        document.getElementById('skill-info-modal').style.display = 'flex';
-      }
-
-      document.querySelectorAll('.card').forEach(c => c.classList.remove('targetable', 'selected', 'preview-random', 'preview-all'));
-      removeTargetMask();
 
       gameState.selectedAction = 'CAPTURE';
       gameState.pendingMode = 'CAPTURE_SELECT';
       gameState.pendingTargets = [];
       gameState.pendingTargetCount = 1;
+      gameState.previewOnly = false;
       candidates.forEach(u => {
         let el = document.getElementById(`card-${u.id}`);
         if (el) el.classList.add('targetable');
       });
+      syncActionDimVisual();
     }
 
     // 執行捕捉判定：點選對象後立即消耗一張契約卷(不論成功/失敗都會扣除)，依 capture_rate 機率判定並立即顯示結果；
@@ -11689,16 +11876,36 @@ let TALENT_CURVE = [
       if (!activeUnit) return;
       if (type === 'ATK' && !activeUnit.s0) return; // 主角沒有普通攻擊
       let skillObj = type === 'SKILL1' ? SKILL_DATABASE[activeUnit.s1] : (type === 'SKILL2' ? SKILL_DATABASE[activeUnit.s2] : SKILL_DATABASE[activeUnit.s0]);
+      if (!skillObj) return;
 
-      document.getElementById('skill-modal-title').innerText = `技能：${skillObj.name} (消耗MP: ${skillObj.cost})`;
-      document.getElementById('skill-modal-desc').innerText = formatSkillDesc(skillObj) || "無詳細說明";
-      document.getElementById('skill-info-modal').style.display = 'flex';
+      // 不論該技能目前是否可施放，一律先更新彈窗顯示的名稱/說明/CD，並標示這個分頁為選取中
+      renderActionPreview(activeUnit, type);
 
+      let cds = activeUnit.skillCooldowns || {};
+      let onCooldown = cds[skillObj.id] > 0;
+      let notEnoughMp = activeUnit.currentMp < skillObj.cost;
+
+      if (onCooldown || notEnoughMp) {
+        // 冷卻中或MP不足：技能分頁仍可點擊查看說明，但無法真正選擇目標，我方與敵方卡牌(含角色框)一律壓黑無法點選
+        document.querySelectorAll('.card').forEach(c => c.classList.remove('targetable', 'selected', 'preview-random', 'preview-all'));
+        removeTargetMask();
+        gameState.selectedAction = null;
+        gameState.pendingMode = null;
+        gameState.previewOnly = true;
+        syncActionDimVisual();
+        return;
+      }
+
+      gameState.previewOnly = false;
       proceedWithAction(type);
+      syncActionDimVisual();
     }
 
+    // 舊版技能說明浮窗已整合進 action-popup(彈窗與技能分頁按鈕一起顯示)，這裡改為清除「僅能瀏覽說明」的預覽鎖定狀態，
+    // 並讓卡牌壓黑效果同步解除；函式名稱與既有呼叫時機保持不變，避免動到其餘呼叫點
     function closeSkillModal() {
-      document.getElementById('skill-info-modal').style.display = 'none';
+      gameState.previewOnly = false;
+      syncActionDimVisual();
     }
 
     // 蓋板顏色：紅框(preview-all) = 蓋板內每個被標示的對象都保證被命中(正前方單體、全體施放)
@@ -12000,6 +12207,7 @@ let TALENT_CURVE = [
 
       let remaining = gameState.pendingTargetCount - gameState.pendingTargets.length;
       if (remaining > 0) {
+        syncActionDimVisual(); // 已選定的目標改標記selected、剩餘可選目標仍是targetable，兩者都不壓黑，其餘卡牌壓黑
         return;
       }
 
@@ -12159,11 +12367,11 @@ let TALENT_CURVE = [
       let s1Usable = s1 && activeUnit.currentMp >= s1.cost && !(cds[s1.id] > 0);
       let s2Usable = s2 && activeUnit.currentMp >= s2.cost && !(cds[s2.id] > 0);
 
-      let chosenSkill = s0; // 預設普通攻擊(若有)
-      if (s2Usable && Math.random() > 0.4) chosenSkill = s2;
-      else if (s1Usable && Math.random() > 0.3) chosenSkill = s1;
-      else if (!chosenSkill && s1Usable) chosenSkill = s1;
-      else if (!chosenSkill && s2Usable) chosenSkill = s2;
+      // 自動戰鬥施放優先序(固定，不再隨機)：技能2 > 技能1 > 普通攻擊，冷卻中或MP不足時，能放什麼就放什麼(依序往下找第一個可用的)
+      let chosenSkill = null;
+      if (s2Usable) chosenSkill = s2;
+      else if (s1Usable) chosenSkill = s1;
+      else if (s0) chosenSkill = s0;
 
       if (!chosenSkill) {
         // 沒有可用技能(例如主角僅有的技能剛好都在冷卻中)，這回合直接跳過行動
@@ -12940,9 +13148,16 @@ let TALENT_CURVE = [
         applySpeedToCSS();
         let activeUnit = gameState.turnQueue[gameState.currentTurnIdx];
         if (activeUnit && !gameState.isAnimating) {
-          // BUG修正：玩家手動操作回合中途按下自動戰鬥，下方手動操作按鈕(普通攻擊/技能1/技能2/黑暗契約)必須立即被關閉，
-          // 避免自動戰鬥的行動與玩家殘留可點擊的手動按鈕同時並存
+          // BUG修正：玩家手動操作回合中途按下自動戰鬥，操作彈窗(普通攻擊/技能1/技能2/黑暗契約)必須立即被關閉，
+          // 避免自動戰鬥的行動與玩家殘留可點擊的手動按鈕、殘留的目標選取/壓黑狀態同時並存
           setButtonsDisabled(true);
+          setActionPopupVisible(false); // 立即切回顯示戰鬥LOG，彈窗不會跟自動戰鬥同時並存
+          document.querySelectorAll('.card').forEach(c => c.classList.remove('targetable', 'selected', 'preview-random', 'preview-all'));
+          removeTargetMask();
+          gameState.selectedAction = null;
+          gameState.pendingMode = null;
+          gameState.previewOnly = false;
+          syncActionDimVisual();
           autoExecuteTurn(activeUnit);
         }
       } else if (gameState.speedMultiplier === 1) {
