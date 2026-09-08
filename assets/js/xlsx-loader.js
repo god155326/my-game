@@ -398,6 +398,8 @@ function buildCardDatabase(wb) {
     if (CARD_POSITION_MAP[id] !== undefined) o.position = CARD_POSITION_MAP[id];
     if (s.resist_buff !== null) o.resistBuff = parseNumList(s.resist_buff);
     if (s["role_ addition"] !== null) o.roleAddition = parseBraceList(s["role_ addition"]);
+    // 捕捉機率(card表 capture_rate 欄位)：只有魔物(monster)才會填此欄位，有填才能被捕捉，沒填(null)則不可捕捉
+    if (s.capture_rate !== null && s.capture_rate !== undefined) o.captureRate = s.capture_rate;
     return o;
   });
 }

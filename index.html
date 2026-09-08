@@ -436,11 +436,6 @@
       cursor: default;
     }
 
-    /* 換位功能允許選擇死亡的隊友，需確保可選標示不被死亡樣式蓋掉 */
-    .card.dead.targetable {
-      border-color: #ff4500 !important;
-      filter: grayscale(60%) brightness(0.6);
-    }
 
     /* 戰鬥中的整張卡面主圖示：改為滿版大方形圖示(取消原本的圓形縮圖與屬性色底/圓框設計)，稀有度徽章疊在右下角 */
     .hero-avatar {
@@ -665,9 +660,37 @@
       z-index: 2;
     }
 
-    /* 移至戰場日誌下方的自動戰鬥按鈕 */
+    /* 戰場日誌下方一整排：左側為契約卷數量顯示，右側為自動戰鬥按鈕 */
+    .log-bottom-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    /* 戰鬥中顯示玩家擁有的暗黑契約卷數量(道具ICON : 數字)，位置緊鄰自動戰鬥按鈕左側 */
+    .capture-item-display {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #e5d4c0;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid #7a6350;
+      border-radius: 6px;
+      padding: 4px 6px;
+      flex-shrink: 0;
+    }
+    .capture-item-display .icon-box {
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
     .btn-auto-float {
-      align-self: flex-end;
       flex-shrink: 0;
       width: 40%;
       min-width: 62px;
@@ -2893,6 +2916,17 @@
       color: #ffd700;
       margin-bottom: 6px;
     }
+    /* 戰鬥勝利時，特別顯示本場「契約成功」並實際獲得的魔物(card)名稱 */
+    .result-capture-label {
+      font-size: 13px;
+      font-weight: bold;
+      color: #b388ff;
+      margin: 10px 0 6px 0;
+    }
+    .result-capture-gained {
+      font-size: 13px;
+      color: #e5d4c0;
+    }
     .result-btn-row {
       display: flex;
       gap: 10px;
@@ -3328,6 +3362,8 @@
         <div class="result-subtitle" id="result-subtitle">1-1 挑戰成功</div>
         <div class="result-reward-label">獲得獎勵</div>
         <div class="result-desc" id="result-loot"></div>
+        <div class="result-capture-label" id="result-capture-label" style="display:none;">🌑 契約成功</div>
+        <div class="result-capture-gained" id="result-capture-gained"></div>
         <div class="result-btn-row">
           <button class="btn-restart" onclick="returnToQuestMenu()">回到副本選單</button>
           <button class="btn-restart" id="btn-result-next-stage" style="display:none;" onclick="goToNextMainStage()">下一關</button>
@@ -3966,7 +4002,10 @@
             </div>
           </div>
         </div>
-        <button class="btn-auto-float" id="btn-auto" onclick="toggleAuto()">自動戰鬥: OFF</button>
+        <div class="log-bottom-row">
+          <div class="capture-item-display" id="capture-item-display"></div>
+          <button class="btn-auto-float" id="btn-auto" onclick="toggleAuto()">自動戰鬥: OFF</button>
+        </div>
       </div>
     </div>
 
@@ -3988,7 +4027,7 @@
       <button class="btn" id="btn-atk" onclick="onSkillBtnClick('ATK')">普通攻擊</button>
       <button class="btn" id="btn-skill1" onclick="onSkillBtnClick('SKILL1')">技能1</button>
       <button class="btn" id="btn-skill2" onclick="onSkillBtnClick('SKILL2')">技能2</button>
-      <button class="btn" id="btn-swap" onclick="onSwapBtnClick()">換位</button>
+      <button class="btn" id="btn-capture" onclick="onCaptureBtnClick()">黑暗契約</button>
     </div>
     <!-- 預留分頁系統空間(未來擴充用，目前先保留版位) -->
     <div class="bottom-tab-reserved" id="bottom-tab-reserved"></div>
@@ -6500,6 +6539,13 @@ let TALENT_CURVE = [
       return buildInlineIconWithFallback('item', itemId, fallback);
     }
 
+    // 戰鬥中左側(自動戰鬥按鈕左邊)顯示玩家擁有的「暗黑契約卷」(item 2007)數量，讓玩家隨時能看到剩餘可捕捉次數
+    function updateCaptureItemDisplay() {
+      const el = document.getElementById('capture-item-display');
+      if (!el) return;
+      el.innerHTML = `<span class="icon-box">${itemIcon(2007, 'box')}</span><span>${getItemAmount(2007)}</span>`;
+    }
+
     // ============ 職業經驗值/等級系統 ============
     // 每個職業的累計經驗值分開計算；經驗一律累加給「目前使用中的職業」(gameState.selectedRole)
     function grantExp(amount) {
@@ -6573,6 +6619,8 @@ let TALENT_CURVE = [
       return row.next;
     }
     function canAffordWeaponLevelUp(cardId) {
+      let card = CARD_DATABASE.find(c => c.id === cardId);
+      if (!card || getCardType(card) === 'monster') return false; // 魔物卡片的強化功能尚未開放
       let cost = getWeaponLevelUpCost(cardId);
       return cost != null && getItemAmount(8001) >= cost;
     }
@@ -7768,7 +7816,7 @@ let TALENT_CURVE = [
     // 判斷武器是否有足夠材料可以進行下一次升星(尚未達最高星等，且素材數量足夠)
     function canAffordWeaponStarUp(cardId) {
       let card = CARD_DATABASE.find(c => c.id === cardId);
-      if (!card || !card.starRefineId || !card.starCostId) return false;
+      if (!card || getCardType(card) === 'monster' || !card.starRefineId || !card.starCostId) return false; // 魔物卡片的升星功能尚未開放
       let curLevel = gameState.weaponStars[cardId] || 0;
       let maxLv = REFINE_DATABASE[card.starRefineId] ? Object.keys(REFINE_DATABASE[card.starRefineId]).length : 10;
       if (curLevel >= maxLv) return false;
@@ -9136,7 +9184,8 @@ let TALENT_CURVE = [
     // ============ 武器選單 ============
     function renderWeaponMenuScreen() {
       const grid = document.getElementById('weapon-menu-grid');
-      let weapons = CARD_DATABASE.filter(c => getCardType(c) === 'weapon'); // card表 type=weapon 的全部武器
+      // card表 type=weapon 的全部武器；魔物(monster)卡片只有在「已擁有」(捕捉成功且戰鬥勝利發放)時才會出現，未擁有的魔物不列出(避免清單被大量尚未捕捉的魔物洗版)
+      let weapons = CARD_DATABASE.filter(c => getCardType(c) === 'weapon' || (getCardType(c) === 'monster' && gameState.ownedCards.has(c.id)));
       // 顯示排序：已擁有的武器排在最前面，未擁有的維持原本(card表)順序接在後面；各自群組內部順序不變(穩定排序)
       weapons = [...weapons.filter(c => gameState.ownedCards.has(c.id)), ...weapons.filter(c => !gameState.ownedCards.has(c.id))];
       // 狀態篩選：若目前有選定的BUFF，僅保留技能會附加該BUFF的武器
@@ -9328,6 +9377,7 @@ let TALENT_CURVE = [
       let card = cardId ? CARD_DATABASE.find(c => c.id === cardId) : null;
       if (!card) { showGenericInfoModal('升級', '請先選擇要升級的武器！'); return; }
       if (!gameState.ownedCards.has(cardId)) { showGenericInfoModal('升級', '尚未擁有此武器！'); return; }
+      if (getCardType(card) === 'monster') { showGenericInfoModal('升級', '魔物卡片的強化功能尚未開放，敬請期待未來更新！'); return; }
 
       let curLevel = getWeaponLevel(cardId);
       let curStats = applyLevelScaling(card, curLevel);
@@ -9399,6 +9449,7 @@ let TALENT_CURVE = [
       let card = cardId ? CARD_DATABASE.find(c => c.id === cardId) : null;
       if (!card) { showGenericInfoModal('升星', '請先選擇要升星的武器！'); return; }
       if (!gameState.ownedCards.has(cardId)) { showGenericInfoModal('升星', '尚未擁有此武器！'); return; }
+      if (getCardType(card) === 'monster') { showGenericInfoModal('升星', '魔物卡片的升星功能尚未開放，敬請期待未來更新！'); return; }
 
       let curLevel = gameState.weaponStars[cardId] || 0;
       let maxLv = card.starRefineId && REFINE_DATABASE[card.starRefineId] ? Object.keys(REFINE_DATABASE[card.starRefineId]).length : 10;
@@ -9619,7 +9670,7 @@ let TALENT_CURVE = [
     function abortCurrentBattle() {
       gameState.battleAborted = true; // 必須最先設定：advanceToNextActor/autoExecuteTurn等既有的回合演出鏈都會檢查此旗標，之後排程中的setTimeout即使稍後才觸發也會直接跳過、不再執行任何行動或特效
       gameState.isAnimating = false;
-      setButtonsDisabled(true); // 中斷過程中，玩家的技能/換位等按鈕一律先失效，避免殘留的點擊在畫面切換瞬間被誤觸發
+      setButtonsDisabled(true); // 中斷過程中，玩家的技能/黑暗契約等按鈕一律先失效，避免殘留的點擊在畫面切換瞬間被誤觸發
       // 清除所有「目前顯示中」或「排隊等待顯示」的戰鬥特效：傷害飄字、buff發動提示、技能投射物等都是動態插入到 #anim-overlay 底下，直接清空即可全部關閉
       const animOverlay = document.getElementById('anim-overlay');
       if (animOverlay) animOverlay.innerHTML = '';
@@ -10316,6 +10367,7 @@ let TALENT_CURVE = [
       }
 
       gameState.turnCount = 1;
+      gameState.pendingCapturedCardIds = []; // 本場戰鬥中「契約成功」但尚未發放的魔物card id，戰鬥勝利才會真正加入武器清單(見showResultModal)
       gameState.firstActionTaken = false; // 本場戰鬥尚未有任何一方行動過：強制第一個行動者必定是我方，敵方需等我方行動(或開啟自動)後才會開始演示
       document.getElementById('turn-info').innerText = `第1回合`;
       // 顯示目前挑戰的關卡名稱(取自mapdata的hint欄位，例如主線的"1-1"或副本的"敵方全物攻")
@@ -10385,9 +10437,28 @@ let TALENT_CURVE = [
       nextBtn.innerText = '下一關';
       nextBtn.onclick = goToNextMainStage; // 每次開啟都重設回預設行為，避免沿用上一次(例如無限地城)覆寫過的行為
       retryBtn.style.display = 'none'; // 只有戰敗時顯示
+      document.getElementById('result-capture-label').style.display = 'none';
+      document.getElementById('result-capture-gained').innerText = '';
 
       const quest = gameState.selectedQuest;
       const hint = (quest && quest.hint) ? quest.hint : '';
+
+      // 黑暗契約(捕捉)：契約簽訂成功的魔物，只有在戰鬥「勝利」時才真正加入武器清單；戰敗則全數作廢(玩家已消耗的契約卷不退還)
+      if (isWin && gameState.pendingCapturedCardIds && gameState.pendingCapturedCardIds.length) {
+        let capturedNames = [];
+        gameState.pendingCapturedCardIds.forEach(cardId => {
+          if (!gameState.ownedCards.has(cardId)) {
+            let card = CARD_DATABASE.find(c => c.id === cardId);
+            gameState.ownedCards.add(cardId);
+            capturedNames.push(card ? elName(card) : `#${cardId}`);
+          }
+        });
+        if (capturedNames.length) {
+          document.getElementById('result-capture-label').style.display = 'block';
+          document.getElementById('result-capture-gained').innerText = capturedNames.map(n => `【${n}】`).join('、');
+        }
+      }
+      gameState.pendingCapturedCardIds = [];
 
       if (isWin) {
         modal.className = 'result-modal win';
@@ -10913,6 +10984,7 @@ let TALENT_CURVE = [
       renderRow('enemy-row', gameState.enemyTeam);
       updateCrystalsUI();
       renderTimeline();
+      updateCaptureItemDisplay();
       renderUnitStatusInspector(); // 若目前有卡片被點開查看狀態，戰鬥每次更新畫面時同步刷新其內容(不停止戰鬥)
       // 主線內嵌的「戰鬥區域」：若目前正是掛機(探索)戰鬥且主線畫面可見，同步刷新即時HP/MP狀態
       if (gameState.idle.exploring && document.getElementById('screen-mainline').style.display !== 'none') {
@@ -11491,16 +11563,25 @@ let TALENT_CURVE = [
       document.getElementById('btn-skill2').innerText = s2OnCooldown
         ? `${s2.name} (冷卻${cds[s2.id]})` : `${s2.name} (${s2.cost}MP)`;
 
-      let myTeam = unit.side === 'player' ? gameState.playerTeam : gameState.enemyTeam;
-      let hasSwapTarget = !unit.isRole && myTeam.some(u => u.id !== unit.id && !u.isRole);
-      document.getElementById('btn-swap').disabled = !hasSwapTarget;
+      // 黑暗契約(捕捉)按鈕：僅玩家主角(role)回合才顯示；需同時擁有契約卷數量與至少一名可捕捉的敵方對象才能點擊
+      let btnCapture = document.getElementById('btn-capture');
+      if (btnCapture) {
+        let showCapture = !!(unit.isRole && unit.side === 'player');
+        btnCapture.style.display = showCapture ? '' : 'none';
+        if (showCapture) {
+          let oppTeam = gameState.enemyTeam;
+          let hasCaptureTarget = oppTeam.some(u => !u.isDead && !u.isRole && typeof u.captureRate === 'number' && u.captureRate > 0);
+          btnCapture.disabled = !hasCaptureTarget || getItemAmount(2007) <= 0;
+        }
+      }
     }
 
     function setButtonsDisabled(disabled) {
       document.getElementById('btn-atk').disabled = disabled;
       document.getElementById('btn-skill1').disabled = disabled;
       document.getElementById('btn-skill2').disabled = disabled;
-      document.getElementById('btn-swap').disabled = disabled;
+      let btnCapture = document.getElementById('btn-capture');
+      if (btnCapture) btnCapture.disabled = disabled;
     }
 
     // 解析 SKILL_DATABASE.target 欄位 "前排強制,對象數量,是否隨機"
@@ -11532,45 +11613,74 @@ let TALENT_CURVE = [
       setTimeout(() => el.remove(), 1600);
     }
 
-    // 換位：選擇一名同隊存活角色進行位置互換，換位後結束自身本回合行動；被換位者不受影響，輪到自己時仍可正常行動
-    function onSwapBtnClick() {
+    // 捕捉(黑暗契約)：消耗一張「暗黑契約卷」對可捕捉的敵方魔物進行契約嘗試；操作邏輯與技能相同(手動點選單一目標)，
+    // 僅玩家主角(role)回合、非自動戰鬥時才會出現此按鈕(參照 updateActionButtons)，這裡再次防呆判斷一次
+    function onCaptureBtnClick() {
       if (gameState.isAnimating) return;
       let activeUnit = gameState.turnQueue[gameState.currentTurnIdx];
-      let myTeam = activeUnit.side === 'player' ? gameState.playerTeam : gameState.enemyTeam;
-      let swapCandidates = myTeam.filter(u => u.id !== activeUnit.id && !u.isRole); // 死亡的隊友也可以換位，但主角不列入(不參與排位)
+      if (!activeUnit || !activeUnit.isRole || activeUnit.side !== 'player' || gameState.isAuto) return;
 
-      if (swapCandidates.length === 0) {
-        log('沒有可交換位置的隊友。', 'sys');
+      if (getItemAmount(2007) <= 0) {
+        showGenericInfoModal('黑暗契約', '「暗黑契約卷」數量不足，無法進行捕捉！');
         return;
       }
 
-      gameState.selectedAction = 'SWAP';
-      gameState.pendingMode = 'SWAP_SELECT';
-      gameState.pendingTargets = [];
-      gameState.pendingTargetCount = 1;
+      let oppTeam = gameState.enemyTeam;
+      // 只有card表有填 capture_rate 的魔物才能被捕捉；沒有填(undefined)一律不可捕捉
+      let candidates = oppTeam.filter(u => !u.isDead && !u.isRole && typeof u.captureRate === 'number' && u.captureRate > 0);
+      if (candidates.length === 0) {
+        showGenericInfoModal('黑暗契約', '目前沒有可以捕捉的對象！');
+        return;
+      }
+
+      let skillObj = SKILL_DATABASE[110000];
+      if (skillObj) {
+        document.getElementById('skill-modal-title').innerText = `技能：${skillObj.name}`;
+        document.getElementById('skill-modal-desc').innerText = formatSkillDesc(skillObj) || "無詳細說明";
+        document.getElementById('skill-info-modal').style.display = 'flex';
+      }
 
       document.querySelectorAll('.card').forEach(c => c.classList.remove('targetable', 'selected', 'preview-random', 'preview-all'));
       removeTargetMask();
-      swapCandidates.forEach(u => {
+
+      gameState.selectedAction = 'CAPTURE';
+      gameState.pendingMode = 'CAPTURE_SELECT';
+      gameState.pendingTargets = [];
+      gameState.pendingTargetCount = 1;
+      candidates.forEach(u => {
         let el = document.getElementById(`card-${u.id}`);
         if (el) el.classList.add('targetable');
       });
     }
 
-    function executeSwap(unitA, unitB) {
-      let tmp = unitA.posIdx;
-      unitA.posIdx = unitB.posIdx;
-      unitB.posIdx = tmp;
+    // 執行捕捉判定：點選對象後立即消耗一張契約卷(不論成功/失敗都會扣除)，依 capture_rate 機率判定並立即顯示結果；
+    // 捕捉「成功」僅先記錄於 gameState.pendingCapturedCardIds，實際加入武器清單需等到本場戰鬥「勝利」才會真正發放(見 showResultModal)
+    function executeCapture(activeUnit, targetUnit) {
+      closeSkillModal();
+      spendItem(2007, 1);
+      updateCaptureItemDisplay();
 
-      log(`🔄 ${elName(unitA)} 與 ${elName(unitB)} 交換了位置！`, 'sys');
-      renderBoard();
+      let rate = typeof targetUnit.captureRate === 'number' ? targetUnit.captureRate : 0;
+      let success = Math.random() < rate;
+
+      if (success) {
+        if (!gameState.pendingCapturedCardIds) gameState.pendingCapturedCardIds = [];
+        if (!gameState.pendingCapturedCardIds.includes(targetUnit.cardId)) {
+          gameState.pendingCapturedCardIds.push(targetUnit.cardId);
+        }
+        log(`🌑 對 ${elName(targetUnit)} 進行契約……契約簽訂成功！(待戰鬥勝利後將加入武器清單)`, 'buff');
+        showBuffProcNotice(targetUnit, '契約簽訂成功！', 'notice-green');
+      } else {
+        log(`🌑 對 ${elName(targetUnit)} 進行契約……契約簽訂失敗！`, 'sys');
+        showBuffProcNotice(targetUnit, '契約簽訂失敗！', 'notice-red');
+      }
 
       gameState.isAnimating = true;
       setButtonsDisabled(true);
       setTimeout(() => {
         gameState.isAnimating = false;
-        endTurnAndAdvance(unitA);
-      }, td(500));
+        endTurnAndAdvance(activeUnit);
+      }, td(900));
     }
 
     function onSkillBtnClick(type) {
@@ -11856,20 +11966,21 @@ let TALENT_CURVE = [
 
     function handleCardClick(targetUnit) {
       if (!gameState.selectedAction || gameState.isAnimating) {
-        // 沒有正在進行中的技能/換位選擇時，點擊卡片改為開啟該卡片的狀態查看視窗(不影響戰鬥選取流程，敵我雙方卡片皆可查看)
+        // 沒有正在進行中的技能/捕捉選擇時，點擊卡片改為開啟該卡片的狀態查看視窗(不影響戰鬥選取流程，敵我雙方卡片皆可查看)
         if (!gameState.isAnimating) openUnitStatusInspector(targetUnit);
         return;
       }
       let activeUnit = gameState.turnQueue[gameState.currentTurnIdx];
       let mode = gameState.pendingMode;
 
-      // 換位：選擇同隊(可為存活或死亡中)的隊友進行換位，換位後結束自身本回合行動
-      if (mode === 'SWAP_SELECT') {
-        if (targetUnit.side !== activeUnit.side || targetUnit.id === activeUnit.id) return;
+      // 捕捉(黑暗契約)：僅能點選可捕捉的敵方對象(已於 onCaptureBtnClick 加上 targetable 標記)，點選後立即執行契約判定
+      if (mode === 'CAPTURE_SELECT') {
+        if (targetUnit.side === activeUnit.side || targetUnit.isDead) return;
+        if (typeof targetUnit.captureRate !== 'number' || targetUnit.captureRate <= 0) return;
         gameState.selectedAction = null;
         gameState.pendingMode = null;
         document.querySelectorAll('.card').forEach(c => c.classList.remove('targetable', 'selected'));
-        executeSwap(activeUnit, targetUnit);
+        executeCapture(activeUnit, targetUnit);
         return;
       }
 
@@ -12829,6 +12940,9 @@ let TALENT_CURVE = [
         applySpeedToCSS();
         let activeUnit = gameState.turnQueue[gameState.currentTurnIdx];
         if (activeUnit && !gameState.isAnimating) {
+          // BUG修正：玩家手動操作回合中途按下自動戰鬥，下方手動操作按鈕(普通攻擊/技能1/技能2/黑暗契約)必須立即被關閉，
+          // 避免自動戰鬥的行動與玩家殘留可點擊的手動按鈕同時並存
+          setButtonsDisabled(true);
           autoExecuteTurn(activeUnit);
         }
       } else if (gameState.speedMultiplier === 1) {
