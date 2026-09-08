@@ -6377,7 +6377,7 @@ let TALENT_CURVE = [
     // 未來要新增特效，只要在 skill 表填一個新的特效名稱，並把對應的 skill_<名稱>.png 放進
     // assets/images/skill/ 資料夾即可；找不到檔案時會靜默不顯示(不會出現破圖)。
     function vfxImagePath(name) {
-      return `assets/images/skill/skill_${name}.png`;
+      return `assets/images/skill/skill_${name}.png?v=${ASSET_VERSION}`;
     }
     // 主角HP愛心圖示(存活/護盾用)
     const HEART_FULL_URI = "assets/images/img_e296c566ab9f.png";
@@ -13076,7 +13076,7 @@ let TALENT_CURVE = [
       '農夫': { side: 'left' }
     };
     function storyPortraitSrc(name) {
-      return `assets/images/text/${name}.png`;
+      return `assets/images/text/${name}.png?v=${ASSET_VERSION}`;
     }
 
     const RESULT_VICTORY_LOGO = 'assets/images/img_c14e72d0dde2.png';

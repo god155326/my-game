@@ -34,6 +34,12 @@
 
 const GAME_XLSX_PATH = 'data/不朽之旅.xlsx';
 
+// 快取破壞用版本號：每次「重新整理頁面」都會拿到新的值(頁面載入當下的時間戳記)，
+// 附加在 xlsx 與所有卡片/技能/裝備/道具/劇情立繪圖片的網址後面(?v=...)，確保瀏覽器
+// (以及 GitHub Pages 的 CDN)一定會抓最新版本的檔案，不會因為檔名沒變就一直沿用舊的快取
+// —— Wei 編輯 xlsx 或替換圖片後，只要重新整理頁面就一定看得到最新內容，不需要清瀏覽器快取。
+const ASSET_VERSION = Date.now();
+
 /** 把 xlsx 分頁轉成物件陣列，用第一個「非全空」列當標題列 */
 function xlsxSheetToObjects(workbook, sheetName) {
   const ws = workbook.Sheets[sheetName];
@@ -171,7 +177,7 @@ const ITEM_ICON_MAP = {"1000": "🪙", "1001": "💎", "2000": "🔹", "2001": "
 // 還沒放圖片之前，維持顯示 fallbackHtml(通常是原本的 emoji)，找到圖片後會自動換成圖片，不用改程式碼。
 function buildIconWithFallback(category, id, fallbackHtml) {
   return `<span style="position:relative;display:inline-flex;width:100%;height:100%;align-items:center;justify-content:center;">` +
-    `<img src="assets/images/${category}/${category}_${id}.png" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;" ` +
+    `<img src="assets/images/${category}/${category}_${id}.png?v=${ASSET_VERSION}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;" ` +
     `onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">` +
     `<span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;">${fallbackHtml}</span>` +
     `</span>`;
@@ -186,7 +192,7 @@ function buildInlineIconWithFallback(category, id, fallbackHtml, sizeEm) {
   const size = sizeEm || 1.5;
   const dip = (size * 0.22).toFixed(2);
   return `<span style="display:inline-flex;position:relative;width:${size}em;height:${size}em;vertical-align:-${dip}em;align-items:center;justify-content:center;">` +
-    `<img src="assets/images/${category}/${category}_${id}.png" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;" ` +
+    `<img src="assets/images/${category}/${category}_${id}.png?v=${ASSET_VERSION}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;" ` +
     `onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">` +
     `<span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;">${fallbackHtml}</span>` +
     `</span>`;
@@ -342,7 +348,7 @@ function buildBuffDatabaseAndSetTiers(wb) {
 const CARD_ICON_STYLE_MAP = {"10001":80.5,"10002":80.5,"10003":80.5,"10004":80.5,"10005":80.5,"10006":80.5,"10007":80.5,"10008":80.5,"10009":80.5,"10010":80.5,"10011":80.5,"10012":80.5,"10013":63,"10014":63,"10015":63,"10016":63,"10017":63,"10018":63,"10019":63,"10020":63,"10021":63,"10022":70,"10023":70,"10024":70,"10025":70,"10026":70,"10027":70,"10028":70,"10029":70,"10030":70,"10031":70,"40001":80,"40002":80,"40003":80,"40004":80,"40005":80,"40006":80,"40007":80,"40008":80,"40009":80,"40010":80,"40011":80,"40012":80,"40013":80,"40014":80,"40015":80,"50000":80,"50001":72,"50002":72,"50003":72,"90001":80,"90002":80,"90003":80,"90004":80,"90005":80,"90006":80,"90007":80,"90008":80,"90009":80,"90010":80,"90011":80,"90012":80,"90013":80};
 function buildCardIconHtml(id) {
   const pct = CARD_ICON_STYLE_MAP[id] !== undefined ? CARD_ICON_STYLE_MAP[id] : 80;
-  return `<img src='assets/images/card/card_${id}.png' style='max-width:${pct}%;max-height:${pct}%;width:auto;height:auto;object-fit:contain;pointer-events:none;' onerror="this.style.display='none'">`;
+  return `<img src='assets/images/card/card_${id}.png?v=${ASSET_VERSION}' style='max-width:${pct}%;max-height:${pct}%;width:auto;height:auto;object-fit:contain;pointer-events:none;' onerror="this.style.display='none'">`;
 }
 const CARD_ICONBG_MAP = {"10001":"#000000","10002":"#000000","10003":"#000000","10004":"#000000","10005":"#000000","10006":"#000000","10007":"#000000","10008":"#000000","10009":"#000000","10010":"#000000","10011":"#000000","10012":"#000000","10013":"#000000","10014":"#000000","10015":"#000000","10016":"#000000","10017":"#000000","10018":"#000000","10019":"#000000","10020":"#000000","10021":"#000000","10022":"#000000","10023":"#000000","10024":"#000000","10025":"#000000","10026":"#000000","10027":"#000000","10028":"#000000","10029":"#000000","10030":"#000000","10031":"#000000","40001":"#3a2a1a","40002":"#3a3a3a","40003":"#4a4436","40004":"#4a3a3a","40005":"#1a3a1a","40006":"#3a3a2a","40007":"#1a3a3a","40008":"#3a2a3a","40009":"#4a2010","40010":"#1a3a1a","40011":"#1a4a2a","40012":"#4a1a1a","40013":"#1a3a4a","40014":"#3a3020","40015":"#3a3a3a","40016":"#000000","40017":"#000000","40018":"#000000","40019":"#000000","40020":"#000000","40021":"#000000","40022":"#000000","40023":"#000000","40024":"#000000","40025":"#000000","40026":"#000000","40027":"#000000","40028":"#000000","40029":"#000000","40030":"#000000","40031":"#000000","40032":"#000000","40033":"#000000","40034":"#000000","40035":"#000000","40036":"#000000","40037":"#000000","40038":"#000000","40039":"#000000","40040":"#000000","40041":"#000000","40042":"#000000","40043":"#000000","40044":"#000000","40045":"#000000","40046":"#000000","40047":"#000000","40048":"#000000","40049":"#000000","40050":"#000000","40051":"#000000","40052":"#000000","40053":"#000000","40054":"#000000","40055":"#000000","40056":"#000000","40057":"#000000","40058":"#000000","40059":"#000000","40060":"#000000","40061":"#000000","40062":"#000000","40063":"#000000","40064":"#000000","40065":"#000000","40066":"#000000","40067":"#000000","40068":"#000000","40069":"#000000","40070":"#000000","40071":"#000000","40072":"#000000","40073":"#000000","40074":"#000000","40075":"#000000","40076":"#000000","40077":"#000000","40078":"#000000","40079":"#000000","40080":"#000000","50000":"#2a1020","50001":"#2a2a2a","50002":"#4a3a10","50003":"#4a1a10","50004":"#000000","50005":"#000000","50006":"#000000","50007":"#000000","50008":"#000000","50009":"#000000","50010":"#000000","50011":"#000000","50012":"#000000","50013":"#000000","50014":"#000000","50015":"#000000","60001":"#000000","60002":"#000000","60003":"#000000","60004":"#000000","60005":"#000000","60006":"#000000","60007":"#000000","60008":"#000000","60009":"#000000","60010":"#000000","60011":"#000000","60012":"#000000","90001":"#000000","90002":"#000000","90003":"#000000","90004":"#000000","90005":"#000000","90006":"#000000","90007":"#1a1a2a","90008":"#000000","90009":"#000000","90010":"#000000","90011":"#000000","90012":"#000000","90013":"#000000"};
 const CARD_POSITION_MAP = {"90001":"打","90002":"坦","90003":"打","90004":"坦","90005":"打","90006":"補","90007":"打","90008":"打","90009":"坦","90010":"打","90011":"坦","90012":"打","90013":"補"};
@@ -677,7 +683,7 @@ function buildStoryLines(wb) {
  */
 async function loadGameDataFromXlsx() {
   try {
-    const resp = await fetch(GAME_XLSX_PATH);
+    const resp = await fetch(`${GAME_XLSX_PATH}?v=${ASSET_VERSION}`, { cache: 'no-store' });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const buf = await resp.arrayBuffer();
     const wb = XLSX.read(buf, { type: 'array' });
