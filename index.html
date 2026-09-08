@@ -3460,9 +3460,48 @@
     }
     .bottom-nav-item.nav-unlocking { animation: nav-unlock-flash 0.85s ease; }
     .bottom-nav.guide-dim .bottom-nav-item { opacity: 0.35; filter: grayscale(0.6); }
+
+    /* ================================================================
+       開場資源預載遮罩：在所有圖片素材確定載入完成前，蓋住整個畫面，
+       避免玩家在遊戲過程中才看到icon/圖片陸續跑出來的情形。
+       position:fixed + 極高z-index，獨立於 .game-container 之外(不受縮放transform影響)，
+       永遠貼齊整個瀏覽器視窗。
+       ================================================================ */
+    #preload-overlay {
+      position: fixed; inset: 0; z-index: 99999;
+      background: #0d0d11;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 18px; padding: 24px; text-align: center;
+      transition: opacity 0.35s ease;
+    }
+    #preload-overlay.preload-hidden { opacity: 0; pointer-events: none; }
+    #preload-title {
+      color: #ffd77a; font-size: 18px; letter-spacing: 2px;
+      text-shadow: 0 0 10px rgba(255,215,122,0.5);
+    }
+    #preload-bar-track {
+      width: 78%; max-width: 360px; height: 14px; border-radius: 7px;
+      background: #2a2a30; border: 1px solid #6b5238; overflow: hidden;
+      box-shadow: inset 0 0 6px rgba(0,0,0,0.6);
+    }
+    #preload-bar-fill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #5c4a1f, #ffd77a);
+      transition: width 0.15s ease-out;
+    }
+    #preload-progress-text { color: #b8a374; font-size: 12px; }
+    #preload-hint { color: #6b6b76; font-size: 11px; margin-top: 4px; }
 </style>
 </head>
 <body>
+
+  <!-- 開場資源預載遮罩：所有圖片素材確定載入完成(或已判定失敗)前，遊戲畫面完全不會顯示 -->
+  <div id="preload-overlay">
+    <div id="preload-title">資源載入中，請稍候...</div>
+    <div id="preload-bar-track"><div id="preload-bar-fill"></div></div>
+    <div id="preload-progress-text">準備載入資源...</div>
+    <div id="preload-hint">首次載入圖片較多，請耐心等候</div>
+  </div>
 
   <div class="game-container">
     <div class="anim-overlay" id="anim-overlay"></div>
@@ -14143,14 +14182,131 @@ let TALENT_CURVE = [
     setTimeout(fitGameToScreen, 100);
     setTimeout(fitGameToScreen, 400);
 
+    // ================================================================
+    // ============ 開場資源預載：確定所有圖片都載入完成才開始遊戲 ============
+    // ================================================================
+    // 目的：避免玩家在遊戲進行到一半才陸續看到icon/圖片跑出來(之前的破圖/圖片延遲問題)。
+    // 做法分兩部分收集「這次遊戲實際會用到」的所有圖片網址，再統一預先載入：
+    //   (a) 靜態掃描：把整份頁面目前的原始碼(含<style>裡的url()、<img src>、
+    //       資料庫裡寫死的圖片路徑字串等)掃過一次，抓出所有 assets/images/ 開頭、
+    //       副檔名為圖片格式的完整路徑。動態組成的路徑(例如 `card_${id}.png` 這種
+    //       還沒代入實際id的template literal)因為含有 $、{、} 等字元，不會被這個
+    //       規則命中，改由(b)明確列舉。
+    //   (b) 明確列舉：依「這次真正載入完成的資料表」(CARD_DATABASE/EQUIPMENT_DATABASE/
+    //       ITEM_DATABASE/SKILL_DATABASE，可能來自xlsx、也可能是讀取失敗時的內建預設值)
+    //       組出每一張卡片/裝備/道具icon、每個技能特效圖、每個劇情立繪的實際網址，
+    //       確保這次動態解析出的xlsx內容(包含未來新增的id)也都會被涵蓋，不用手動維護清單。
+    // 找不到檔案(404)的圖片一律視為「已處理完成」而不是卡住整個流程──跟遊戲原本
+    // 「找不到圖就降級顯示emoji/隱藏」的設計一致，這裡只是確保「該試的都試過一輪」
+    // 之後才顯示遊戲，不會讓遊戲卡在無限等待某張根本不存在的圖。
+    function collectAllGameImageUrls() {
+      const urls = new Set();
+
+      // (a) 靜態掃描整份原始碼裡寫死的圖片路徑
+      const staticPathRe = /assets\/images\/[\w\-./]+\.(?:png|jpe?g|gif|svg|webp)(?:\?[\w=&.-]*)?/gi;
+      const htmlSrc = document.documentElement.outerHTML;
+      let m;
+      while ((m = staticPathRe.exec(htmlSrc)) !== null) urls.add(m[0]);
+
+      // (b) 依實際資料表內容動態組成的路徑
+      try {
+        (CARD_DATABASE || []).forEach(c => {
+          if (c && c.id != null) urls.add(`assets/images/card/card_${c.id}.png?v=${ASSET_VERSION}`);
+        });
+      } catch (e) {}
+      try {
+        Object.keys(EQUIPMENT_DATABASE || {}).forEach(id => {
+          urls.add(`assets/images/equipment/equipment_${id}.png?v=${ASSET_VERSION}`);
+        });
+      } catch (e) {}
+      try {
+        Object.keys(ITEM_DATABASE || {}).forEach(id => {
+          urls.add(`assets/images/item/item_${id}.png?v=${ASSET_VERSION}`);
+        });
+      } catch (e) {}
+      try {
+        Object.values(SKILL_DATABASE || {}).forEach(s => {
+          if (!s) return;
+          if (s.prefebAtk) urls.add(vfxImagePath(s.prefebAtk));
+          (s.prefebHit1 || []).forEach(n => { if (n) urls.add(vfxImagePath(n)); });
+          (s.prefebHit2 || []).forEach(n => { if (n) urls.add(vfxImagePath(n)); });
+        });
+      } catch (e) {}
+      try {
+        Object.keys(STORY_PORTRAITS || {}).forEach(name => urls.add(storyPortraitSrc(name)));
+      } catch (e) {}
+
+      return Array.from(urls);
+    }
+
+    // 預先載入單一張圖片：無論成功(onload)或失敗(onerror/逾時)都視為「處理完成」，
+    // 不會讓單一張缺圖卡住整個預載流程。
+    function preloadSingleImage(url, timeoutMs) {
+      return new Promise(resolve => {
+        let settled = false;
+        const finish = () => { if (!settled) { settled = true; resolve(); } };
+        const img = new Image();
+        img.onload = finish;
+        img.onerror = finish;
+        img.src = url;
+        if (timeoutMs) setTimeout(finish, timeoutMs);
+      });
+    }
+
+    function updatePreloadProgressUI(done, total) {
+      const pct = total > 0 ? Math.round((done / total) * 100) : 100;
+      const fillEl = document.getElementById('preload-bar-fill');
+      const textEl = document.getElementById('preload-progress-text');
+      if (fillEl) fillEl.style.width = pct + '%';
+      if (textEl) textEl.textContent = `載入資源中... ${done}/${total}（${pct}%）`;
+    }
+
+    // 以有限併發數(避免一次對伺服器發出上千個請求)逐一預載所有圖片，全部處理完才resolve
+    async function preloadAllGameImages() {
+      const urls = collectAllGameImageUrls();
+      const total = urls.length;
+      updatePreloadProgressUI(0, total);
+      if (total === 0) return;
+
+      const CONCURRENCY = 12;
+      const TIMEOUT_MS = 8000; // 單張圖片最多等8秒，逾時就視為失敗、跳過繼續，避免整體卡死
+      let nextIdx = 0;
+      let doneCount = 0;
+
+      async function worker() {
+        while (nextIdx < total) {
+          const myIdx = nextIdx++;
+          await preloadSingleImage(urls[myIdx], TIMEOUT_MS);
+          doneCount++;
+          updatePreloadProgressUI(doneCount, total);
+        }
+      }
+
+      const workers = [];
+      for (let i = 0; i < Math.min(CONCURRENCY, total); i++) workers.push(worker());
+      await Promise.all(workers);
+    }
+
+    function hidePreloadOverlay() {
+      const el = document.getElementById('preload-overlay');
+      if (!el) return;
+      el.classList.add('preload-hidden');
+      setTimeout(() => el.remove(), 400);
+    }
+
     // 先讀取 data/不朽之旅.xlsx 覆寫資料表常數(需以 start.bat 啟動的本機伺服器開啟；
-    // 若是直接雙擊 index.html 開啟，fetch 會失敗，改用內建預設資料，遊戲仍可正常執行)
+    // 若是直接雙擊 index.html 開啟，fetch 會失敗，改用內建預設資料，遊戲仍可正常執行)，
+    // 確定資料表就緒後才知道「這次真正會用到哪些圖片id」，接著預先載入所有圖片，
+    // 全部載入完成(或已判定失敗)後才顯示遊戲畫面，避免撥到一半才陸續跑出圖片的情形。
     loadGameDataFromXlsx().finally(() => {
-      renderQuestList();
-      showScreen('gacha');
-      renderGachaScreen();
-      // 新玩家一開始一無所有(無職業/無武器/無道具)，需先領取新手禮包才能開始遊戲
-      runIntroSequence();
+      preloadAllGameImages().finally(() => {
+        hidePreloadOverlay();
+        renderQuestList();
+        showScreen('gacha');
+        renderGachaScreen();
+        // 新玩家一開始一無所有(無職業/無武器/無道具)，需先領取新手禮包才能開始遊戲
+        runIntroSequence();
+      });
     });
   </script>
 </body>
