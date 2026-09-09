@@ -759,9 +759,24 @@ function buildTalentDatabaseAndGrid(wb) {
   // 2026-09-09再次更新：g從原本1~6擴充為1~12——group1~6是6個初始職業，group7~12是這次新增的「二轉職業」
   // 專屬天賦樹(對應90008~90013)，xlsx talent分頁目前完全沒有group7~12的任何資料，所以這6組現在一定會
   // 套用TALENT_DEFAULT_NODES/GRID裡的預設設計；等Wei之後在xlsx補上這6組各自15個節點，會自動改用xlsx資料。
+  // 2026-09-10再加強：光看節點數量是否滿15個還不足以保證資料真的可用——實測發現Wei在talent分頁補資料
+  // 時，group2~6的id欄位填的是「每組各自重新從頭編號」(例如group2=1~15、group3=16~30...一路往下累加)，
+  // 但同一批資料的front/display_position欄位卻是原封不動沿用本來設計稿的絕對編號(group2=115~129、
+  // group3=130~144...)，兩邊對不起來，導致front永遠查不到同組內任何一個真實存在的id、grid裡的節點座標
+  // 也對應不到任何節點，天賦樹畫面因此完全空白(Wei回報「弓劍手天賦沒有顯示對應天賦表」，弓劍手正好是
+  // 受影響的group3)。這裡在原本的節點數量檢查之外，多加一道「每個節點的front是否都能在同一組內找到
+  // 對應id」的檢查，只要有任何一個front指向的id不屬於本組，就代表這組資料前後不一致(不論是id編號方式
+  // 對不上、還是純粹填錯字打錯數字)，整組直接改用內建預設值頂替，不會讓玩家看到一片空白或殘缺不全的
+  // 天賦樹；一旦Wei之後把某組15個節點的id改成跟front/display_position互相對得起來，這裡會自動偵測到
+  // 並改回讀取xlsx的真實資料。
   for (let g = 1; g <= 12; g++) {
-    const countFromXlsx = Object.values(genTalent).filter(n => n.group === g).length;
-    if (countFromXlsx < 15) {
+    const nodesInGroup = Object.values(genTalent).filter(n => n.group === g);
+    const idSet = new Set(nodesInGroup.map(n => n.id));
+    const hasDanglingFront = nodesInGroup.some(n => (n.front || []).some(f => !idSet.has(f)));
+    if (nodesInGroup.length < 15 || hasDanglingFront) {
+      if (hasDanglingFront && nodesInGroup.length >= 15) {
+        console.warn(`[xlsx-loader] talent分頁group${g}的節點數量足夠，但front欄位引用的id跟本組實際id對不上(可能id編號方式跟front/display_position原本設計的絕對編號不一致)，已改用內建預設值，不使用xlsx這組資料：`, nodesInGroup);
+      }
       Object.keys(genTalent).forEach(k => { if (genTalent[k].group === g) delete genTalent[k]; });
       Object.entries(TALENT_DEFAULT_NODES).forEach(([id, node]) => { if (node.group === g) genTalent[id] = node; });
       genGrid[g] = TALENT_DEFAULT_GRID[g];

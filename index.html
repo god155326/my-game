@@ -6745,7 +6745,14 @@ let TALENT_CURVE = [
         battleStartTimeoutId: null,
         loopRunning: false,
         sessionStart: null,    // 開始掛機的時間戳
-        lastClaimTime: null    // 上次領取獎勵的時間戳，領取時依5分鐘為單位往前推進
+        lastClaimTime: null,   // 上次領取獎勵的時間戳，領取時依5分鐘為單位往前推進
+        // 2026-09-10修正：背景掛機演出借用了跟正式戰鬥共用的 gameState.isAuto/speedMultiplier 來驅動自動演出，
+        // 過去每次演出開始都直接強制蓋成(true,2)、演出結束後卻從來沒有還原，導致玩家原本(可能是尚未解鎖2倍速、
+        // 或自己手動關閉)的真實設定被背景掛機悄悄永久蓋掉，回到主線/任何畫面時就會發現變成2倍速——
+        // 用這兩個欄位在「背景掛機真正開始運作」的當下記錄玩家原本的設定，「背景掛機停止(進入正式戰鬥/佈陣不足)」
+        // 時還原回去，讓背景掛機的內部運作(反正沒有畫面，2倍速與否對它自己而言沒有實際差別)不再外洩影響真正戰鬥。
+        savedIsAuto: undefined,
+        savedSpeedMultiplier: undefined
       }
     };
 
@@ -7287,10 +7294,15 @@ let TALENT_CURVE = [
     function renderClassSelectScreen() {
       const list = document.getElementById('class-list');
       list.innerHTML = '';
-      // 顯示全部職業卡(不論是否已解鎖)：尚未解鎖的職業改用鎖定樣式呈現，不能點選替換，需先透過對應天賦節點解鎖
-      // 魔王(90007)是劇情/敵方專用的特殊角色，不列入玩家可選職業列表
-      // 進階職業(90008以上)在新手引導期間(advancedClassesRevealed尚為false)全部暫時隱藏，連鎖定樣式都不顯示
-      let allClasses = CARD_DATABASE.filter(c => c.isRole && c.id !== 90007 && (c.id < 90008 || gameState.advancedClassesRevealed));
+      // 2026-09-10改版(Wei指示)：職業顯示改成完全依taglist的職業階級tag驅動——card分頁tag=21(初階)的職業
+      // 一律顯示(未擁有的用鎖定樣式呈現，玩家可以看到還有哪些初階職業可以取得)；tag=22(中階)/23(高階，含
+      // 90007特殊角色)一律要玩家已經實際擁有(透過天賦樹解鎖或其他管道取得)才會出現在列表裡，連鎖定樣式
+      // 都不顯示，取得前完全看不到——不再依賴舊的「id<90008」/「advancedClassesRevealed新手引導旗標」
+      // 判斷式(那套只能概略區分初階/二轉，且90008以上一律新手引導後就整批用鎖定樣式全部曝光，跟這次要求
+      // 不符)，改成純資料驅動：只要taglist標記的職業階級調整了，這裡完全不需要跟著改程式碼。
+      let allClasses = CARD_DATABASE.filter(c => c.isRole && (
+        (Array.isArray(c.tag) && c.tag.includes(21)) || gameState.ownedClasses.has(c.id)
+      ));
       // 顯示排序：已擁有的職業排在最前面，未擁有的維持原本(card表)順序接在後面；各自群組內部順序不變(穩定排序)
       allClasses = [...allClasses.filter(c => gameState.ownedClasses.has(c.id)), ...allClasses.filter(c => !gameState.ownedClasses.has(c.id))];
 
@@ -8019,6 +8031,9 @@ let TALENT_CURVE = [
       // 不再保留玩家手動選擇後卡住舊地區的邏輯：只要通關新關卡，下次進主線畫面就會自動跟著往前推進
       gameState.idle.mapId = zones[0];
       if (gameState.idle.exploring) return; // 已在執行中，不重複啟動
+      // 2026-09-10修正：進入背景掛機前，先記住玩家目前真正的自動戰鬥/速度設定，讓stopMainlineIdleLoop()還原
+      gameState.idle.savedIsAuto = gameState.isAuto;
+      gameState.idle.savedSpeedMultiplier = gameState.speedMultiplier;
       gameState.idle.exploring = true;
       gameState.idle.visible = false;
       gameState.activeBattleType = 'explore';
@@ -8042,6 +8057,16 @@ let TALENT_CURVE = [
       if (gameState.activeBattleType === 'explore') gameState.activeBattleType = null;
       if (gameState.idle.searchTimeoutId) { clearTimeout(gameState.idle.searchTimeoutId); gameState.idle.searchTimeoutId = null; }
       if (gameState.idle.battleStartTimeoutId) { clearTimeout(gameState.idle.battleStartTimeoutId); gameState.idle.battleStartTimeoutId = null; }
+      // 2026-09-10修正：還原背景掛機開始前記住的真實自動戰鬥/速度設定(見startMainlineIdleLoop())，
+      // 避免背景掛機演出強制的(isAuto:true, speedMultiplier:2)一路殘留到玩家接下來的正式戰鬥/畫面顯示上
+      if (gameState.idle.savedIsAuto !== undefined) {
+        gameState.isAuto = gameState.idle.savedIsAuto;
+        gameState.speedMultiplier = gameState.idle.savedSpeedMultiplier;
+        gameState.idle.savedIsAuto = undefined;
+        gameState.idle.savedSpeedMultiplier = undefined;
+        applySpeedToCSS();
+        syncAutoButtonUI();
+      }
     }
 
     function runExploreSearchPhase() {
@@ -8346,6 +8371,14 @@ let TALENT_CURVE = [
           addItem(g.id, g.amount);
         }
       });
+      // 2026-09-10修正：Wei更正天賦點數規則——「創建帳號時只會擁有0點數」指的是不額外贈送整數點數的
+      // 新手禮包，但玩家一開始就處於「1等」，依curve查表(type=1)的里程碑制，光是「身為1等」本身就已經
+      // 對應computeTalentPointsAtLevel(1)這筆基礎點數(依目前curve設計即為2點)，過去程式碼完全沒有處理
+      // 「0→1」這個起始級距，只有grantExp()裡「等級真的往上跳」時才會呼叫grantTalentPointsForLevelUp()，
+      // 導致玩家在還沒升級前(仍是1等)天賦點數永遠是0，跟Wei「從1等開始升級，所以起始有2升級有2(=4)」
+      // 的說明對不上。這裡在新手禮包發放時一併補上這筆「身為1等」的基礎點數，之後職業實際升級(1→2等...)
+      // 仍會依原有的grantTalentPointsForLevelUp()邏輯繼續正常疊加，不影響升級這段的計算方式。
+      gameState.talentPoints += computeTalentPointsAtLevel(1);
       // 預設啟用第一個擁有的職業，供後續戰鬥使用
       if (!gameState.selectedRole || !gameState.ownedClasses.has(gameState.selectedRole)) {
         let first = [...gameState.ownedClasses][0];
@@ -10994,6 +11027,16 @@ let TALENT_CURVE = [
             }
             if (quest.loot4Id && Math.random() < (quest.loot4Rate != null ? quest.loot4Rate : 1)) {
               let g = grantLoot(resolveLootId(quest.loot4Id), quest.loot4Amount);
+              if (g) gained.push(g);
+            }
+            // 2026-09-10 Wei指示：全部主線關卡通關額外追加武器經驗(item8001)，數量約為loot4職業經驗的3倍，
+            // 讓玩家前期關卡也能穩定練起武器等級(目標約可讓5把武器都練到至少20等)。這裡直接用loot4Amount x3
+            // 程式端計算，不額外新增xlsx欄位——loot4已經是每關都會給的職業經驗(見批次1b)，隨關卡進度平滑遞增，
+            // 武器經驗自然也跟著同步放大，不需要額外維護一份對照表；loot4本身沒有設定(quest.loot4Amount為空)
+            // 的關卡類型(副本/試煉等)不受影響，維持原本沒有這筆額外武器經驗。
+            if (quest.type === 'main' && quest.loot4Id === 8000 && quest.loot4Amount) {
+              let bonusWeaponExp = Math.round(quest.loot4Amount * 3);
+              let g = grantLoot(8001, bonusWeaponExp);
               if (g) gained.push(g);
             }
             // 主線關卡通關：記錄進度，解鎖對應的探索(idlezone)，並立即開始累積掛機獎勵時間(不需玩家手動開啟探索分頁)；實際戰鬥演出則於進入「探索」分頁時才開始
