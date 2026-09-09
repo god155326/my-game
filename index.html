@@ -3805,6 +3805,7 @@
           <button class="btn-restart" id="btn-weapon-starup" style="position:relative;" onclick="onWeaponStarUpClick()">升星<span class="red-dot-badge" id="btn-weapon-starup-dot" style="display:none;"></span></button>
           <button class="btn" onclick="openWeaponStarPreviewModal()">升星預覽</button>
           <button class="btn" id="btn-weapon-filter" onclick="openWeaponBuffFilterModal()">狀態篩選</button>
+          <button class="btn-restart-dark" onclick="onWeaponExpResetAllClick()">全部經驗重置</button>
         </div>
       </div>
 
@@ -5448,12 +5449,23 @@ let DUNGEONPREFEB_DATABASE = [
     ];
     // ##AUTO-GENERATED:DUNGEONPREFEB_DATABASE:END##
 
-    // 無限地城：每個顏色(map_red/map_blue/map_purple)對應到 mapdata 中該顏色的4個關卡mapId(801-812)；map_yellow沒有對應戰鬥關卡，是玩家可選擇的增益門
-    const DUNGEON_COLOR_MAPIDS = {
-      map_red: [801, 802, 803, 804],
-      map_blue: [805, 806, 807, 808],
-      map_purple: [809, 810, 811, 812]
-    };
+    // 2026-09(Wei要求「mapdata新增type規則(map_開頭)」)：無限地城每種門顏色(map_red/map_blue/map_purple，
+    // 或Wei之後新增的任何map_開頭type)對應的mapId清單，改成直接掃描QUEST_DATABASE(mapdata分頁)動態組成，
+    // 不再寫死成固定的id清單——之後 Wei 只要在mapdata分頁新增一列、type填map_開頭的字串(不限於現有3種顏色，
+    // 也可以是全新的顏色/類型)，就會自動被這裡抓進對應的門池，不需要改程式碼。
+    // 同時支援「level」欄位限制：該列的level有填數字時，只有玩家選擇的地城等級>=這個數字，這一關才有機會被骰到
+    // (ex. id=817,type=map_red,level=20 → 只有選20等以上的地城才會有機會抽到這關)；level留空則不限制、隨時都會出現。
+    // 安全防呆：如果某個顏色因為level限制篩到完全沒有任何關卡可用(可能是level設太高把整組都篩掉)，會印警告並暫時
+    // 忽略level限制(退回該顏色全部關卡)，避免因為資料設定問題讓地城生成失敗。
+    function getDungeonColorMapIds(type, dungeonLevel) {
+      let all = QUEST_DATABASE.filter(q => q.type === type);
+      let eligible = all.filter(q => q.level == null || dungeonLevel >= q.level);
+      if (eligible.length === 0 && all.length > 0) {
+        console.warn(`[無限地城] mapdata分頁提醒：type="${type}" 在地城等級${dungeonLevel}下，因為level欄位限制，全部${all.length}個關卡都被篩掉了，暫時忽略level限制改用全部關卡，麻煩確認一下這個type底下各列的level設定`, all.map(q => `mapId${q.mapId}(level${q.level})`));
+        eligible = all;
+      }
+      return eligible.map(q => q.mapId);
+    }
     // 無限地城增益(黃門)：依 dungeon 表 buffMax 決定顯示前幾個選項；每項效果為全地城戰鬥期間內該屬性+15%(可重複選擇疊加)，整趟地城最多可選5次
     const DUNGEON_BUFF_OPTIONS = [
       { key: 'atk', name: '攻擊上升', desc: '全地城戰鬥攻擊力+15%' },
@@ -5489,12 +5501,13 @@ let DUNGEONPREFEB_DATABASE = [
       let candidates = DUNGEONPREFEB_DATABASE.filter(p => p.isEnd);
       return candidates[Math.floor(Math.random() * candidates.length)];
     }
-    // 依樣板的slots陣列(4個位置，"0"代表無門)生成該層實際的門：紅/藍/紫從對應顏色的4個mapId中隨機抽1個記錄下來；黃門(map_yellow)無mapId，屬於增益選擇門
-    function buildDungeonLayerDoors(prefeb) {
+    // 依樣板的slots陣列(4個位置，"0"代表無門)生成該層實際的門：紅/藍/紫(或任何map_開頭的新顏色)從對應顏色目前等級下
+    // 有資格出現的mapId中隨機抽1個記錄下來；黃門(map_yellow)無mapId，屬於增益選擇門
+    function buildDungeonLayerDoors(prefeb, dungeonLevel) {
       return prefeb.slots.filter(s => s !== '0').map(type => {
         if (type === 'map_yellow') return { type, mapId: null, cleared: false };
-        let ids = DUNGEON_COLOR_MAPIDS[type] || [];
-        let mapId = ids[Math.floor(Math.random() * ids.length)];
+        let ids = getDungeonColorMapIds(type, dungeonLevel);
+        let mapId = ids.length ? ids[Math.floor(Math.random() * ids.length)] : null;
         return { type, mapId, cleared: false };
       });
     }
@@ -5504,10 +5517,10 @@ let DUNGEONPREFEB_DATABASE = [
       let layers = [];
       for (let i = 0; i < n - 1; i++) {
         let prefeb = pickWeightedDungeonPrefeb();
-        layers.push({ prefebMap: prefeb.prefebMap, doors: buildDungeonLayerDoors(prefeb), isFinal: false });
+        layers.push({ prefebMap: prefeb.prefebMap, doors: buildDungeonLayerDoors(prefeb, level), isFinal: false });
       }
       let finalPrefeb = pickFinalDungeonPrefeb();
-      layers.push({ prefebMap: finalPrefeb.prefebMap, doors: buildDungeonLayerDoors(finalPrefeb), isFinal: true });
+      layers.push({ prefebMap: finalPrefeb.prefebMap, doors: buildDungeonLayerDoors(finalPrefeb, level), isFinal: true });
       gameState.infiniteDungeon = {
         active: true,
         selectedLevel: level,
@@ -9912,6 +9925,32 @@ let TALENT_CURVE = [
       renderWeaponMenuScreen();
       let card = CARD_DATABASE.find(c => c.id === ui.cardId);
       showGenericInfoModal('升級成功', `【${elName(card)}】已升至 LV.${sel.nextLevel}！`);
+    }
+
+    // 全部武器經驗重置：把每把已升級的武器都退回LV.1，並把過去逐級消耗掉的item 8001(武器經驗)全部一次性歸還。
+    // 消耗量的計算沿用「升級」按鈕本來就在用的同一份LEVELCURVE_DATABASE：每個等級的cumExp就是「從1級升到這一級
+    // 總共花費過的武器經驗」，所以退還金額直接讀目前等級對應的cumExp即可，不需要額外記錄歷史花費。
+    // (寫法比照既有「天賦全部重置」resetAllTalents()同一套模式：算總退還量→歸還→清空等級紀錄)
+    function resetAllWeaponExp() {
+      let refund = 0;
+      Object.keys(gameState.weaponLevels).forEach(cardIdStr => {
+        let level = gameState.weaponLevels[cardIdStr];
+        if (!level || level <= 1) return;
+        let row = LEVELCURVE_DATABASE.find(r => r.level === level);
+        if (row) refund += row.cumExp;
+      });
+      addItem(8001, refund);
+      gameState.weaponLevels = {};
+      return refund;
+    }
+    function onWeaponExpResetAllClick() {
+      let anyLeveled = Object.values(gameState.weaponLevels).some(lv => lv > 1);
+      if (!anyLeveled) { showGenericInfoModal('經驗重置', '目前尚未有任何武器升過等級，沒有可以退還的武器經驗！'); return; }
+      showConfirmModal('重置將返還全部武器經驗，確定要將全部武器等級重置嗎？', () => {
+        let refund = resetAllWeaponExp();
+        renderWeaponMenuScreen();
+        showGenericInfoModal('重置完成', `已將全部武器等級重置為LV.1，共返還 ${itemIcon(8001, 'text')} ${itemName(8001)} x${refund}！`);
+      });
     }
 
     function onWeaponStarUpClick() {
