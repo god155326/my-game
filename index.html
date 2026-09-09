@@ -5431,17 +5431,20 @@ let DUNGEON_LEVEL_DATABASE = {
 
     // ##AUTO-GENERATED:DUNGEONPREFEB_DATABASE:START##
     // 由 xlsx dungeonprefeb 分頁產生：每一層生成時的門樣板(slots為4個位置各自的類型，"0"代表該位置無門)；isEnd=true的樣板固定作為地城最後一層(必為最終戰)
+    // 2026-09-09(Wei要求「gate門樣板圖片改成填表可新增」)：img欄位是這次新增的xlsx欄位(dungeonprefeb分頁)，
+    // 只填檔名，正式執行時由buildDungeonprefebDatabase()自動補上"assets/images/gate/"路徑；這裡的陣列只是
+    // xlsx讀取失敗時的備援值，同步帶完整路徑。
 let DUNGEONPREFEB_DATABASE = [
-      { prefebMap: "gate4", slots: ["map_red", "map_blue", "map_purple", "map_yellow"], power: 600, isEnd: false },
-      { prefebMap: "gate4_2", slots: ["map_blue", "map_purple", "map_red", "map_yellow"], power: 600, isEnd: false },
-      { prefebMap: "gate3_3", slots: ["map_red", "map_blue", "map_purple", "0"], power: 1500, isEnd: false },
-      { prefebMap: "gate3_2", slots: ["map_red", "0", "map_purple", "map_yellow"], power: 2000, isEnd: false },
-      { prefebMap: "gate3", slots: ["map_red", "map_blue", "0", "map_yellow"], power: 2000, isEnd: false },
-      { prefebMap: "gate2_3", slots: ["map_yellow", "0", "map_blue", "0"], power: 1500, isEnd: false },
-      { prefebMap: "gate2_2", slots: ["map_red", "0", "map_purple", "0"], power: 1000, isEnd: false },
-      { prefebMap: "gate2", slots: ["0", "0", "map_purple", "map_yellow"], power: 800, isEnd: false },
-      { prefebMap: "gate1_2", slots: ["0", "0", "map_blue", "0"], power: null, isEnd: true },
-      { prefebMap: "gate1", slots: ["0", "0", "map_red", "0"], power: null, isEnd: true }
+      { prefebMap: "gate4", slots: ["map_red", "map_blue", "map_purple", "map_yellow"], power: 600, isEnd: false, img: "assets/images/gate/img_997351bdba4e.jpg" },
+      { prefebMap: "gate4_2", slots: ["map_blue", "map_purple", "map_red", "map_yellow"], power: 600, isEnd: false, img: "assets/images/gate/img_719332146c38.jpg" },
+      { prefebMap: "gate3_3", slots: ["map_red", "map_blue", "map_purple", "0"], power: 1500, isEnd: false, img: "assets/images/gate/img_698637ce4aaf.jpg" },
+      { prefebMap: "gate3_2", slots: ["map_red", "0", "map_purple", "map_yellow"], power: 2000, isEnd: false, img: "assets/images/gate/img_1b6cac546b62.jpg" },
+      { prefebMap: "gate3", slots: ["map_red", "map_blue", "0", "map_yellow"], power: 2000, isEnd: false, img: "assets/images/gate/img_f8b265de14e0.jpg" },
+      { prefebMap: "gate2_3", slots: ["map_yellow", "0", "map_blue", "0"], power: 1500, isEnd: false, img: "assets/images/gate/img_6bbf811bdf97.jpg" },
+      { prefebMap: "gate2_2", slots: ["map_red", "0", "map_purple", "0"], power: 1000, isEnd: false, img: "assets/images/gate/img_58a585d1d682.jpg" },
+      { prefebMap: "gate2", slots: ["0", "0", "map_purple", "map_yellow"], power: 800, isEnd: false, img: "assets/images/gate/img_57813587f73b.jpg" },
+      { prefebMap: "gate1_2", slots: ["0", "0", "map_blue", "0"], power: null, isEnd: true, img: "assets/images/gate/img_92fcaaa80572.jpg" },
+      { prefebMap: "gate1", slots: ["0", "0", "map_red", "0"], power: null, isEnd: true, img: "assets/images/gate/img_5d6c6ccfd6d1.jpg" }
     ];
     // ##AUTO-GENERATED:DUNGEONPREFEB_DATABASE:END##
 
@@ -5533,18 +5536,14 @@ let DUNGEONPREFEB_DATABASE = [
       annihilation: "assets/images/img_a7da857c8df1.jpg"
     };
 
-    const DUNGEON_GATE_IMG = {
-      "gate1": "assets/images/img_5d6c6ccfd6d1.jpg",
-      "gate1_2": "assets/images/img_92fcaaa80572.jpg",
-      "gate2": "assets/images/img_57813587f73b.jpg",
-      "gate2_2": "assets/images/img_58a585d1d682.jpg",
-      "gate2_3": "assets/images/img_6bbf811bdf97.jpg",
-      "gate3": "assets/images/img_f8b265de14e0.jpg",
-      "gate3_2": "assets/images/img_1b6cac546b62.jpg",
-      "gate3_3": "assets/images/img_698637ce4aaf.jpg",
-      "gate4": "assets/images/img_997351bdba4e.jpg",
-      "gate4_2": "assets/images/img_719332146c38.jpg"
-    };
+    // 2026-09-09(Wei要求「gate門樣板圖片改成填表可新增」)：這裡原本是手動寫死的10筆gate圖片對照表，
+    // 已改成直接從DUNGEONPREFEB_DATABASE(由xlsx dungeonprefeb分頁的prefeb_map/img兩欄讀取)動態查找，
+    // 之後 Wei 在xlsx新增任何一列新樣板(不論叫gate5、gate6，還是完全不同命名如map_redboss)，img欄位
+    // 填好對應檔名(放進assets/images/gate/資料夾)後就會自動生效，不需要再改這裡的程式碼。
+    function getDungeonGateImg(prefebMap) {
+      let row = DUNGEONPREFEB_DATABASE.find(p => p.prefebMap === prefebMap);
+      return (row && row.img) ? row.img : '';
+    }
 
 
 
@@ -11339,7 +11338,7 @@ let TALENT_CURVE = [
       if (!dg.active) { showScreen('quest-category'); renderQuestCategoryScreen(); return; }
       let layer = dg.layers[dg.currentLayerIndex];
       document.getElementById('infinite-dungeon-layer-title').innerText = `請選擇想要進入的地區 - 第${dg.currentLayerIndex + 1}層`;
-      document.getElementById('infinite-dungeon-gate-img').src = DUNGEON_GATE_IMG[layer.prefebMap] || '';
+      document.getElementById('infinite-dungeon-gate-img').src = getDungeonGateImg(layer.prefebMap);
       const COLOR_HEX = { map_red: '#c0392b', map_blue: '#2980b9', map_purple: '#8e44ad', map_yellow: '#f1c40f' };
       const COLOR_NAME = { map_red: '紅色', map_blue: '藍色', map_purple: '紫色', map_yellow: '增益' };
       const list = document.getElementById('infinite-dungeon-door-list');
@@ -14306,19 +14305,22 @@ let TALENT_CURVE = [
     // 附件裡時間點跟現有一致，維持不動。只調整mapId(觸發時機)，不改動每個檢查點各自的獎勵內容/教學文字/數值，
     // 這些Wei說會自己之後處理。god_stat/god_trial共用2-15、infinite_dungeon_50/class_equip共用2-20，
     // 兩組都刻意維持「陣列順序=實際觸發順序」(同一關要先做完上一個才做下一個)，故沿用原本的排列順序。
+    // 2026-09(Wei直接在xlsx text分頁把裝備系統/無限地城的引導mapid改得更早，這裡依text分頁新設定同步移動實際觸發時機)：
+    // auto_next/weapon_starup改成共用1-15(原1-20)；infinite_dungeon_50/class_equip改成共用1-20(原2-20)，
+    // 兩組同樣維持「陣列順序=實際觸發順序」。dark_contract(1-25)維持不變，未受影響。
     const FEATURE_UNLOCK_META = [
       { key: 'idle_unlock',        mapId: 1002, onUnlock: () => grantCheckpointReward('idle_unlock') },  // 1-3(不變)
       { key: 'talent_intro',       mapId: 1004, onUnlock: null },                                        // 1-5(不變)
       { key: 'weapon_levelup',     mapId: 1009, onUnlock: () => grantCheckpointReward('weapon_levelup') },// 1-15→1-10
       { key: 'auto_next',          mapId: 1014, onUnlock: null },                                        // 1-20→1-15
-      { key: 'weapon_starup',      mapId: 1019, onUnlock: () => grantCheckpointReward('weapon_starup') },// 1-30→1-20
-      { key: 'dark_contract',      mapId: 1024, onUnlock: () => grantCheckpointReward('dark_contract') },// 2-15→1-25
+      { key: 'weapon_starup',      mapId: 1014, onUnlock: () => grantCheckpointReward('weapon_starup') },// 1-30→1-20→1-15(2026-09，依Wei修改text分頁mapid同步，與auto_next同關依序觸發)
+      { key: 'dark_contract',      mapId: 1024, onUnlock: () => grantCheckpointReward('dark_contract') },// 2-15→1-25(不變)
       { key: 'speed2x',            mapId: 1029, onUnlock: null },                                        // 2-20→1-30
       { key: 'tower',              mapId: 1034, onUnlock: null },                                        // 2-30→2-5
       { key: 'god_stat',           mapId: 1044, onUnlock: null },                                        // 3-10→2-15
       { key: 'god_trial',          mapId: 1044, onUnlock: () => grantCheckpointReward('god_trial') },    // 3-10→2-15
-      { key: 'infinite_dungeon_50',mapId: 1049, onUnlock: null },                                        // 3-20→2-20
-      { key: 'class_equip',        mapId: 1049, onUnlock: null },                                        // 3-20→2-20
+      { key: 'infinite_dungeon_50',mapId: 1019, onUnlock: null },                                        // 3-20→2-20→1-20(2026-09，依Wei修改text分頁mapid同步，與class_equip同關依序觸發)
+      { key: 'class_equip',        mapId: 1019, onUnlock: null },                                        // 3-20→2-20→1-20(2026-09，依Wei修改text分頁mapid同步，與infinite_dungeon_50同關依序觸發)
       { key: 'class_change',       mapId: 1089, onUnlock: null },                                        // 3-30(不變)
       { key: 'annihilation',       mapId: 1119, onUnlock: null },                                        // 4-30(不變)
       { key: 'infinite_dungeon_100',mapId: 1149, onUnlock: null },                                       // 5-30(不變)

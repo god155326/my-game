@@ -307,13 +307,24 @@ function buildDungeonLevelDatabase(wb) {
   return gen;
 }
 
+// 2026-09-09(Wei要求「圖片顯示規格改成填表可新增」)：dungeonprefeb分頁新增了`img`欄位(僅填檔名，
+// 例如"img_5d6c6ccfd6d1.jpg")，這裡統一補上"assets/images/gate/"資料夾路徑組成完整圖片路徑。
+// 之後 Wei 不管是新增gate5/gate6這種同命名慣例的樣板，或是像map_redboss這種完全不同命名的新樣板，
+// 只要在xlsx這張表新增一列、img欄填上放進assets/images/gate/資料夾的檔名，畫面就會自動抓到新圖，
+// 不需要再改任何程式碼(舊的DUNGEON_GATE_IMG寫死物件已移除，全部改讀這裡)。
+const DUNGEON_GATE_IMG_FOLDER = 'assets/images/gate/';
 function buildDungeonprefebDatabase(wb) {
-  return xlsxSheetToObjects(wb, 'dungeonprefeb').map(o => ({
-    prefebMap: o.prefeb_map,
-    slots: String(o.list).split(',').map(s => s.trim().replace(/^\{/, '').replace(/\}$/, '')),
-    power: (o.power === null || o.power === undefined) ? null : o.power,
-    isEnd: !!o.is_end,
-  }));
+  return xlsxSheetToObjects(wb, 'dungeonprefeb').map(o => {
+    const imgFile = o.img ? String(o.img).trim() : '';
+    if (!imgFile) console.warn('[xlsx-loader] dungeonprefeb分頁提醒：', o.prefeb_map, '沒有填img欄位，這個樣板在無限地城選門畫面將不會顯示門的圖片');
+    return {
+      prefebMap: o.prefeb_map,
+      slots: String(o.list).split(',').map(s => s.trim().replace(/^\{/, '').replace(/\}$/, '')),
+      power: (o.power === null || o.power === undefined) ? null : o.power,
+      isEnd: !!o.is_end,
+      img: imgFile ? (DUNGEON_GATE_IMG_FOLDER + imgFile) : '',
+    };
+  });
 }
 
 // ##TALENT_DEFAULT_DESIGN:START##
