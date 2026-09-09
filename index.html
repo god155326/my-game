@@ -3924,6 +3924,21 @@
       </div>
     </div>
 
+    <!-- 掉落道具總覽彈窗(可捲動、疊在最上層)：主線畫面掛機獎勵區塊、探索獎勵領取彈窗共用，
+         避免完整清單直接撐爆外層彈窗導致下方按鈕被擠出畫面 -->
+    <div class="cheat-modal" id="idle-reward-list-modal" style="display:none; z-index:190;" onclick="closeIdleRewardListModal()">
+      <div class="cheat-modal-box" onclick="event.stopPropagation()">
+        <div class="cheat-modal-header">
+          <span>📋 掉落道具總覽</span>
+          <span class="skill-close-x" onclick="closeIdleRewardListModal()">✕</span>
+        </div>
+        <div id="idle-reward-list-body" class="custom-scroll-y" style="max-height:60vh; overflow-y:auto; padding-right:8px;"></div>
+        <div class="gem-actions">
+          <button class="btn" onclick="closeIdleRewardListModal()">關閉</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 探索地區選擇彈窗 -->
     <div class="cheat-modal" id="zone-picker-modal" style="display:none;" onclick="closeZonePicker()">
       <div class="cheat-modal-box" onclick="event.stopPropagation()">
@@ -5526,9 +5541,15 @@ let DUNGEONPREFEB_DATABASE = [
 
 
     // ##AUTO-GENERATED:START_GIFT_DATABASE:START##
+    // 注意：這份陣列只是 xlsx 讀取失敗時的備援預設值，正式執行時一律會被
+    // buildStartGiftDatabase(wb) 讀取 xlsx 的 start_gift 分頁整組覆寫(見 xlsx-loader.js)。
+    // 2026-09-09 修正：start_gift 分頁先前是空的(只有表頭、沒有任何資料列)，導致
+    // claimStartGift() 在 runIntroSequence() 一開始靜默呼叫時實際上什麼都沒發，
+    // 玩家在後面的 guideGachaStep()(教學引導召喚武器)完全沒有鑽石可以召喚。
+    // 已補上 xlsx 的 start_gift 分頁資料，這裡的備援值同步更新(鑽石依 Wei 指示改為3000個)。
     let START_GIFT_DATABASE = [
       { id: 1000, amount: 9999 },
-      { id: 1001, amount: 9999 },
+      { id: 1001, amount: 3000 },
       { id: 8001, amount: 9999 },
       { id: 8002, amount: 9999 },
       { id: 8003, amount: 9999 },
@@ -6684,7 +6705,10 @@ let TALENT_CURVE = [
       weaponMenuSelectedId: null,
       // 主線進度：已通關的主線 mapId 清單(通關後才會在「探索」開放對應的 idlezone)
       clearedMainMapIds: new Set(),
-      // 進階職業(90008以上，透過天賦解鎖)在新手引導期間全部暫時隱藏，統一在戰勝主線1-1(mapId=200)時才一起顯示(仍需各自完成對應天賦才算解鎖)
+      // 進階職業(90008以上，透過天賦解鎖)在新手引導期間全部暫時隱藏，統一在戰勝主線1-1(mapId=1000)時才一起顯示(仍需各自完成對應天賦才算解鎖)
+      // 【2026-09-09修正】主線關卡在批次1重建idlezone/mapdata時已經從舊的100/200/300...改成1000起跳的600關新編號，
+      // mapId=200現在其實是試煉之塔第100層(type=tower)，不再是主線1-1，這裡與下方showResultModal鉤子、
+      // runIntroSequence註解原本都還寫著舊的mapId=200，導致新手引導結束後底部導覽列永遠不會真正解鎖——已一併修正為1000
       advancedClassesRevealed: false,
       // 神格系統：godPoints為已確定套用的各屬性點數，godAvailablePoints為尚可分配的點數(每10等1點+道具取得)
       godPoints: { int: 0, vit: 0, agi: 0, str: 0, dex: 0, spr: 0 },
@@ -6995,10 +7019,12 @@ let TALENT_CURVE = [
     //   level = 0 時等同未縮放(維持原始數值)
     const LEVEL_GROWTH_MAIN = 0.03;
     const LEVEL_GROWTH_AGI = 0.01;
+    // 2026-09-09規則修改(Wei要求)：取消「升級會增加AGI」的規則，往後任何card(武器/職業/怪物)升級
+    // 都不再影響AGI，AGI固定維持card表填的基礎值，只有HP/ATK/MATK/DEF/MDEF/MP會隨等級成長。
+    // LEVEL_GROWTH_AGI常數保留在下方定義處(避免其他地方還有殘留引用時噴錯)，但這裡不再使用它。
     function applyLevelScaling(card, level) {
       if (!level) return card;
       let mainMult = 1 + level * LEVEL_GROWTH_MAIN;
-      let agiMult = 1 + level * LEVEL_GROWTH_AGI;
       return {
         ...card,
         hp: Math.round(card.hp * mainMult),
@@ -7007,7 +7033,7 @@ let TALENT_CURVE = [
         def: Math.round(card.def * mainMult),
         mdef: Math.round(card.mdef * mainMult),
         mp: Math.round(card.mp * mainMult),
-        agi: Math.round(card.agi * agiMult),
+        agi: card.agi,
       };
     }
 
@@ -7804,9 +7830,14 @@ let TALENT_CURVE = [
       const idleQuest = idleMapId ? QUEST_DATABASE.find(q => q.mapId === idleMapId) : null;
       const idlePreview = idleZone ? expandIdleRewardsForDisplay(idleZone.rewards) : [];
 
+      // 修正：這裡過去直接把完整掉落清單(icon+機率)攤開列在主線畫面本體裡，解鎖越多系統後
+      // (尤其R~SR裝備欄位)清單會變得很長，把整個畫面撐得很高。改成只顯示一顆精簡按鈕，
+      // 完整清單點開才看、且可捲動(見 openIdleRewardListModal())，主線畫面本體高度維持穩定。
       el.innerHTML = buildQuestCardHtml(quest, '主線', true) + (idlePreview.length ? `
         <div class="reward-bar-label">🧭 掛機獎勵${idleQuest ? `（目前掛機：${idleQuest.hint}）` : ''}</div>
-        <div class="idle-reward-preview">${renderIdleRewardPreviewHtml(idlePreview)}</div>
+        <div style="text-align:center;margin-top:4px;">
+          <button class="btn" style="font-size:11px;padding:4px 10px;" onclick="openIdleRewardListModalForZone(${idleMapId})">📋 查看掉落道具（共${idlePreview.length}種）</button>
+        </div>
       ` : '');
     }
 
@@ -7878,22 +7909,51 @@ let TALENT_CURVE = [
       return [...gameState.clearedMainMapIds].filter(id => IDLEZONE_DATABASE[id]).sort((a, b) => b - a);
     }
 
+    // 2026-09-09修正：掛機獎勵過去完全沒有比照16個系統開放檢查點做過濾，導致玩家在對應系統
+    // 根本還沒解鎖的狀況下(例如還在第一章、guardLockedFeature會擋下的功能)，就已經能透過掛機拿到
+    // 該系統專屬的道具——Wei回報的具體案例是「才剛開局就掛機打到寶石(70001)」，實際排查發現
+    // idlereward1(R~SR裝備，涵蓋70000系列魔法石與80000+/88000+的職業裝備)、idlereward4(2007暗黑
+    // 契約卷)、idlereward8(2006神格試煉卷)這三個獎勵欄位，全部從主線第一關(mapId=1000)就已經在發放，
+    // 完全沒有檢查對應的checkpoint(class_equip/dark_contract/god_trial)是否真的解鎖。
+    // 這裡統一用 isRewardItemUnlocked() 過濾：只有真正解鎖對應系統的item id才會出現在骰選池/預覽清單裡；
+    // 金幣/武器經驗/職業經驗/天賦點數/強化石/魔石碎片等純數值類材料維持不受限制(比照 claimStartGift() 本來
+    // 就會在帳號一開始就大量發放這類材料的既有設計，材料本身囤積不會有「提前看到/用到不該有的系統內容」的問題，
+    // 只有實體裝備與能直接兌換副本入場資格的卷軸/契約卷才需要真正卡住)。
+    // 2026-09-09同一輪追加修正：這個判斷式原本只給掛機獎勵用(原名isIdleRewardIdAvailable)，Wei後續指出
+    // 「首次通關獎勵也不應該獲得寶石」——關卡首次通關的固定獎勵(quest.loot1~4Id，由grantLoot()發放)其實
+    // 跟掛機獎勵是完全獨立的兩套發放路徑，過去grantLoot()完全沒有做任何過濾，於是改成通用名稱
+    // isRewardItemUnlocked()，grantLoot()跟掛機這邊共用同一份判斷，避免以後又新增第三種發放管道時
+    // 又要重新想一次同樣的規則。
+    function isRewardItemUnlocked(id) {
+      if (id === 2007) return isFeatureUnlocked('dark_contract');   // 暗黑契約卷：對應黑暗契約系統
+      if (id === 2006) return isFeatureUnlocked('god_trial');       // 神格試煉卷：對應神格試煉系統
+      if (EQUIPMENT_DATABASE[id]) return isFeatureUnlocked('class_equip'); // R~SR裝備(含魔法石70000系列與職業裝備80000+/88000+)：統一比照「裝備」系統的class_equip檢查點
+      return true; // 其餘一律視為不受限制的一般道具/材料
+    }
+    // 依 isRewardItemUnlocked() 過濾掉尚未解鎖的id，回傳該獎勵欄位「目前實際可能取得」的id清單
+    function getAvailableIdleRewardIds(r) {
+      let ids = r.ids || (r.id != null ? [r.id] : []);
+      return ids.filter(isRewardItemUnlocked);
+    }
     // 將掛機獎勵的欄位展開成「每個item各自一筆」的顯示用清單：
     // 同一個獎勵欄位若填入多個item ID(逗號區隔)，代表這些ID平分該欄位的機率(例如該欄位機率60%、填2個ID則各30%)；
-    // 需要顯示在UI上時，全部都要顯示出來，而不是只顯示其中一個
+    // 需要顯示在UI上時，全部都要顯示出來，而不是只顯示其中一個。尚未解鎖對應系統的id不會出現在這份清單裡，
+    // 分母(平分機率用的ids.length)也是用過濾後的清單計算，避免顯示出玩家目前根本拿不到的項目
     function expandIdleRewardsForDisplay(rewards) {
       let out = [];
       rewards.forEach(r => {
-        let ids = r.ids || (r.id != null ? [r.id] : []);
+        let ids = getAvailableIdleRewardIds(r);
         if (ids.length === 0) return;
         let splitRate = r.rate / ids.length;
         ids.forEach(id => out.push({ id, amount: r.amount, rate: splitRate }));
       });
       return out;
     }
-    // 依機率骰選出獎勵欄位「實際獲得」的那一個item id：欄位內多個ID平分機率
+    // 依機率骰選出獎勵欄位「實際獲得」的那一個item id：欄位內多個ID平分機率，
+    // 尚未解鎖對應系統的id一律排除在骰選池外；如果整個欄位的id都還沒解鎖，回傳null(這次視為沒中獎，
+    // 不會額外補發其他東西頂替，維持機率語意單純)
     function rollIdleRewardId(r) {
-      let ids = r.ids || (r.id != null ? [r.id] : []);
+      let ids = getAvailableIdleRewardIds(r);
       if (ids.length === 0) return null;
       return ids[Math.floor(Math.random() * ids.length)];
     }
@@ -7905,6 +7965,34 @@ let TALENT_CURVE = [
           <div>${Math.round(r.rate * 100)}%</div>
         </div>
       `).join('');
+    }
+
+    // 2026-09-09新增：掉落道具總覽彈窗(可捲動、疊在最上層)。
+    // 背景：掛機的「R~SR裝備」欄位解鎖越多系統後可能同時列出好幾十個item(例如職業裝備系統解鎖後光
+    // reward1一欄就有近百個id)，過去主線畫面的「🧭掛機獎勵」區塊與「探索獎勵預覽」彈窗都是把完整清單
+    // 直接攤開塞進畫面/彈窗本體，內容一多，彈窗本身的高度就會超出螢幕，導致下方「領取」按鈕被擠出畫面
+    // 外點不到(Wei回報的原話：「因為太多道具了會讓整個彈窗超過螢幕；沒有辦法領取」)。
+    // 修正方式：兩處都只保留精簡摘要+一顆「📋 查看掉落道具」按鈕，完整清單改成點開才顯示、且限制
+    // max-height+可上下捲動(比照既有.custom-scroll-y，跟「自動探索EVENT彈窗」同一套既有寫法)的獨立
+    // 子彈窗，疊在原本彈窗最上層(z-index高於.cheat-modal本身的180)，兩層彈窗各自都不會超出螢幕。
+    function openIdleRewardListModal(rewards) {
+      const body = document.getElementById('idle-reward-list-body');
+      const list = expandIdleRewardsForDisplay(rewards || []);
+      body.innerHTML = list.length ? list.map(r => `
+        <div class="idle-reward-mini" style="width:auto;flex-direction:row;gap:4px;justify-content:flex-start;padding:3px 0;">
+          <span class="icon">${itemIcon(r.id, 'box')}</span>
+          <span>${itemName(r.id)} x${r.amount}（${Math.round(r.rate * 100)}%）</span>
+        </div>
+      `).join('') : '<div style="text-align:center;color:#a89a80;padding:12px 0;">目前沒有可顯示的掉落道具</div>';
+      document.getElementById('idle-reward-list-modal').style.display = 'flex';
+    }
+    function closeIdleRewardListModal() {
+      document.getElementById('idle-reward-list-modal').style.display = 'none';
+    }
+    // 依mapId查IDLEZONE_DATABASE現抓一次rewards再開啟總覽彈窗，避免onclick裡內嵌整包rewards資料字串
+    function openIdleRewardListModalForZone(mapId) {
+      let zone = IDLEZONE_DATABASE[mapId];
+      openIdleRewardListModal(zone ? zone.rewards : []);
     }
 
     // 目前累積可領取的掛機獎勵次數(每5分鐘一次)
@@ -8152,17 +8240,16 @@ let TALENT_CURVE = [
     function openRewardPreviewModal() {
       if (!guardLockedFeature('idle_unlock')) return;
       let n = computeIdlePendingIntervals();
-      let zone = IDLEZONE_DATABASE[gameState.idle.mapId];
+      let mapId = gameState.idle.mapId;
       const body = document.getElementById('reward-preview-body');
+      // 修正：過去這裡直接把完整掉落清單攤開塞進彈窗本體，解鎖越多系統後清單越長，會把彈窗高度撐出
+      // 螢幕，導致下方「領取」按鈕被擠出畫面外點不到。現在只顯示精簡摘要，完整清單改點按鈕另開
+      // 可捲動的「掉落道具總覽」子彈窗查看(見 openIdleRewardListModal())，彈窗本體高度固定，
+      // 「領取」/「關閉」按鈕永遠留在畫面內。
       body.innerHTML = `
-        <div style="margin-bottom:8px;">目前累積 <b style="color:#ffd700;">${n}</b> 份可領取獎勵(每5分鐘累積1份)：</div>
-        <div class="idle-reward-preview" style="border-top:none;">
-          ${zone ? expandIdleRewardsForDisplay(zone.rewards).map(r => `
-            <div class="idle-reward-mini" style="width:auto;flex-direction:row;gap:4px;">
-              <span class="icon">${itemIcon(r.id, 'box')}</span>
-              <span>${itemName(r.id)} x${r.amount}（${Math.round(r.rate * 100)}%）</span>
-            </div>
-          `).join('<br>') : ''}
+        <div style="margin-bottom:10px;">目前累積 <b style="color:#ffd700;">${n}</b> 份可領取獎勵(每5分鐘累積1份)：</div>
+        <div style="text-align:center;margin-bottom:4px;">
+          <button class="btn" onclick="openIdleRewardListModalForZone(${mapId})">📋 查看掉落道具機率</button>
         </div>
       `;
       document.getElementById('btn-confirm-claim').disabled = n <= 0;
@@ -8671,7 +8758,13 @@ let TALENT_CURVE = [
         if (!info) return;
         if (!buffConditionMet(info, hero)) return; // element/tag條件不符合則不附加(需水屬性等條件符合才生效)
         if (hero.buffs.some(b => b.buffId === node.buffPasiveId)) return;
-        hero.buffs.push({ buffId: node.buffPasiveId, stack: 1, duration: info.duration || 9999 });
+        // 2026-09-09修正：這裡原本寫duration:info.duration||9999，但buff表的「持續回合數」欄位只要
+        // 空白，讀進來就會被xlsx-loader.js的buildBuffDatabaseAndSetTiers()預設成1(而不是null/undefined)，
+        // 導致「info.duration||9999」永遠吃到1(1是truthy)，天賦被動實際上只會在戰鬥第1回合生效、
+        // 第2回合就消失，違反這個函式自己的註解「永久生效」。天賦被動的定義本來就是解鎖後永久生效，
+        // 不應該受該buff本身(可能被其他一般戰鬥效果共用的)duration欄位影響，這裡固定給一個很長的
+        // 回合數(9999，戰鬥不可能打這麼久)，不再讀取info.duration。
+        hero.buffs.push({ buffId: node.buffPasiveId, stack: 1, duration: 9999 });
       });
     }
 
@@ -9575,7 +9668,11 @@ let TALENT_CURVE = [
       let filledStars = Math.min(5, starLevel);
       document.getElementById('weapon-menu-stars').innerText = '★'.repeat(filledStars) + '☆'.repeat(5 - filledStars);
 
-      let skillsHtml = [getCardCurrentSkillId(card, 1, starLevel), getCardCurrentSkillId(card, 2, starLevel)].filter(sid => sid).map(sid => {
+      // 2026-09-09修正：這裡過去只列出skill1/skill2(getCardCurrentSkillId只處理slot1/2)，完全沒有把
+      // card.s0(普通攻擊/唯一技能，許多R/SR階武器本來就只有這一個技能、沒有skill1/skill2)算進去，
+      // 導致「大部分的武器技能說明」都因為skill1/skill2皆為空而顯示「（無額外技能資訊）」，即使該武器
+      // 其實有普通攻擊技能說明可以看。s0不受星等影響，直接用card.s0查表，不透過getCardCurrentSkillId。
+      let skillsHtml = [card.s0, getCardCurrentSkillId(card, 1, starLevel), getCardCurrentSkillId(card, 2, starLevel)].filter(sid => sid).map(sid => {
         let s = SKILL_DATABASE[sid];
         if (!s) return '';
         return `<div style="margin-bottom:6px;"><span class="weapon-menu-skill-name">${s.name}：</span>${formatSkillDesc(s)}</div>`;
@@ -10586,7 +10683,10 @@ let TALENT_CURVE = [
         </div>
       `;
 
-      let skillIds = [getCardCurrentSkillId(card, 1, level), getCardCurrentSkillId(card, 2, level)].filter(sid => sid);
+      // 2026-09-09修正：同一個「s0沒被算進技能清單」的問題，這裡(升星預覽彈窗)也要一併修正，
+      // 否則像Wei回報的「升星預覽的技能也應該要看得到，就算未獲得強化跟升星狀況下都應該要看的到」
+      // ——在0星(尚未升星)時只查skill1/2、s0永遠不會出現，很多武器就會被誤以為完全沒有技能可看。
+      let skillIds = [card.s0, getCardCurrentSkillId(card, 1, level), getCardCurrentSkillId(card, 2, level)].filter(sid => sid);
       let skillsHtml = skillIds.map(sid => {
         let s = SKILL_DATABASE[sid];
         if (!s) return '';
@@ -10725,6 +10825,10 @@ let TALENT_CURVE = [
     // 通用戰利品發放：依 lootId 判斷是魔法石(equipment)還是一般道具(item，含經驗8000)
     function grantLoot(lootId, amount) {
       if (!lootId) return null;
+      // 2026-09-09修正：關卡首次通關的固定獎勵過去完全沒有檢查對應系統是否解鎖(跟掛機獎勵原本一樣的問題)，
+      // 比照 isRewardItemUnlocked() 同一套規則，尚未解鎖對應系統(職業裝備/暗黑契約/神格試煉)時這裡直接不發放，
+      // 避免關卡設計者不小心把還沒開放的系統道具放進某一關的固定獎勵欄位時，玩家還是能提前拿到。
+      if (!isRewardItemUnlocked(lootId)) return null;
       let eq = EQUIPMENT_DATABASE[lootId];
       if (eq) {
         if (eq.type === 'gem') {
@@ -11993,10 +12097,16 @@ let TALENT_CURVE = [
       document.getElementById('btn-skill1').disabled = false;
       document.getElementById('btn-skill2').disabled = false;
 
-      document.getElementById('btn-skill1').innerText = s1OnCooldown
-        ? `${s1.name} (冷卻${cds[s1.id]})` : `${s1.name} (${s1.cost}MP)`;
-      document.getElementById('btn-skill2').innerText = s2OnCooldown
-        ? `${s2.name} (冷卻${cds[s2.id]})` : `${s2.name} (${s2.cost}MP)`;
+      // 修正既有bug：部分武器(尤其低階R/SR卡)本來就只有skill0、沒有skill1/skill2(s1/s2為undefined)，
+      // 過去這裡沒有比照btn-atk一樣先判斷是否存在就直接組字串，undefined.name會直接拋錯，
+      // 導致該回合的操作彈窗整個渲染失敗、卡在戰鬥開始動畫callback裡(見advanceToNextActor)永遠無法完成，
+      // 玩家畫面就會像是卡住不動、按鈕沒反應。現比照btn-atk：沒有該技能就隱藏按鈕，不再嘗試存取其欄位。
+      document.getElementById('btn-skill1').style.display = s1 ? '' : 'none';
+      document.getElementById('btn-skill2').style.display = s2 ? '' : 'none';
+      document.getElementById('btn-skill1').innerText = s1
+        ? (s1OnCooldown ? `${s1.name} (冷卻${cds[s1.id]})` : `${s1.name} (${s1.cost}MP)`) : '無';
+      document.getElementById('btn-skill2').innerText = s2
+        ? (s2OnCooldown ? `${s2.name} (冷卻${cds[s2.id]})` : `${s2.name} (${s2.cost}MP)`) : '無';
 
       // 黑暗契約(捕捉)按鈕：僅玩家主角(role)回合才顯示；即使目前沒有可捕捉對象/契約卷不足也維持可點擊(由 onCaptureBtnClick 內部彈窗告知原因)
       let btnCapture = document.getElementById('btn-capture');
@@ -13505,8 +13615,14 @@ let TALENT_CURVE = [
           syncActionDimVisual();
           autoExecuteTurn(activeUnit);
         }
-      } else if (gameState.speedMultiplier === 1) {
-        if (!guardLockedFeature('speed2x')) return;
+      } else if (gameState.speedMultiplier === 1 && isFeatureUnlocked('speed2x')) {
+        // 2026-09-09修正：這裡過去用 guardLockedFeature('speed2x') 擋下未解鎖狀態，但guardLockedFeature
+        // 「未解鎖時回傳false、呼叫端要中止」，中止的結果是整個toggleAuto()直接return、完全不改變任何狀態——
+        // 對玩家來說「自動戰鬥」正在ON(1倍速)，再點一次按鈕卻毫無反應(只跳出一個「關卡X-X解鎖」的提示)，
+        // 既不會進到2倍速、也不會關閉，感覺就像「自動戰鬥根本關不掉」，因為OFF是三段循環的第三段，
+        // 必須先经过(能真正切換到)2倍速那一段才會回到OFF，而2倍速在speed2x解鎖前一直被卡住。
+        // 修正：未解鎖speed2x時，直接跳過2倍速那一段，第二次點擊直接回到OFF(等同二段式ON/OFF切換)；
+        // 解鎖後才會變成原本設計的OFF→ON(1倍速)→ON(2倍速)→OFF三段循環。
         gameState.speedMultiplier = 2;
         syncAutoButtonUI();
         applySpeedToCSS();
@@ -14388,8 +14504,8 @@ let TALENT_CURVE = [
           gameState.playedStoryKeys.add(key);
           Guide._pendingMainAfterMapId = quest.mapId;
         }
-        // 帳號創建初期全部鎖定的分頁(職業/天賦/武器/主線/裝備/副本/召喚)，統一在戰勝主線1-1時一起解鎖
-        if (quest && quest.mapId === 200 && gameState.lockedNavTabs && gameState.lockedNavTabs.size > 0) {
+        // 帳號創建初期全部鎖定的分頁(職業/天賦/武器/主線/裝備/副本/召喚)，統一在戰勝主線1-1(mapId=1000)時一起解鎖
+        if (quest && quest.mapId === 1000 && gameState.lockedNavTabs && gameState.lockedNavTabs.size > 0) {
           ['class', 'talent', 'weapon', 'main', 'equip', 'quest', 'summon'].forEach(k => unlockNavTab(k));
           // 進階職業(90008以上)也在此時一起解除隱藏(仍需各自完成天賦才算真正解鎖)
           gameState.advancedClassesRevealed = true;
@@ -14490,7 +14606,7 @@ let TALENT_CURVE = [
 
     async function runIntroSequence() {
       // 帳號創建時，下方所有分頁(職業/天賦/武器/主線/裝備/副本/召喚)全部鎖定，
-      // 統一在戰勝主線1-1(mapId=200)時才一起解鎖(見下方 showResultModal 鉤子)
+      // 統一在戰勝主線1-1(mapId=1000)時才一起解鎖(見下方 showResultModal 鉤子)
       gameState.lockedNavTabs = new Set(['class', 'talent', 'weapon', 'main', 'equip', 'quest', 'summon']);
       applyNavLockVisuals();
 
@@ -14510,7 +14626,12 @@ let TALENT_CURVE = [
       proceedSelectQuest(tutorialQuest);
       await waitForBattleReady();
       await guideBattleStep();
-      if (!gameState.isAuto) { toggleAuto(); toggleAuto(); }
+      // 2026-09-09修正：這裡過去連續呼叫toggleAuto()兩次，是利用「speed2x checkpoint未解鎖時第二次呼叫
+      // 會被guardLockedFeature擋下、整個函式直接return不改變任何狀態」這個(現已修正的)舊行為，讓兩次呼叫
+      // 淨效果剛好停在ON(1倍速)。toggleAuto()的鎖定判斷修正後，未解鎖時第二次呼叫會改成直接切回OFF，
+      // 兩次呼叫會變成「開了又關」，教學戰鬥就不會進入自動戰鬥。改成只呼叫一次，單純「原本是OFF就切成ON」，
+      // 不再依賴toggleAuto()內部鎖定分支的副作用。
+      if (!gameState.isAuto) { toggleAuto(); }
       await new Promise(resolve => { Guide._tutorialBattleResolve = resolve; });
       if (gameState.isAuto) { toggleAuto(); }
       showScreen('mainline');

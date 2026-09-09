@@ -207,14 +207,49 @@ function buildItemDatabase(wb) {
 }
 
 function buildLevelcurveDatabase(wb) {
-  return xlsxSheetToObjects(wb, 'levelcurve').map(o => ({
-    level: o.level, next: o.next === null ? 0 : o.next, cumExp: o['累计获得经验'],
+  // 2026-09-09修正：levelcurve分頁的「累计获得经验」欄位過去只有level=1那一列填了0，其餘level 2~100全部是空白，
+  // 直接讀取會是null。index.html的getClassLevel()/getWeaponLevel相關查表邏輯是「exp >= row.cumExp」，
+  // JS裡「任意數字 >= null」一律視為「>= 0」而恆成立，導致這個迴圈永遠不會在中途break，新玩家0經驗值
+  // 就會被迴圈一路跑到最後一列、被誤判成滿級(100級)——這正是「開場就100等(應該從1等開始)」的根本原因，
+  // 連帶影響所有依等級縮放的數值(含AGI)看起來都不正常。
+  // 修正：不直接信任xlsx這個欄位，一律用「next」欄位(升到下一級所需經驗)由level=1開始往後累加自行算出
+  // cumExp，這樣即使xlsx這欄位空白/沒有維護，也不會再發生同樣的問題(自動忽略xlsx裡的舊值，不依賴人工填寫)。
+  const rows = xlsxSheetToObjects(wb, 'levelcurve').map(o => ({
+    level: o.level, next: o.next === null ? 0 : o.next,
   }));
+  rows.sort((a, b) => a.level - b.level);
+  let cum = 0;
+  rows.forEach(r => { r.cumExp = cum; cum += r.next; });
+  return rows;
 }
 
+// 2026-09-09新增：curve分頁裡type=1(天賦點數)這組資料目前只有level=5/10兩列有填point(分別是2/3)，
+// level=15~55雖然有填level但point是空白，level=60~100連level本身都是空白——也就是說能拿到的天賦點數
+// 實際上封頂在55等之後就再也不會增加。這造成一個連鎖問題：這次依Wei需求「40等時剛好能點出解鎖二階職業、
+// 100等時剛好能點滿整張天賦」設計的天賦樹cost(主線8節點總和355、全組15節點總和3040)，是依照這份參考
+// 曲線(下面TALENT_CURVE_REFERENCE)反推出來的精確數字——如果直接套用xlsx目前殘缺的curve資料，玩家
+// 100等實際能拿到的點數會停在25點，別說解鎖二階職業(需要355點)，連第2個節點都點不起，天賦樹等於形同虛設。
+// 這裡採取跟talent/card分頁相同的處理原則：只有當xlsx這20個里程碑「level+point都確實填好」時才採用
+// xlsx的真實資料，否則整組改用這份參考預設值(對照下方天賦樹cost設計時使用的同一份數字)，確保天賦系統
+// 現在就能正常運作；只要Wei之後把curve分頁type=1這20列的level/point都依這份參考值(或他想要的其他曲線)
+// 填齊，這裡會自動偵測到並改用xlsx的資料，但屆時記得同步調整天賦樹的cost設計(TALENT_DEFAULT_DESIGN)，
+// 否則點數曲線改了、樹的花費沒改，兩者又會對不上。
+const TALENT_CURVE_REFERENCE = [
+  { level: 5, point: 2 }, { level: 10, point: 3 }, { level: 15, point: 5 }, { level: 20, point: 7 },
+  { level: 25, point: 9 }, { level: 30, point: 12 }, { level: 35, point: 15 }, { level: 40, point: 18 },
+  { level: 45, point: 21 }, { level: 50, point: 25 }, { level: 55, point: 29 }, { level: 60, point: 33 },
+  { level: 65, point: 37 }, { level: 70, point: 41 }, { level: 75, point: 46 }, { level: 80, point: 51 },
+  { level: 85, point: 56 }, { level: 90, point: 61 }, { level: 95, point: 66 }, { level: 100, point: 71 },
+];
 function buildTalentCurve(wb) {
-  return xlsxSheetToObjects(wb, 'curve').filter(o => o.type === 1)
+  const rows = xlsxSheetToObjects(wb, 'curve').filter(o => o.type === 1)
     .map(o => ({ level: o.level, point: o.point, total: o['#總點數'] }));
+  const complete = TALENT_CURVE_REFERENCE.every(ref => rows.some(r => r.level === ref.level && r.point !== null && r.point !== undefined));
+  if (!complete) {
+    console.warn('[xlsx-loader] curve分頁type=1的天賦點數里程碑資料不完整(目前僅level5/10有填point)，改用內建參考曲線TALENT_CURVE_REFERENCE，詳見程式碼註解。');
+    return TALENT_CURVE_REFERENCE.map(r => ({ level: r.level, point: r.point, total: null }));
+  }
+  return rows;
 }
 
 function buildIdlezoneDatabase(wb) {
@@ -274,6 +309,263 @@ function buildDungeonprefebDatabase(wb) {
   }));
 }
 
+// ##TALENT_DEFAULT_DESIGN:START##
+// 2026-09-09新增：天賦樹完整預設設計(90個節點/6組)，因xlsx目前talent分頁每組只有根節點填了id、其餘14列id留空
+// (buildTalentDatabaseAndGrid()原本的防呆只能跳過缺id的列、不會捏造內容)，這裡改成當xlsx某個group讀到的
+// 節點數不足15個時，整組改用這份內建預設設計頂替，讓天賦樹在Wei填齊xlsx之前也能正常顯示與運作。
+// 設計依Wei需求「40等時可以剛好點出解鎖二階職業，其餘點數轉回去可以點滿整張天賦」：
+// 每組15個節點分成「主線8節點」(根節點→...→解鎖二階職業節點，8個節點cost總和=355，精確對應
+// computeTalentPointsAtLevel(40)的計算結果) + 「支線7節點」(cost總和=2685，加上主線355＝3040，
+// 精確對應computeTalentPointsAtLevel(100))；isTalentFrontMet()對front陣列是OR邏輯(只要front其中一個
+// 節點已解鎖即可)，所以支線節點完全不會擋到「只走主線8節點解鎖二階職業」這條最短路徑，兩者互不影響。
+// 一旦Wei之後把xlsx talent分頁裡某個group的15個節點id都補齊，這裡會自動偵測到該group已有15筆真實資料
+// 而改用xlsx的內容，不需要再改程式碼；也就是說這份預設設計只是「還沒補齊前的暫時內容」。
+const TALENT_DEFAULT_NODES = {
+  100: { id: 100, group: 1, name: "根源之力", front: [], cost: 10, buffPasiveId: 8000 },
+  101: { id: 101, group: 1, name: "攻擊精進 I", front: [100], cost: 15, buffPasiveId: 8001 },
+  102: { id: 102, group: 1, name: "守禦意志", front: [100], cost: 230, buffPasiveId: 8002 },
+  103: { id: 103, group: 1, name: "攻擊精進 II", front: [101], cost: 25, buffPasiveId: 8003 },
+  104: { id: 104, group: 1, name: "防禦強化", front: [102], cost: 310, buffPasiveId: 8004 },
+  105: { id: 105, group: 1, name: "攻擊精進 III", front: [103], cost: 35, buffPasiveId: 8005 },
+  106: { id: 106, group: 1, name: "會心磨練", front: [103,104], cost: 330, buffPasiveId: 8006 },
+  107: { id: 107, group: 1, name: "會心奧義", front: [104], cost: 355, buffPasiveId: 8007 },
+  108: { id: 108, group: 1, name: "攻擊精進 IV", front: [105,106], cost: 45, buffPasiveId: 8008 },
+  109: { id: 109, group: 1, name: "技巧精通", front: [106,107], cost: 390, buffPasiveId: 8009 },
+  110: { id: 110, group: 1, name: "攻擊精進 V", front: [108], cost: 60, buffPasiveId: 8010 },
+  111: { id: 111, group: 1, name: "破壞本能", front: [109], cost: 485, buffPasiveId: 8011 },
+  112: { id: 112, group: 1, name: "攻擊精進 VI", front: [110], cost: 75, buffPasiveId: 8012 },
+  113: { id: 113, group: 1, name: "堅韌意志", front: [111], cost: 585, buffPasiveId: 8013 },
+  114: { id: 114, group: 1, name: "解鎖劍豪", front: [112,113], cost: 90, buffPasiveId: 8014, roleCardUnlock: 90008 },
+  115: { id: 115, group: 2, name: "根源之力", front: [], cost: 10, buffPasiveId: 8015 },
+  116: { id: 116, group: 2, name: "攻擊精進 I", front: [115], cost: 15, buffPasiveId: 8016 },
+  117: { id: 117, group: 2, name: "守禦意志", front: [115], cost: 230, buffPasiveId: 8017 },
+  118: { id: 118, group: 2, name: "攻擊精進 II", front: [116], cost: 25, buffPasiveId: 8018 },
+  119: { id: 119, group: 2, name: "防禦強化", front: [117], cost: 310, buffPasiveId: 8019 },
+  120: { id: 120, group: 2, name: "攻擊精進 III", front: [118], cost: 35, buffPasiveId: 8020 },
+  121: { id: 121, group: 2, name: "會心磨練", front: [118,119], cost: 330, buffPasiveId: 8021 },
+  122: { id: 122, group: 2, name: "會心奧義", front: [119], cost: 355, buffPasiveId: 8022 },
+  123: { id: 123, group: 2, name: "攻擊精進 IV", front: [120,121], cost: 45, buffPasiveId: 8023 },
+  124: { id: 124, group: 2, name: "技巧精通", front: [121,122], cost: 390, buffPasiveId: 8024 },
+  125: { id: 125, group: 2, name: "攻擊精進 V", front: [123], cost: 60, buffPasiveId: 8025 },
+  126: { id: 126, group: 2, name: "破壞本能", front: [124], cost: 485, buffPasiveId: 8026 },
+  127: { id: 127, group: 2, name: "攻擊精進 VI", front: [125], cost: 75, buffPasiveId: 8027 },
+  128: { id: 128, group: 2, name: "堅韌意志", front: [126], cost: 585, buffPasiveId: 8028 },
+  129: { id: 129, group: 2, name: "解鎖狂戰士", front: [127,128], cost: 90, buffPasiveId: 8029, roleCardUnlock: 90009 },
+  130: { id: 130, group: 3, name: "根源之力", front: [], cost: 10, buffPasiveId: 8030 },
+  131: { id: 131, group: 3, name: "攻擊精進 I", front: [130], cost: 15, buffPasiveId: 8031 },
+  132: { id: 132, group: 3, name: "守禦意志", front: [130], cost: 230, buffPasiveId: 8032 },
+  133: { id: 133, group: 3, name: "攻擊精進 II", front: [131], cost: 25, buffPasiveId: 8033 },
+  134: { id: 134, group: 3, name: "防禦強化", front: [132], cost: 310, buffPasiveId: 8034 },
+  135: { id: 135, group: 3, name: "攻擊精進 III", front: [133], cost: 35, buffPasiveId: 8035 },
+  136: { id: 136, group: 3, name: "會心磨練", front: [133,134], cost: 330, buffPasiveId: 8036 },
+  137: { id: 137, group: 3, name: "會心奧義", front: [134], cost: 355, buffPasiveId: 8037 },
+  138: { id: 138, group: 3, name: "攻擊精進 IV", front: [135,136], cost: 45, buffPasiveId: 8038 },
+  139: { id: 139, group: 3, name: "技巧精通", front: [136,137], cost: 390, buffPasiveId: 8039 },
+  140: { id: 140, group: 3, name: "攻擊精進 V", front: [138], cost: 60, buffPasiveId: 8040 },
+  141: { id: 141, group: 3, name: "破壞本能", front: [139], cost: 485, buffPasiveId: 8041 },
+  142: { id: 142, group: 3, name: "攻擊精進 VI", front: [140], cost: 75, buffPasiveId: 8042 },
+  143: { id: 143, group: 3, name: "堅韌意志", front: [141], cost: 585, buffPasiveId: 8043 },
+  144: { id: 144, group: 3, name: "解鎖神射手", front: [142,143], cost: 90, buffPasiveId: 8044, roleCardUnlock: 90010 },
+  145: { id: 145, group: 4, name: "根源之力", front: [], cost: 10, buffPasiveId: 8045 },
+  146: { id: 146, group: 4, name: "攻擊精進 I", front: [145], cost: 15, buffPasiveId: 8046 },
+  147: { id: 147, group: 4, name: "守禦意志", front: [145], cost: 230, buffPasiveId: 8047 },
+  148: { id: 148, group: 4, name: "攻擊精進 II", front: [146], cost: 25, buffPasiveId: 8048 },
+  149: { id: 149, group: 4, name: "防禦強化", front: [147], cost: 310, buffPasiveId: 8049 },
+  150: { id: 150, group: 4, name: "攻擊精進 III", front: [148], cost: 35, buffPasiveId: 8050 },
+  151: { id: 151, group: 4, name: "會心磨練", front: [148,149], cost: 330, buffPasiveId: 8051 },
+  152: { id: 152, group: 4, name: "會心奧義", front: [149], cost: 355, buffPasiveId: 8052 },
+  153: { id: 153, group: 4, name: "攻擊精進 IV", front: [150,151], cost: 45, buffPasiveId: 8053 },
+  154: { id: 154, group: 4, name: "技巧精通", front: [151,152], cost: 390, buffPasiveId: 8054 },
+  155: { id: 155, group: 4, name: "攻擊精進 V", front: [153], cost: 60, buffPasiveId: 8055 },
+  156: { id: 156, group: 4, name: "破壞本能", front: [154], cost: 485, buffPasiveId: 8056 },
+  157: { id: 157, group: 4, name: "攻擊精進 VI", front: [155], cost: 75, buffPasiveId: 8057 },
+  158: { id: 158, group: 4, name: "堅韌意志", front: [156], cost: 585, buffPasiveId: 8058 },
+  159: { id: 159, group: 4, name: "解鎖刺客", front: [157,158], cost: 90, buffPasiveId: 8059, roleCardUnlock: 90011 },
+  160: { id: 160, group: 5, name: "根源之力", front: [], cost: 10, buffPasiveId: 8060 },
+  161: { id: 161, group: 5, name: "魔力精進 I", front: [160], cost: 15, buffPasiveId: 8061 },
+  162: { id: 162, group: 5, name: "守禦意志", front: [160], cost: 230, buffPasiveId: 8062 },
+  163: { id: 163, group: 5, name: "魔力精進 II", front: [161], cost: 25, buffPasiveId: 8063 },
+  164: { id: 164, group: 5, name: "防禦強化", front: [162], cost: 310, buffPasiveId: 8064 },
+  165: { id: 165, group: 5, name: "魔力精進 III", front: [163], cost: 35, buffPasiveId: 8065 },
+  166: { id: 166, group: 5, name: "會心磨練", front: [163,164], cost: 330, buffPasiveId: 8066 },
+  167: { id: 167, group: 5, name: "會心奧義", front: [164], cost: 355, buffPasiveId: 8067 },
+  168: { id: 168, group: 5, name: "魔力精進 IV", front: [165,166], cost: 45, buffPasiveId: 8068 },
+  169: { id: 169, group: 5, name: "技巧精通", front: [166,167], cost: 390, buffPasiveId: 8069 },
+  170: { id: 170, group: 5, name: "魔力精進 V", front: [168], cost: 60, buffPasiveId: 8070 },
+  171: { id: 171, group: 5, name: "破壞本能", front: [169], cost: 485, buffPasiveId: 8071 },
+  172: { id: 172, group: 5, name: "魔力精進 VI", front: [170], cost: 75, buffPasiveId: 8072 },
+  173: { id: 173, group: 5, name: "堅韌意志", front: [171], cost: 585, buffPasiveId: 8073 },
+  174: { id: 174, group: 5, name: "解鎖魔導士", front: [172,173], cost: 90, buffPasiveId: 8074, roleCardUnlock: 90012 },
+  175: { id: 175, group: 6, name: "根源之力", front: [], cost: 10, buffPasiveId: 8075 },
+  176: { id: 176, group: 6, name: "魔力精進 I", front: [175], cost: 15, buffPasiveId: 8076 },
+  177: { id: 177, group: 6, name: "守禦意志", front: [175], cost: 230, buffPasiveId: 8077 },
+  178: { id: 178, group: 6, name: "魔力精進 II", front: [176], cost: 25, buffPasiveId: 8078 },
+  179: { id: 179, group: 6, name: "防禦強化", front: [177], cost: 310, buffPasiveId: 8079 },
+  180: { id: 180, group: 6, name: "魔力精進 III", front: [178], cost: 35, buffPasiveId: 8080 },
+  181: { id: 181, group: 6, name: "會心磨練", front: [178,179], cost: 330, buffPasiveId: 8081 },
+  182: { id: 182, group: 6, name: "會心奧義", front: [179], cost: 355, buffPasiveId: 8082 },
+  183: { id: 183, group: 6, name: "魔力精進 IV", front: [180,181], cost: 45, buffPasiveId: 8083 },
+  184: { id: 184, group: 6, name: "技巧精通", front: [181,182], cost: 390, buffPasiveId: 8084 },
+  185: { id: 185, group: 6, name: "魔力精進 V", front: [183], cost: 60, buffPasiveId: 8085 },
+  186: { id: 186, group: 6, name: "破壞本能", front: [184], cost: 485, buffPasiveId: 8086 },
+  187: { id: 187, group: 6, name: "魔力精進 VI", front: [185], cost: 75, buffPasiveId: 8087 },
+  188: { id: 188, group: 6, name: "堅韌意志", front: [186], cost: 585, buffPasiveId: 8088 },
+  189: { id: 189, group: 6, name: "解鎖神官", front: [187,188], cost: 90, buffPasiveId: 8089, roleCardUnlock: 90013 },
+};
+const TALENT_DEFAULT_GRID = {
+  1: [
+    [0,0,100,0,0],
+    [0,101,0,102,0],
+    [0,103,0,104,0],
+    [105,0,106,0,107],
+    [0,108,0,109,0],
+    [110,112,0,113,111],
+    [0,0,114,0,0],
+  ],
+  2: [
+    [0,0,115,0,0],
+    [0,116,0,117,0],
+    [0,118,0,119,0],
+    [120,0,121,0,122],
+    [0,123,0,124,0],
+    [125,127,0,128,126],
+    [0,0,129,0,0],
+  ],
+  3: [
+    [0,0,130,0,0],
+    [0,131,0,132,0],
+    [0,133,0,134,0],
+    [135,0,136,0,137],
+    [0,138,0,139,0],
+    [140,142,0,143,141],
+    [0,0,144,0,0],
+  ],
+  4: [
+    [0,0,145,0,0],
+    [0,146,0,147,0],
+    [0,148,0,149,0],
+    [150,0,151,0,152],
+    [0,153,0,154,0],
+    [155,157,0,158,156],
+    [0,0,159,0,0],
+  ],
+  5: [
+    [0,0,160,0,0],
+    [0,161,0,162,0],
+    [0,163,0,164,0],
+    [165,0,166,0,167],
+    [0,168,0,169,0],
+    [170,172,0,173,171],
+    [0,0,174,0,0],
+  ],
+  6: [
+    [0,0,175,0,0],
+    [0,176,0,177,0],
+    [0,178,0,179,0],
+    [180,0,181,0,182],
+    [0,183,0,184,0],
+    [185,187,0,188,186],
+    [0,0,189,0,0],
+  ],
+};
+// 天賦被動buff效果預設(對應BUFF_DATABASE 8000~8089)：xlsx目前buff分頁這90筆buff名稱皆為空白、
+// 效果統一是「ATK+1%」佔位內容(且『持續回合數』欄位空白，會被buildBuffDatabaseAndSetTiers()預設成1回合，
+// 導致天賦被動實際上只在戰鬥第1回合生效、第2回合就消失，跟『永久生效』的設計初衷不符)。
+// 這裡同樣採取「xlsx有真實資料就優先採用、沒有就用這份預設頂替」的原則：只在該buff_id的xlsx名稱仍是空白時才覆蓋。
+const TALENT_BUFF_DEFAULT = {
+  8000: { name: "根源之力", stat: "atk", value: 0.005, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升0.5%" },
+  8001: { name: "攻擊精進 I", stat: "atk", value: 0.01, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升1%" },
+  8002: { name: "守禦意志", stat: "criResist", value: 0.03, desc: "戰鬥開始時，全體上陣角色的爆擊抗性永久+3%" },
+  8003: { name: "攻擊精進 II", stat: "atk", value: 0.015, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升1.5%" },
+  8004: { name: "防禦強化", stat: "def", value: 0.04, desc: "戰鬥開始時，全體上陣角色的防禦力永久+4%" },
+  8005: { name: "攻擊精進 III", stat: "atk", value: 0.02, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升2%" },
+  8006: { name: "會心磨練", stat: "cri", value: 0.015, desc: "戰鬥開始時，全體上陣角色的爆擊率永久+1.5%" },
+  8007: { name: "會心奧義", stat: "criDamage", value: 0.05, desc: "戰鬥開始時，全體上陣角色的爆擊傷害永久+5%" },
+  8008: { name: "攻擊精進 IV", stat: "atk", value: 0.025, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升2.5%" },
+  8009: { name: "技巧精通", stat: "skillRate", value: 0.05, desc: "戰鬥開始時，全體上陣角色的技能傷害永久+5%" },
+  8010: { name: "攻擊精進 V", stat: "atk", value: 0.03, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升3%" },
+  8011: { name: "破壞本能", stat: "damageIncrease", value: 0.03, desc: "戰鬥開始時，全體上陣角色的造成傷害永久+3%" },
+  8012: { name: "攻擊精進 VI", stat: "atk", value: 0.04, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升4%" },
+  8013: { name: "堅韌意志", stat: "damageReduce", value: -0.03, desc: "戰鬥開始時，全體上陣角色的受到傷害永久-3%" },
+  8014: { name: "劍士系終極：解鎖劍豪", stat: "atk", value: 0.05, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升5%" },
+  8015: { name: "根源之力", stat: "atk", value: 0.005, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升0.5%" },
+  8016: { name: "攻擊精進 I", stat: "atk", value: 0.01, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升1%" },
+  8017: { name: "守禦意志", stat: "criResist", value: 0.03, desc: "戰鬥開始時，全體上陣角色的爆擊抗性永久+3%" },
+  8018: { name: "攻擊精進 II", stat: "atk", value: 0.015, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升1.5%" },
+  8019: { name: "防禦強化", stat: "def", value: 0.04, desc: "戰鬥開始時，全體上陣角色的防禦力永久+4%" },
+  8020: { name: "攻擊精進 III", stat: "atk", value: 0.02, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升2%" },
+  8021: { name: "會心磨練", stat: "cri", value: 0.015, desc: "戰鬥開始時，全體上陣角色的爆擊率永久+1.5%" },
+  8022: { name: "會心奧義", stat: "criDamage", value: 0.05, desc: "戰鬥開始時，全體上陣角色的爆擊傷害永久+5%" },
+  8023: { name: "攻擊精進 IV", stat: "atk", value: 0.025, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升2.5%" },
+  8024: { name: "技巧精通", stat: "skillRate", value: 0.05, desc: "戰鬥開始時，全體上陣角色的技能傷害永久+5%" },
+  8025: { name: "攻擊精進 V", stat: "atk", value: 0.03, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升3%" },
+  8026: { name: "破壞本能", stat: "damageIncrease", value: 0.03, desc: "戰鬥開始時，全體上陣角色的造成傷害永久+3%" },
+  8027: { name: "攻擊精進 VI", stat: "atk", value: 0.04, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升4%" },
+  8028: { name: "堅韌意志", stat: "damageReduce", value: -0.03, desc: "戰鬥開始時，全體上陣角色的受到傷害永久-3%" },
+  8029: { name: "戰士系終極：解鎖狂戰士", stat: "atk", value: 0.05, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升5%" },
+  8030: { name: "根源之力", stat: "atk", value: 0.005, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升0.5%" },
+  8031: { name: "攻擊精進 I", stat: "atk", value: 0.01, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升1%" },
+  8032: { name: "守禦意志", stat: "criResist", value: 0.03, desc: "戰鬥開始時，全體上陣角色的爆擊抗性永久+3%" },
+  8033: { name: "攻擊精進 II", stat: "atk", value: 0.015, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升1.5%" },
+  8034: { name: "防禦強化", stat: "def", value: 0.04, desc: "戰鬥開始時，全體上陣角色的防禦力永久+4%" },
+  8035: { name: "攻擊精進 III", stat: "atk", value: 0.02, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升2%" },
+  8036: { name: "會心磨練", stat: "cri", value: 0.015, desc: "戰鬥開始時，全體上陣角色的爆擊率永久+1.5%" },
+  8037: { name: "會心奧義", stat: "criDamage", value: 0.05, desc: "戰鬥開始時，全體上陣角色的爆擊傷害永久+5%" },
+  8038: { name: "攻擊精進 IV", stat: "atk", value: 0.025, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升2.5%" },
+  8039: { name: "技巧精通", stat: "skillRate", value: 0.05, desc: "戰鬥開始時，全體上陣角色的技能傷害永久+5%" },
+  8040: { name: "攻擊精進 V", stat: "atk", value: 0.03, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升3%" },
+  8041: { name: "破壞本能", stat: "damageIncrease", value: 0.03, desc: "戰鬥開始時，全體上陣角色的造成傷害永久+3%" },
+  8042: { name: "攻擊精進 VI", stat: "atk", value: 0.04, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升4%" },
+  8043: { name: "堅韌意志", stat: "damageReduce", value: -0.03, desc: "戰鬥開始時，全體上陣角色的受到傷害永久-3%" },
+  8044: { name: "弓劍手系終極：解鎖神射手", stat: "atk", value: 0.05, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升5%" },
+  8045: { name: "根源之力", stat: "atk", value: 0.005, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升0.5%" },
+  8046: { name: "攻擊精進 I", stat: "atk", value: 0.01, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升1%" },
+  8047: { name: "守禦意志", stat: "criResist", value: 0.03, desc: "戰鬥開始時，全體上陣角色的爆擊抗性永久+3%" },
+  8048: { name: "攻擊精進 II", stat: "atk", value: 0.015, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升1.5%" },
+  8049: { name: "防禦強化", stat: "def", value: 0.04, desc: "戰鬥開始時，全體上陣角色的防禦力永久+4%" },
+  8050: { name: "攻擊精進 III", stat: "atk", value: 0.02, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升2%" },
+  8051: { name: "會心磨練", stat: "cri", value: 0.015, desc: "戰鬥開始時，全體上陣角色的爆擊率永久+1.5%" },
+  8052: { name: "會心奧義", stat: "criDamage", value: 0.05, desc: "戰鬥開始時，全體上陣角色的爆擊傷害永久+5%" },
+  8053: { name: "攻擊精進 IV", stat: "atk", value: 0.025, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升2.5%" },
+  8054: { name: "技巧精通", stat: "skillRate", value: 0.05, desc: "戰鬥開始時，全體上陣角色的技能傷害永久+5%" },
+  8055: { name: "攻擊精進 V", stat: "atk", value: 0.03, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升3%" },
+  8056: { name: "破壞本能", stat: "damageIncrease", value: 0.03, desc: "戰鬥開始時，全體上陣角色的造成傷害永久+3%" },
+  8057: { name: "攻擊精進 VI", stat: "atk", value: 0.04, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升4%" },
+  8058: { name: "堅韌意志", stat: "damageReduce", value: -0.03, desc: "戰鬥開始時，全體上陣角色的受到傷害永久-3%" },
+  8059: { name: "盜賊系終極：解鎖刺客", stat: "atk", value: 0.05, desc: "戰鬥開始時，全體上陣角色的物理攻擊力永久提升5%" },
+  8060: { name: "根源之力", stat: "matk", value: 0.005, desc: "戰鬥開始時，全體上陣角色的魔法攻擊力永久提升0.5%" },
+  8061: { name: "魔力精進 I", stat: "matk", value: 0.01, desc: "戰鬥開始時，全體上陣角色的魔法攻擊力永久提升1%" },
+  8062: { name: "守禦意志", stat: "criResist", value: 0.03, desc: "戰鬥開始時，全體上陣角色的爆擊抗性永久+3%" },
+  8063: { name: "魔力精進 II", stat: "matk", value: 0.015, desc: "戰鬥開始時，全體上陣角色的魔法攻擊力永久提升1.5%" },
+  8064: { name: "防禦強化", stat: "mdef", value: 0.04, desc: "戰鬥開始時，全體上陣角色的魔法防禦力永久+4%" },
+  8065: { name: "魔力精進 III", stat: "matk", value: 0.02, desc: "戰鬥開始時，全體上陣角色的魔法攻擊力永久提升2%" },
+  8066: { name: "會心磨練", stat: "cri", value: 0.015, desc: "戰鬥開始時，全體上陣角色的爆擊率永久+1.5%" },
+  8067: { name: "會心奧義", stat: "criDamage", value: 0.05, desc: "戰鬥開始時，全體上陣角色的爆擊傷害永久+5%" },
+  8068: { name: "魔力精進 IV", stat: "matk", value: 0.025, desc: "戰鬥開始時，全體上陣角色的魔法攻擊力永久提升2.5%" },
+  8069: { name: "技巧精通", stat: "skillRate", value: 0.05, desc: "戰鬥開始時，全體上陣角色的技能傷害永久+5%" },
+  8070: { name: "魔力精進 V", stat: "matk", value: 0.03, desc: "戰鬥開始時，全體上陣角色的魔法攻擊力永久提升3%" },
+  8071: { name: "破壞本能", stat: "damageIncrease", value: 0.03, desc: "戰鬥開始時，全體上陣角色的造成傷害永久+3%" },
+  8072: { name: "魔力精進 VI", stat: "matk", value: 0.04, desc: "戰鬥開始時，全體上陣角色的魔法攻擊力永久提升4%" },
+  8073: { name: "堅韌意志", stat: "damageReduce", value: -0.03, desc: "戰鬥開始時，全體上陣角色的受到傷害永久-3%" },
+  8074: { name: "魔法師系終極：解鎖魔導士", stat: "matk", value: 0.05, desc: "戰鬥開始時，全體上陣角色的魔法攻擊力永久提升5%" },
+  8075: { name: "根源之力", stat: "matk", value: 0.005, desc: "戰鬥開始時，全體上陣角色的魔法攻擊力永久提升0.5%" },
+  8076: { name: "魔力精進 I", stat: "matk", value: 0.01, desc: "戰鬥開始時，全體上陣角色的魔法攻擊力永久提升1%" },
+  8077: { name: "守禦意志", stat: "criResist", value: 0.03, desc: "戰鬥開始時，全體上陣角色的爆擊抗性永久+3%" },
+  8078: { name: "魔力精進 II", stat: "matk", value: 0.015, desc: "戰鬥開始時，全體上陣角色的魔法攻擊力永久提升1.5%" },
+  8079: { name: "防禦強化", stat: "mdef", value: 0.04, desc: "戰鬥開始時，全體上陣角色的魔法防禦力永久+4%" },
+  8080: { name: "魔力精進 III", stat: "matk", value: 0.02, desc: "戰鬥開始時，全體上陣角色的魔法攻擊力永久提升2%" },
+  8081: { name: "會心磨練", stat: "cri", value: 0.015, desc: "戰鬥開始時，全體上陣角色的爆擊率永久+1.5%" },
+  8082: { name: "會心奧義", stat: "criDamage", value: 0.05, desc: "戰鬥開始時，全體上陣角色的爆擊傷害永久+5%" },
+  8083: { name: "魔力精進 IV", stat: "matk", value: 0.025, desc: "戰鬥開始時，全體上陣角色的魔法攻擊力永久提升2.5%" },
+  8084: { name: "技巧精通", stat: "skillRate", value: 0.05, desc: "戰鬥開始時，全體上陣角色的技能傷害永久+5%" },
+  8085: { name: "魔力精進 V", stat: "matk", value: 0.03, desc: "戰鬥開始時，全體上陣角色的魔法攻擊力永久提升3%" },
+  8086: { name: "破壞本能", stat: "damageIncrease", value: 0.03, desc: "戰鬥開始時，全體上陣角色的造成傷害永久+3%" },
+  8087: { name: "魔力精進 VI", stat: "matk", value: 0.04, desc: "戰鬥開始時，全體上陣角色的魔法攻擊力永久提升4%" },
+  8088: { name: "堅韌意志", stat: "damageReduce", value: -0.03, desc: "戰鬥開始時，全體上陣角色的受到傷害永久-3%" },
+  8089: { name: "實習祭司系終極：解鎖神官", stat: "matk", value: 0.05, desc: "戰鬥開始時，全體上陣角色的魔法攻擊力永久提升5%" },
+};
+// ##TALENT_DEFAULT_DESIGN:END##
+
 function buildTalentDatabaseAndGrid(wb) {
   const parseFront = v => {
     if (v === null || v === undefined) return [];
@@ -281,7 +573,20 @@ function buildTalentDatabaseAndGrid(wb) {
   };
   const genTalent = {};
   const genGrid = {};
+  // 2026-09-09防呆修正：talent分頁目前每個group只有第一列(該group的根節點)填了id，同一group底下其餘
+  // 每個節點各自的列全部id留空——過去這裡不論o.id是什麼都直接genTalent[o.id]=entry，id留空的列全部會
+  // 撞在同一個「null」/「undefined」key上互相覆蓋，最後只會剩下最後一筆蓋過去的殘影，導致天賦畫面
+  // 幾乎完全沒有節點可顯示(Wei回報「天賦點的天賦丟失，完全沒顯示內容物」)。這裡先加上防呆：id缺漏的列
+  // 直接跳過並印出警告，不再讓它們互相覆蓋、汙染到其他正常資料；但這只是避免資料衝突的防呆，並不能讓
+  // 天賦樹恢復正常顯示——每個節點本來就需要自己獨立的id(display_position格線裡已經列出每個group該有
+  // 哪些id，例如group1需要100~114共15個)，這部分的資料本身還沒有逐列補上，需要請Wei參照格線把每一列
+  // 對應的id、buff_pasive(全部節點目前也都是空白，代表就算id補齊了、點下去也不會有任何實際加成效果)
+  // 補齊到xlsx裡，程式端目前沒有足夠資訊能自動還原這份對照關係。
   xlsxSheetToObjects(wb, 'talent').forEach(o => {
+    if (o.id === null || o.id === undefined) {
+      console.warn('[xlsx-loader] talent分頁有節點缺少id，已略過(不會顯示在天賦樹)：', o);
+      return;
+    }
     const entry = { id: o.id, group: o.group, name: o.group_info, front: parseFront(o.front), cost: o.cost, buffPasiveId: o.buff_pasive };
     if (o.role_card_unlock !== null && o.role_card_unlock !== undefined) entry.roleCardUnlock = o.role_card_unlock;
     genTalent[o.id] = entry;
@@ -291,6 +596,20 @@ function buildTalentDatabaseAndGrid(wb) {
       );
     }
   });
+  // 2026-09-09新增：每個group應該要有15個節點，上面這段防呆頂多只能「跳過缺id的列」，如果xlsx某個
+  // group讀到的節點數還是不足15個(目前6組都只有根節點1筆)，代表這個group的資料本來就還沒補齊，
+  // 這裡改成整組直接改用TALENT_DEFAULT_NODES/TALENT_DEFAULT_GRID頂替，確保天賦樹在Wei填齊xlsx
+  // 之前也能正常顯示、學習、且滿足「40等時剛好能點出解鎖二階職業、其餘點數轉回去可以點滿整張天賦」的規則
+  // (見上方TALENT_DEFAULT_DESIGN區塊的詳細說明)。一旦某個group從xlsx讀到的節點數已經補滿15個，
+  // 這裡會自動偵測到並改用xlsx的真實資料，不需要再改程式碼。
+  for (let g = 1; g <= 6; g++) {
+    const countFromXlsx = Object.values(genTalent).filter(n => n.group === g).length;
+    if (countFromXlsx < 15) {
+      Object.keys(genTalent).forEach(k => { if (genTalent[k].group === g) delete genTalent[k]; });
+      Object.entries(TALENT_DEFAULT_NODES).forEach(([id, node]) => { if (node.group === g) genTalent[id] = node; });
+      genGrid[g] = TALENT_DEFAULT_GRID[g];
+    }
+  }
   return { talent: genTalent, grid: genGrid };
 }
 
@@ -339,6 +658,23 @@ function buildBuffDatabaseAndSetTiers(wb) {
       };
     }
   });
+  // 2026-09-09新增：8000~8089這90個buff_id是天賦系統專用的被動效果，xlsx目前這90筆buff名稱全部是空白、
+  // 效果統一是佔位用的「ATK+1%」、且「持續回合數」欄位空白會被上面預設成1回合(導致天賦被動實際上只在
+  // 戰鬥第1回合生效、第2回合就消失，違反「解鎖後永久生效」的設計初衷)。這裡只在該buff_id的xlsx名稱仍是
+  // 空白時，才用TALENT_BUFF_DEFAULT(對應TALENT_DEFAULT_DESIGN那份天賦樹設計)的內容覆蓋掉名稱/數值/
+  // 移除百分比字段重新指定為對應stat欄位，並統一給一個很長的duration(9999，等同永久)避免1回合就消失的
+  // 問題；一旦Wei之後把xlsx buff分頁這90筆的名稱/數值自己填好，這裡會偵測到名稱不再是空白而不覆蓋，
+  // 自動改用xlsx的真實資料。
+  for (let bid = 8000; bid <= 8089; bid++) {
+    const cur = genBuff[bid];
+    const fallback = TALENT_BUFF_DEFAULT[bid];
+    if (!fallback) continue;
+    if (!cur || !cur.name) {
+      genBuff[bid] = { id: bid, name: fallback.name, icon: (BUFF_ICON_MAP[bid] || { icon: '✨' }).icon,
+        isUp: fallback.value >= 0, invisible: true, reflashAble: false, maxStack: 1, duration: 9999,
+        [fallback.stat]: fallback.value, desc: fallback.desc };
+    }
+  }
   return { buff: genBuff, setTiers: genSetTiers };
 }
 
@@ -366,9 +702,27 @@ function parseBraceList(v) {
   return matches.map(m => Number(m.slice(1, -1)));
 }
 
+// 2026-09-09新增：二階職業(90008~90013)在card分頁裡其實已經有列(名稱/rare/type/體系/equipment_type/
+// skill0~2都填好了，且對應的skill_id在skill分頁裡也都確實存在)，但這6列的「角色id」欄位本身是空白，
+// 導致原本的篩選條件(typeof o["角色id"]==="number")直接把這6列整個濾掉，遊戲裡完全找不到這6張卡
+// (Wei回報「職業和職業的技能全部...有問題」時看到的，其實就是只剩下6個一階職業、二階職業完全不存在)。
+// 這裡先用「名稱」把這6列比對回Wei訊息裡給的對照表(90008劍豪/90009狂戰士/90010神射手/90011刺客/
+// 90012魔導士/90013神官)，直接補上id——這個對照關係是Wei親自在訊息裡列出來的，不是我自行判斷。
+const ADVANCED_CLASS_NAME_TO_ID = { "劍豪": 90008, "狂戰士": 90009, "神射手": 90010, "刺客": 90011, "魔導士": 90012, "神官": 90013 };
+// 二階對應的一階職業id(用來在數值完全空白時借用一階基礎值*1.3當作暫定數值，避免「有id/有技能但hp=atk=0」
+// 這種比原本完全不存在還糟的殘廢卡片狀態——玩家透過天賦樹解鎖後至少能正常上場，不會出現0血0攻擊的怪異卡)
+const ADVANCED_CLASS_BASE_ID = { 90008: 90001, 90009: 90002, 90010: 90003, 90011: 90004, 90012: 90005, 90013: 90006 };
+
 function buildCardDatabase(wb) {
-  const objs = xlsxSheetToObjects(wb, "card").filter(o => typeof o["角色id"] === "number");
-  return objs.map(s => {
+  const rawObjs = xlsxSheetToObjects(wb, "card");
+  rawObjs.forEach(o => {
+    if ((o["角色id"] === null || o["角色id"] === undefined) && o.type === "role") {
+      const name = (o["角色名稱"] || "").trim();
+      if (ADVANCED_CLASS_NAME_TO_ID[name] !== undefined) o["角色id"] = ADVANCED_CLASS_NAME_TO_ID[name];
+    }
+  });
+  const objs = rawObjs.filter(o => typeof o["角色id"] === "number");
+  const list = objs.map(s => {
     const id = s["角色id"];
     const o = {
       id,
@@ -410,6 +764,30 @@ function buildCardDatabase(wb) {
     if (s.capture_rate !== null && s.capture_rate !== undefined) o.captureRate = s.capture_rate;
     return o;
   });
+  // 二階職業(90008~90013)這6張卡雖然透過上面的名稱比對補回了id，但card分頁本身完全沒有填hp/atk/matk/
+  // def/mdef/agi(全部空白)，會被上面統一套用「null就當0」，若不處理，玩家透過天賦樹解鎖後上場會是一張
+  // 0血0攻擊、比原本完全拿不到還要糟的殘廢卡。這裡只在「數值確實全部是0(=xlsx全空白，不是Wei刻意設計
+  // 成0)」時才借用對應一階職業(見ADVANCED_CLASS_BASE_ID)的基礎數值*1.3當暫定值，讓卡片至少能正常上場，
+  // 一旦Wei之後在card分頁把這6張卡自己的hp/atk/matk/def/mdef/agi填上實際數字，這裡會偵測到不再是
+  // 全0而不覆蓋，自動改用xlsx的真實數值。
+  const byId = {};
+  list.forEach(c => { byId[c.id] = c; });
+  Object.entries(ADVANCED_CLASS_BASE_ID).forEach(([advId, baseId]) => {
+    const adv = byId[advId];
+    const base = byId[baseId];
+    if (!adv || !base) return;
+    const allZero = !adv.hp && !adv.atk && !adv.matk && !adv.def && !adv.mdef;
+    if (allZero) {
+      adv.hp = Math.round(base.hp * 1.3);
+      adv.atk = Math.round(base.atk * 1.3);
+      adv.matk = Math.round(base.matk * 1.3);
+      adv.def = Math.round(base.def * 1.3);
+      adv.mdef = Math.round(base.mdef * 1.3);
+      adv.agi = base.agi + 2;
+      adv._statsArePlaceholder = true; // 供UI或未來檢查用：標記這是暫定數值、不是Wei自己填的正式數字
+    }
+  });
+  return list;
 }
 
 /** EQUIPMENT_DATABASE 相關：icon/iconBg/passive* 為美術與被動效果描述，xlsx 未包含，沿用內建對照表 */
