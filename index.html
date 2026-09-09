@@ -3396,7 +3396,7 @@
     #story-narration {
       display: none; width: 100%; box-sizing: border-box; background: rgba(10,8,6,0.88);
       border: 1px solid #6b5238; border-radius: 8px; padding: 10px 16px;
-      color: #f5e6c8; font-size: 14px; line-height: 1.6; text-align: left;
+      color: #f5e6c8; font-size: 28px; line-height: 1.6; text-align: left;
       box-shadow: 0 0 14px rgba(0,0,0,0.6);
     }
     #story-dialogue-wrap { width: 100%; box-sizing: border-box; padding: 0 14px; }
@@ -3407,15 +3407,15 @@
     }
     #story-speaker-name {
       display: inline-block; background: linear-gradient(180deg,#4a3520,#2a1c10);
-      border: 1px solid #a3843f; color: #ffd77a; font-size: 13px; font-weight: bold;
+      border: 1px solid #a3843f; color: #ffd77a; font-size: 26px; font-weight: bold;
       padding: 3px 14px; border-radius: 6px; margin: -24px 0 8px 0; box-shadow: 0 2px 6px rgba(0,0,0,0.5);
     }
     #story-dialogue-text {
-      color: #f5e6c8; font-size: 14px; line-height: 1.6; min-height: 44px; white-space: pre-wrap;
+      color: #f5e6c8; font-size: 28px; line-height: 1.6; min-height: 44px; white-space: pre-wrap;
       text-align: left;
     }
     #story-next-hint {
-      text-align: right; color: #d8bd88; font-size: 11px; margin-top: 4px; opacity: 0.85;
+      text-align: right; color: #d8bd88; font-size: 22px; margin-top: 4px; opacity: 0.85;
       animation: story-hint-blink 1.1s ease-in-out infinite;
     }
     @keyframes story-hint-blink { 0%,100%{opacity:0.3;} 50%{opacity:0.95;} }
@@ -3425,7 +3425,7 @@
     #guide-bubble {
       position: absolute; left: 50%; top: 14px; transform: translateX(-50%);
       max-width: 88%; background: rgba(20,14,8,0.95); border: 1px solid #ffd700;
-      color: #ffe9b0; font-size: 13px; line-height: 1.5; padding: 8px 14px;
+      color: #ffe9b0; font-size: 26px; line-height: 1.5; padding: 8px 14px;
       border-radius: 8px; box-shadow: 0 0 12px rgba(255,215,0,0.5); text-align: center;
       pointer-events: none;
     }
@@ -3443,7 +3443,7 @@
     #guide-toast {
       position: absolute; left: 50%; bottom: 90px; transform: translateX(-50%) translateY(10px);
       background: rgba(30,10,10,0.92); border: 1px solid #ff6b6b; color: #ffdada;
-      font-size: 12px; padding: 6px 14px; border-radius: 16px; z-index: 899;
+      font-size: 24px; padding: 6px 14px; border-radius: 16px; z-index: 899;
       opacity: 0; transition: opacity 0.15s, transform 0.15s; pointer-events: none;
     }
     #guide-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -3467,6 +3467,11 @@
     #name-input-box .name-input-hint { color: #b8a374; font-size: 11px; margin-top: -8px; margin-bottom: 12px; }
   
     #generic-info-modal { z-index: 960 !important; }
+    /* 2026-09(Wei要求引導/劇情UI文字放大2倍)：只放大檢查點解鎖引導彈窗(📖新功能解鎖)的文字，
+       generic-info-modal本身是全遊戲共用的通用提示彈窗(職業技能說明/強化結果/各種錯誤提示等都共用同一個DOM)，
+       用一個額外class限定範圍，避免連帶把其他非引導用途的提示文字也放大。 */
+    #generic-info-modal.stage-guide-active #generic-info-title { font-size: 26px; }
+    #generic-info-modal.stage-guide-active #generic-info-desc { font-size: 24px; }
     .bottom-nav-item.nav-locked { opacity: 0.4; filter: grayscale(1); position: relative; }
     .bottom-nav-item.nav-locked::after {
       content: "\1F512"; position: absolute; top: 2px; right: 8px; font-size: 11px;
@@ -10232,16 +10237,19 @@ let TALENT_CURVE = [
     }
 
     // 通用資訊彈窗(取代 alert，風格與遊戲一致)
-    function showGenericInfoModal(title, desc) {
+    function showGenericInfoModal(title, desc, opts) {
       document.getElementById('generic-info-title').innerText = title;
       document.getElementById('generic-info-desc').innerText = desc;
+      // 2026-09：僅檢查點引導彈窗(showStageGuideModal傳入opts.large)套用放大文字的樣式，
+      // 其餘一般提示(職業技能說明/強化結果/錯誤提示等)維持原字體大小不受影響。
+      document.getElementById('generic-info-modal').classList.toggle('stage-guide-active', !!(opts && opts.large));
       document.getElementById('generic-info-modal').style.display = 'flex';
     }
     // 批次3：檢查點解鎖說明彈窗(共用generic-info-modal的DOM)，關閉後可接續播放下一個檢查點的引導(見fireNextStageGuide)
     let _stageGuideOnCloseCallback = null;
     function showStageGuideModal(text, onClose) {
       _stageGuideOnCloseCallback = onClose || null;
-      showGenericInfoModal('📖 新功能解鎖', text);
+      showGenericInfoModal('📖 新功能解鎖', text, { large: true });
     }
     function closeGenericInfoModal() {
       document.getElementById('generic-info-modal').style.display = 'none';

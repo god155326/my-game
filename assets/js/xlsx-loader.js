@@ -1248,15 +1248,24 @@ function buildStoryLines(wb) {
   // 連帶讓「它後面」的資料表(包含批次3新增的GUIDE_DATABASE)全部讀取失敗、退回內建預設值——這裡改成只取有實際文字的列
   const map100After = rows.filter(o => o.mapid === 100 && o.type === "story" && o.timing === "after" && o.info);
   const map100Before = rows.filter(o => o.mapid === 100 && o.type === "story" && o.timing === "before" && o.info);
+  // guideDialogue：mapid=null的type=guide列裡，真正的「對話文本」(教官職業介紹/艾琳召喚武器前置對話)，
+  // 排除{battle}/{start_gift}/{name}/{arrangement}這類純標記列(info只是一個{xxx}標籤，不是要顯示給玩家的文字，
+  // 2026-09-10已把這幾個標記從text分頁的info欄位清空，這條regex保留下來當作未來萬一又混入標記時的安全網)。
+  // 依text分頁裡的實際排列順序，第1筆是教官/職業介紹對話(對應classIntro)，第2筆才是艾琳/召喚武器前置對話(對應gachaIntro)。
   const guideDialogue = rows.filter(o => o.type === "guide" && o.mapid === null && o.info && !/^\{[a-z_]+\}$/.test(String(o.info || "").trim()));
-  // 只回傳xlsx裡實際有文字內容的欄位；缺少的欄位(例如目前classIntro在xlsx裡尚未填寫)則不覆寫，
-  // 由呼叫端(loadGameDataFromXlsx)以Object.assign合併，繼續沿用index.html內建的預設文本，避免覆寫成空字串
+  // 只回傳xlsx裡實際有文字內容的欄位；缺少的欄位則不覆寫，由呼叫端(loadGameDataFromXlsx)以Object.assign合併，
+  // 繼續沿用index.html內建的預設文本，避免覆寫成空字串
   const out = {};
   if (map100Before[0]) out.before100 = map100Before[0].info.split("\n");
   if (map100After[0]) out.after100a = map100After[0].info.split("\n");
   if (map100After[1]) out.after100b = map100After[1].info.split("\n");
-  if (map100After[2]) out.classIntro = map100After[2].info.split("\n");
-  if (guideDialogue[0]) out.gachaIntro = guideDialogue[0].info.split("\n");
+  // 2026-09-10修正(Wei要求把引導文字統一接回text表)：這裡過去把map100After[2]（永遠不存在，
+  // mapid=100/after的story列實際上只有2筆有文字）指派給classIntro，導致classIntro從未真正讀到xlsx內容、
+  // 永遠退回index.html內建預設值；同時guideDialogue[0]（教官/職業介紹對話）被誤接到gachaIntro，
+  // 顯示成錯誤的對話內容。改成依text分頁實際排列順序正確對應：guideDialogue[0]=classIntro、
+  // guideDialogue[1]=gachaIntro，兩者現在都會真正讀取xlsx的info內容，Wei之後直接改這兩列文字即可生效。
+  if (guideDialogue[0]) out.classIntro = guideDialogue[0].info.split("\n");
+  if (guideDialogue[1]) out.gachaIntro = guideDialogue[1].info.split("\n");
   return out;
 }
 
@@ -1275,6 +1284,22 @@ function buildFeatureGuideDatabase(wb) {
     if (o.timing === null || o.timing === undefined || String(o.timing).trim() === "") return;
     out[String(o.timing).trim()] = { mapId: o.mapid, info: o.info };
   });
+  // 2026-09-10新增：text分頁這裡的mapid欄位只是給Wei對照「這則引導對應哪一關」用的文件資訊，
+  // 引導實際何時觸發完全由index.html的FEATURE_UNLOCK_META決定，兩者並不連動讀取彼此。
+  // 過去發生過FEATURE_UNLOCK_META的檢查點時程調整後，忘記同步更新text分頁的mapid欄位，
+  // 導致Wei在xlsx裡看到的「這關對應的引導文字」跟遊戲實際觸發的關卡對不上(2026-09-10已修正這批舊資料)。
+  // 這裡在載入時做一次一致性檢查，兩者不一致就印出警告，方便日後檢查點時程再調整時能及早發現、
+  // 純粹是診斷用的console.warn，不影響遊戲實際運作(即使FEATURE_UNLOCK_META_MAP尚未定義也不會報錯)。
+  try {
+    if (typeof FEATURE_UNLOCK_META_MAP !== 'undefined' && FEATURE_UNLOCK_META_MAP) {
+      Object.keys(out).forEach(key => {
+        const meta = FEATURE_UNLOCK_META_MAP[key];
+        if (meta && out[key].mapId != null && meta.mapId !== out[key].mapId) {
+          console.warn(`[text分頁提醒] 引導「${key}」在text分頁標記的mapid(${out[key].mapId})跟遊戲實際觸發的mapid(${meta.mapId})不一致，建議把text分頁該列的mapid欄位改成${meta.mapId}`);
+        }
+      });
+    }
+  } catch (e) {}
   return out;
 }
 
