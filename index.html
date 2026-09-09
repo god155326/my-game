@@ -4330,11 +4330,14 @@
       4003: { id: 4003, name: "裂傷", icon: "🩸", isUp: false, reflashAble: true, maxStack: 10, duration: 2, atk: -0.1 },
       4004: { id: 4004, name: "中毒", icon: "☠️", isUp: false, reflashAble: true, maxStack: 20, duration: 3, atk: -0.05 },
       4005: { id: 4005, name: "治療反轉", icon: "🚫💚", isUp: false, reflashAble: true, maxStack: 20, duration: 3, atk: -0.05 },
-      5001: { id: 5001, name: "麻痺", icon: "⛓️", isUp: false, reflashAble: false, maxStack: 1, duration: 1 },
-      5002: { id: 5002, name: "暈眩", icon: "💫", isUp: false, reflashAble: false, maxStack: 1, duration: 1 },
-      5003: { id: 5003, name: "冰凍", icon: "🧊", isUp: false, reflashAble: false, maxStack: 1, duration: 1 },
-      5004: { id: 5004, name: "停止", icon: "⏹️", isUp: false, reflashAble: false, maxStack: 1, duration: 1 },
-      5005: { id: 5005, name: "凝聚", icon: "🌀", isUp: true, reflashAble: false, maxStack: 1, duration: 1 },
+      // 2026-09-10修正：這5個是「這回合無法行動」的控制型debuff(呼應getControlBuff()的判斷)，
+      // 過去這份陣列(以及xlsx讀取路徑)從未真正賦值isControl，導致附加成功後角色其實不會跳過行動，
+      // 這裡(連同xlsx讀取路徑，見xlsx-loader.js的CONTROL_BUFF_IDS)一併補上isControl:true。
+      5001: { id: 5001, name: "麻痺", icon: "⛓️", isUp: false, isControl: true, reflashAble: false, maxStack: 1, duration: 1 },
+      5002: { id: 5002, name: "暈眩", icon: "💫", isUp: false, isControl: true, reflashAble: false, maxStack: 1, duration: 1 },
+      5003: { id: 5003, name: "冰凍", icon: "🧊", isUp: false, isControl: true, reflashAble: false, maxStack: 1, duration: 1 },
+      5004: { id: 5004, name: "停止", icon: "⏹️", isUp: false, isControl: true, reflashAble: false, maxStack: 1, duration: 1 },
+      5005: { id: 5005, name: "凝聚", icon: "🌀", isUp: true, isControl: true, reflashAble: false, maxStack: 1, duration: 1 },
       5006: { id: 5006, name: "爆散", icon: "💥", isUp: true, reflashAble: false, maxStack: 1, duration: 1 },
       6001: { id: 6001, name: "殲滅套裝x2", icon: "🧩", isSetBase: true, setInfo: "殲滅的", atk: 0.1, matk: 0.1, cri: 0.15, invisible: true, reflashAble: false, maxStack: 1, duration: 9999 },
       6002: { id: 6002, name: "戰士套裝X2", icon: "🧩", isSetBase: true, setInfo: "戰士的", def: 0.15, invisible: true, reflashAble: false, maxStack: 1, duration: 9999 },
@@ -11894,12 +11897,19 @@ let TALENT_CURVE = [
         setButtonsDisabled(true);
         setActionPopupVisible(false); // 這回合直接跳過行動，無法操作，彈窗隱藏改看戰鬥LOG
         showBuffProcNotice(activeUnit, controlBuff.name, 'notice-red');
-        let el = activeUnit.isRole
-          ? document.getElementById(`${activeUnit.side}-role-hp-block`)
-          : document.getElementById(`card-${activeUnit.id}`);
-        if (el) {
-          el.classList.add('control-flash');
-          setTimeout(() => el.classList.remove('control-flash'), td(900));
+        // 2026-09-10修正：跟其餘特效函式(triggerCardRecoil等)比照，掛機演出停留在主線首頁時改抓縮小版卡片元素，
+        // 讓「無法行動」的閃爍提示在縮小版戰鬥區塊上也能正確顯示，不會找不到元素而silently no-op
+        if (shouldShowBattleEffects()) {
+          let isIdle = gameState.idle.exploring;
+          let el = isIdle
+            ? document.getElementById(`mini-card-${activeUnit.id}`)
+            : (activeUnit.isRole
+              ? document.getElementById(`${activeUnit.side}-role-hp-block`)
+              : document.getElementById(`card-${activeUnit.id}`));
+          if (el) {
+            el.classList.add('control-flash');
+            setTimeout(() => el.classList.remove('control-flash'), isIdle ? 900 : td(900));
+          }
         }
         log(`⛔ ${elName(activeUnit)} 受到【${controlBuff.name}】效果影響，無法行動！`, 'sys');
         // 不再對行動值做任何特殊處理：跳過行動視同一般行動一樣正常扣除100(與所有人共用同一套規則)，單純只是不執行技能而已
@@ -12031,9 +12041,13 @@ let TALENT_CURVE = [
     }
 
     // 結束本次行動並推進到下一位：若剛好開始新回合，先處理完關卡事件才繼續推進(select類事件會暫停等待玩家選擇)
+    // 2026-09-10修正(Wei指示)：掛機背景探索戰鬥(gameState.idle.exploring)一律跳過關卡事件(場地buff/debuff、三選一等)——
+    // 這些事件本來就是綁在gameState.selectedQuest(玩家實際挑戰的關卡)的event1/event2設定上，掛機演出打的是
+    // 從該地區random_play池隨機抽選的怪物，跟目前選定關卡完全無關，不應該讓玩家在主線首頁看到背景演出跳出
+    // 「場地事件BUFF」或「請選擇」之類的提示彈窗。
     function endTurnAndAdvance(unit, gaugeOverride) {
       let newRoundStarted = finishActorTurn(unit, gaugeOverride);
-      if (newRoundStarted) {
+      if (newRoundStarted && !gameState.idle.exploring) {
         processQuestEvents(() => advanceToNextActor());
       } else {
         advanceToNextActor();
@@ -12945,6 +12959,21 @@ let TALENT_CURVE = [
       return expanded;
     }
 
+    // 2026-09-10修正(Wei指示)：切回主線首頁時，畫面上內嵌的掛機縮小版戰鬥區塊要能看到戰鬥特效演出(受擊/傷害數字/投射物等)，
+    // 過去這些特效函式一律用「gameState.idle.exploring」整批關閉，導致連玩家正好停在主線首頁、縮小版戰鬥區塊清楚可見時也完全沒有演出。
+    // 這裡改成只在「掛機演出、且玩家目前不在主線首頁(縮小版戰鬥區塊看不到)」時才略過特效——沒有畫面可顯示時省下這些效果，
+    // 停留在主線首頁時則正常顯示在縮小版卡片上(getUnitPos/getCrystalPos本來就已經支援對齊到縮小版卡片座標)。
+    // 至於「場地事件BUFF/三選一」等關卡專屬的event提示彈窗，改成在endTurnAndAdvance()那一層直接跳過processQuestEvents()
+    // (掛機演出使用的是隨機抽選的怪物、跟目前gameState.selectedQuest所指向的關卡事件設定無關)，不歸這裡管。
+    function isMainlineScreenVisible() {
+      const el = document.getElementById('screen-mainline');
+      return !!el && el.style.display !== 'none';
+    }
+    // 掛機演出中，只有停留在主線首頁(看得到縮小版戰鬥區塊)才要顯示戰鬥特效；正式戰鬥則一律顯示
+    function shouldShowBattleEffects() {
+      return !gameState.idle.exploring || isMainlineScreenVisible();
+    }
+
     // 依角色所屬陣營觸發攻擊撲擊動畫(近戰攻擊時使用，玩方往上撲、敵方往下撲)
     // 掛機演示(idle.exploring)由於畫面上使用的是主線縮小版卡面(mini-card-{id})而非正式戰鬥的卡面(card-{id})，改用對應的縮小版元素id，且動畫固定0.3秒(不受戰鬥加速倍率影響)
     function triggerCardLunge(unit) {
@@ -12965,19 +12994,22 @@ let TALENT_CURVE = [
     // 觸發受擊者卡牌的後仰晃動動畫
     function triggerCardRecoil(unit) {
       if (!unit) return;
-      if (gameState.idle.exploring) return; // 掛機戰鬥演示不顯示任何特效，只有正常(手動/正式)戰鬥才會演出
-      let el = unit.isRole
-        ? document.getElementById(`${unit.side}-role-hp-block`)
-        : document.getElementById(`card-${unit.id}`);
+      if (!shouldShowBattleEffects()) return; // 掛機演出且目前不在主線首頁(沒有畫面可看)才略過
+      let isIdle = gameState.idle.exploring;
+      let el = isIdle
+        ? document.getElementById(`mini-card-${unit.id}`)
+        : (unit.isRole
+          ? document.getElementById(`${unit.side}-role-hp-block`)
+          : document.getElementById(`card-${unit.id}`));
       if (!el) return;
       el.classList.remove('hit-recoil');
       void el.offsetWidth;
       el.classList.add('hit-recoil');
-      setTimeout(() => el.classList.remove('hit-recoil'), td(450));
+      setTimeout(() => el.classList.remove('hit-recoil'), isIdle ? 300 : td(450));
     }
 
     function spawnHitEffect(name, x, y) {
-      if (gameState.idle.exploring) return; // 掛機戰鬥演示不顯示任何特效，只有正常(手動/正式)戰鬥才會演出
+      if (!shouldShowBattleEffects()) return; // 掛機演出且目前不在主線首頁(沒有畫面可看)才略過
       const overlay = document.getElementById('anim-overlay');
       if (!overlay || !name) return;
 
@@ -13015,9 +13047,6 @@ let TALENT_CURVE = [
         || (skillObj.type === 'SHIELD' && !(skillObj.ad > 0) && !(skillObj.ap > 0));
 
       const overlay = document.getElementById('anim-overlay');
-      const attackerCard = attacker.isRole
-        ? document.getElementById(`${attacker.side}-role-hp-block`)
-        : document.getElementById(`card-${attacker.id}`);
 
       targets.forEach((target, index) => {
         setTimeout(() => {
@@ -13031,18 +13060,13 @@ let TALENT_CURVE = [
             log(`🎯 選中的目標已死亡，自動改為攻擊其他存活單位！`, 'sys');
           }
 
-          let targetEl = actualTarget.isRole ? document.getElementById(`${actualTarget.side}-role-hp-block`) : document.getElementById(`card-${actualTarget.id}`);
-          if (!targetEl || !attackerCard) return;
+          // 2026-09-10修正：改用getUnitPos()(已內建idle掛機演出+主線首頁可見時，自動改抓縮小版卡片座標的邏輯)取代
+          // 直接讀取正式戰鬥畫面卡片(card-{id})座標，讓掛機演出停留在主線首頁時，攻擊者/目標位置也能正確對齊到縮小版卡片
+          let startPos = getUnitPos(attacker);
+          let endPos = getUnitPos(actualTarget);
+          if (!startPos || !endPos) return;
 
-          let rectA = attackerCard.getBoundingClientRect();
-          let rectT = targetEl.getBoundingClientRect();
-          let rectO = overlay.getBoundingClientRect();
-          let scale = getGameScale();
-
-          let startX = (rectA.left + rectA.width / 2 - rectO.left) / scale;
-          let startY = (rectA.top + rectA.height / 2 - rectO.top) / scale;
-          let endX = (rectT.left + rectT.width / 2 - rectO.left) / scale;
-          let endY = (rectT.top + rectT.height / 2 - rectO.top) / scale;
+          let startX = startPos.x, startY = startPos.y, endX = endPos.x, endY = endPos.y;
 
           function playHitEffectsAndApply() {
             if (hasDamageEffect) triggerCardRecoil(actualTarget);
@@ -13083,9 +13107,9 @@ let TALENT_CURVE = [
 
           if (skillObj.prefebAtk) {
             // 遠程攻擊：依 prefeb_atk 名稱直接對應到生成好的飛行物素材圖片(magic開頭=魔法系，throw=物理系)
-            // 掛機戰鬥演示不顯示任何特效(只有正常/正式戰鬥才會演出投射物)，但仍維持相同的時間節奏，確保回合推進步調一致
+            // 掛機演出時，只有停留在主線首頁(看得到縮小版戰鬥區塊)才會顯示投射物，其餘情況仍維持相同的時間節奏，確保回合推進步調一致
             let proj = null;
-            if (!gameState.idle.exploring) {
+            if (shouldShowBattleEffects()) {
               proj = document.createElement('img');
               proj.src = vfxImagePath(skillObj.prefebAtk);
               proj.onerror = function () { this.onerror = null; this.src = vfxImagePath('throw'); }; // 找不到對應圖片時，改用預設的 throw 特效，不會出現破圖
@@ -13116,7 +13140,7 @@ let TALENT_CURVE = [
           } else {
             // 非攻擊類技能且未配置 prefeb_atk：維持原本輔助類技能的投射視覺(治療等)
             let proj = null;
-            if (!gameState.idle.exploring) {
+            if (shouldShowBattleEffects()) {
               proj = document.createElement('div');
               proj.className = (skillObj.type === 'HEAL' || skillObj.type === 'SHIELD') ? 'projectile-heal' : 'projectile-ap';
               proj.style.left = `${startX}px`;
@@ -13520,7 +13544,7 @@ let TALENT_CURVE = [
 
     function getCrystalPos(side) {
       const overlay = document.getElementById('anim-overlay');
-      let useMini = gameState.idle.exploring && document.getElementById('screen-mainline').style.display !== 'none';
+      let useMini = gameState.idle.exploring && isMainlineScreenVisible();
       let el = document.getElementById(useMini ? `mainline-${side}-role-thumb` : `${side}-role-hp-block`);
       if (!el || !overlay) return null;
       let rectT = el.getBoundingClientRect();
@@ -13540,7 +13564,7 @@ let TALENT_CURVE = [
       if (!overlay) return null;
       // #anim-overlay 覆蓋整個遊戲畫面(不論目前顯示哪個畫面)；若目前是主線內嵌的掛機戰鬥且主線畫面可見，
       // 真正的戰鬥主畫面是隱藏的(display:none 的元素 getBoundingClientRect 一律回傳0)，改抓可見的縮小版卡片位置，特效才會對齊正確位置
-      let useMini = gameState.idle.exploring && document.getElementById('screen-mainline').style.display !== 'none';
+      let useMini = gameState.idle.exploring && isMainlineScreenVisible();
       let el = document.getElementById(useMini ? `mini-card-${unit.id}` : `card-${unit.id}`);
       if (!el) return null;
       let rectT = el.getBoundingClientRect();
@@ -13554,7 +13578,7 @@ let TALENT_CURVE = [
 
     // BUFF觸發時的小文字提示(持續恢復/持續回魔/行動加快/燒傷/凍傷/裂傷/中毒/麻痺/暈眩等)，顯示於對象上方，效果變化前先出現
     function showBuffProcNotice(unit, text, colorClass) {
-      if (gameState.idle.exploring) return; // 掛機戰鬥演示不顯示任何特效，只有正常(手動/正式)戰鬥才會演出
+      if (!shouldShowBattleEffects()) return; // 掛機演出且目前不在主線首頁(沒有畫面可看)才略過
       const overlay = document.getElementById('anim-overlay');
       let pos = getUnitPos(unit);
       if (!overlay || !pos) return;
@@ -13645,7 +13669,7 @@ let TALENT_CURVE = [
     }
 
     function showPopText(x, y, text, className) {
-      if (gameState.idle.exploring) return; // 掛機戰鬥演示不顯示任何特效，只有正常(手動/正式)戰鬥才會演出
+      if (!shouldShowBattleEffects()) return; // 掛機演出且目前不在主線首頁(沒有畫面可看)才略過
       const overlay = document.getElementById('anim-overlay');
       // 傷害/爆擊/恢復三種數字改用美術數字圖顯示(見上方 showPopNumberSprite)
       let spriteType = className === 'dmg-num' ? 'dmg' : (className === 'cri-num' ? 'cri' : (className === 'heal-num' ? 'heal' : null));

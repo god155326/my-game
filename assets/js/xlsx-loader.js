@@ -799,6 +799,17 @@ function buffStatFields(o) {
   return entry;
 }
 
+// 2026-09-10修正(Wei回報暈眩/控制效果整批壞掉)：麻痺(5001)/暈眩(5002)/冰凍(5003)/停止(5004)/凝聚(5005)
+// 這5個buff在xlsx `buff`分頁裡的buff_info欄位其實都寫得很清楚是「1回合無法行動」，但整套BUFF_DATABASE
+// 產生流程(不論是這個xlsx讀取路徑、還是index.html裡xlsx讀取失敗時的內建備援陣列)從頭到尾都沒有任何地方
+// 真正把這個「會讓單位這回合跳過行動」的旗標(index.html的getControlBuff()實際檢查的info.isControl)寫進
+// BUFF_DATABASE——這不是這次不小心被改掉，而是這個旗標本身從未真正被賦值過，跳過行動的判斷式(getControlBuff)
+// 永遠找不到任何buff的isControl為true，等於這5個控制效果的「附加成功」跟「回合結算扣血/持續時間」都正常，
+// 唯獨「讓對象真的跳過這回合行動」這個核心效果完全沒有生效。這裡比照BUFF_ICON_MAP(icon/isUp)同樣的做法，
+// 額外新增一份「控制類buff」的中繼資料清單，這份清單不是xlsx `buff`分頁的任何一個既有欄位、後續也不會被
+// 分頁資料覆蓋掉(如同icon一樣，是本檔案內固定的分類設定，不需要也不會出現在xlsx裡)。
+const CONTROL_BUFF_IDS = new Set([5001, 5002, 5003, 5004, 5005]); // 麻痺/暈眩/冰凍/停止/凝聚
+
 function buildBuffDatabaseAndSetTiers(wb) {
   const rows = xlsxSheetToObjects(wb, 'buff').filter(o => typeof o.buff_id === 'number');
   const byId = {};
@@ -818,6 +829,7 @@ function buildBuffDatabaseAndSetTiers(wb) {
         reflashAble: !!o.reflashAble, maxStack: o.max_stack === null || o.max_stack === undefined ? 1 : o.max_stack,
         duration: o['持續回合數'] === null || o['持續回合數'] === undefined ? 1 : o['持續回合數'], ...buffStatFields(o) };
       if (o.invisible) entry.invisible = true;
+      if (CONTROL_BUFF_IDS.has(id)) entry.isControl = true;
       genBuff[id] = entry;
     } else {
       const tierRows = [...rs].sort((a, b) => a.set_effective_count - b.set_effective_count);
