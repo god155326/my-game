@@ -6999,9 +6999,16 @@ let TALENT_CURVE = [
       showGenericInfoModal('升級成功', `【${elName(card)}】已升至 LV.${getClassLevel(ui.classId)}！`);
     }
 
-    // 依照目前戰鬥速度倍率換算實際延遲時間(2倍速時延遲時間減半)
+    // 2026-09-10 Wei指示：戰鬥演出整體再加快20%(x1.2)，僅影響「播放速度」(所有出招節奏/動畫/延遲的實際快慢)，
+    // 出招規則、判定邏輯完全不變；且不能更動 gameState.speedMultiplier 這個原始欄位本身(它必須維持恰好是1或2，
+    // 因為其他地方有直接寫死的 === 2 判斷、以及自動戰鬥按鈕文字syncAutoButtonUI()也是直接讀這個原始值來決定
+    // 顯示「自動戰鬥: ON」或「自動戰鬥: ON (2倍速)」，這兩者的顯示文字都不應該因為這次加速而改變)。
+    // 因此另外獨立一個「播放加速倍率」常數，只在實際換算「延遲時間長短」與「CSS動畫秒數」的地方套用，
+    // 不影響任何讀取 speedMultiplier 原始值來做判斷/顯示的程式碼。
+    const BATTLE_PLAYBACK_SPEED_BOOST = 1.2;
+    // 依照目前戰鬥速度倍率換算實際延遲時間(2倍速時延遲時間減半)，並統一再乘上額外的播放加速倍率
     function td(ms) {
-      return ms / gameState.speedMultiplier;
+      return ms / (gameState.speedMultiplier * BATTLE_PLAYBACK_SPEED_BOOST);
     }
 
     function getRandomHeroes(count) {
@@ -8869,6 +8876,7 @@ let TALENT_CURVE = [
         let jobCard = info && CARD_DATABASE.find(c => c.id === info.unlockJob);
         gridEl.innerHTML = `<div class="explore-empty-hint">🔒 尚未擁有「${jobCard ? elName(jobCard) : (info ? info.unlockJob : '')}」職業，無法開啟此天賦頁</div>`;
         gameState.talentUI.selectedNodeId = null;
+        gridEl._talentCurrentNodes = [];
         drawTalentTreeLines([]);
         document.getElementById('talent-points-remaining').innerText = `剩餘天賦點數：${gameState.talentPoints}`;
         let totalSpentLocked = [...gameState.unlockedTalents].reduce((s, id) => s + ((TALENT_DATABASE[id] || {}).cost || 0), 0);
@@ -8897,6 +8905,24 @@ let TALENT_CURVE = [
       // 前置連線：實際量測每個節點在畫面上渲染出來的座標(不是用欄/列數字用估算的)，依此在兩個節點的正中心之間畫線，
       // 這樣不管容器大小、欄寬如何變化，線永遠會準確對齊到真正的前置節點(天賦)與下一個節點(天賦)之間，而不是寫死的固定線條
       drawTalentTreeLines(nodes);
+      // 2026-09-10修正(Wei回報「天賦頁面右邊滑動線不會跟著滑動」)：連線是用getBoundingClientRect()量測「渲染當下」的座標畫出來的，
+      // 但.talent-tree-grid本身是overflow-y:auto可獨立捲動的容器，過去只有在重新render(切換分類/選節點/學習/重置)時才會重畫連線，
+      // 玩家單純把節點列表往下捲動時，連線卻沒有跟著重新量測位置，導致線條停在原地、跟畫面上實際的節點位置對不起來。
+      // 這裡改成監聽該容器的scroll事件，捲動時即時用同一批nodes重新畫線(不重建節點本身的HTML，所以捲動位置不會被打斷)；
+      // 用requestAnimationFrame節流，避免捲動時過度頻繁重繪。
+      if (!gridEl._talentScrollBound) {
+        gridEl._talentScrollBound = true;
+        let rafPending = false;
+        gridEl.addEventListener('scroll', () => {
+          if (rafPending) return;
+          rafPending = true;
+          requestAnimationFrame(() => {
+            rafPending = false;
+            drawTalentTreeLines(gridEl._talentCurrentNodes || []);
+          });
+        });
+      }
+      gridEl._talentCurrentNodes = nodes;
 
       document.getElementById('talent-points-remaining').innerText = `剩餘天賦點數：${gameState.talentPoints}`;
       let totalSpent = [...gameState.unlockedTalents].reduce((s, id) => s + ((TALENT_DATABASE[id] || {}).cost || 0), 0);
@@ -13634,9 +13660,11 @@ let TALENT_CURVE = [
     }
 
     // 更新畫面上實際套用的戰鬥速度倍率(影響 CSS 動畫時長，JS 延遲則透過 td() 換算)
+    // 同步套用 BATTLE_PLAYBACK_SPEED_BOOST(x1.2)，讓CSS動畫(--speed)跟JS延遲(td())採用同一套實際播放速度，
+    // 但這裡只改CSS變數的「值」，不改 gameState.speedMultiplier 本身。
     function applySpeedToCSS() {
       const container = document.querySelector('.game-container');
-      if (container) container.style.setProperty('--speed', gameState.speedMultiplier);
+      if (container) container.style.setProperty('--speed', gameState.speedMultiplier * BATTLE_PLAYBACK_SPEED_BOOST);
     }
 
     // 依目前(可能是延續自上一場戰鬥的)gameState.isAuto / speedMultiplier 更新按鈕外觀，不改變設定值本身
@@ -14240,23 +14268,29 @@ let TALENT_CURVE = [
     // 功能解鎖判定：isFeatureUnlocked(key) 直接查 gameState.clearedMainMapIds 是否已包含該檢查點
     // 對應的主線mapId(主線通關進度只增不減，故此判定天然具備「後面關卡也算已解鎖前面檢查點」的效果)。
     // =====================================================================================
+    // 2026-09-10調整(Wei指示，依附件「不朽_產出套入計畫.xlsx」)：把中段檢查點的解鎖時機整體往前提，
+    // 讓武器升級/開放自動下一關/武器升星/暗黑契約/解鎖2倍速/試煉之塔/神格/神格試煉/神格副本(無限地城LV10-50)/裝備系統
+    // 這幾個檢查點都比原本更早觸發；轉職、魔法石(殲滅任務)、無限地城(51~100等)、無限地城(100~130等)這4個
+    // 附件裡時間點跟現有一致，維持不動。只調整mapId(觸發時機)，不改動每個檢查點各自的獎勵內容/教學文字/數值，
+    // 這些Wei說會自己之後處理。god_stat/god_trial共用2-15、infinite_dungeon_50/class_equip共用2-20，
+    // 兩組都刻意維持「陣列順序=實際觸發順序」(同一關要先做完上一個才做下一個)，故沿用原本的排列順序。
     const FEATURE_UNLOCK_META = [
-      { key: 'idle_unlock',        mapId: 1002, onUnlock: () => grantCheckpointReward('idle_unlock') },
-      { key: 'talent_intro',       mapId: 1004, onUnlock: null },
-      { key: 'weapon_levelup',     mapId: 1014, onUnlock: () => grantCheckpointReward('weapon_levelup') },
-      { key: 'auto_next',          mapId: 1019, onUnlock: null },
-      { key: 'weapon_starup',      mapId: 1029, onUnlock: () => grantCheckpointReward('weapon_starup') },
-      { key: 'dark_contract',      mapId: 1044, onUnlock: () => grantCheckpointReward('dark_contract') },
-      { key: 'speed2x',            mapId: 1049, onUnlock: null },
-      { key: 'tower',              mapId: 1059, onUnlock: null },
-      { key: 'god_stat',           mapId: 1069, onUnlock: null },
-      { key: 'god_trial',          mapId: 1069, onUnlock: () => grantCheckpointReward('god_trial') },
-      { key: 'infinite_dungeon_50',mapId: 1079, onUnlock: null },
-      { key: 'class_equip',        mapId: 1079, onUnlock: null },
-      { key: 'class_change',       mapId: 1089, onUnlock: null },
-      { key: 'annihilation',       mapId: 1119, onUnlock: null },
-      { key: 'infinite_dungeon_100',mapId: 1149, onUnlock: null },
-      { key: 'infinite_dungeon_130',mapId: 1179, onUnlock: null },
+      { key: 'idle_unlock',        mapId: 1002, onUnlock: () => grantCheckpointReward('idle_unlock') },  // 1-3(不變)
+      { key: 'talent_intro',       mapId: 1004, onUnlock: null },                                        // 1-5(不變)
+      { key: 'weapon_levelup',     mapId: 1009, onUnlock: () => grantCheckpointReward('weapon_levelup') },// 1-15→1-10
+      { key: 'auto_next',          mapId: 1014, onUnlock: null },                                        // 1-20→1-15
+      { key: 'weapon_starup',      mapId: 1019, onUnlock: () => grantCheckpointReward('weapon_starup') },// 1-30→1-20
+      { key: 'dark_contract',      mapId: 1024, onUnlock: () => grantCheckpointReward('dark_contract') },// 2-15→1-25
+      { key: 'speed2x',            mapId: 1029, onUnlock: null },                                        // 2-20→1-30
+      { key: 'tower',              mapId: 1034, onUnlock: null },                                        // 2-30→2-5
+      { key: 'god_stat',           mapId: 1044, onUnlock: null },                                        // 3-10→2-15
+      { key: 'god_trial',          mapId: 1044, onUnlock: () => grantCheckpointReward('god_trial') },    // 3-10→2-15
+      { key: 'infinite_dungeon_50',mapId: 1049, onUnlock: null },                                        // 3-20→2-20
+      { key: 'class_equip',        mapId: 1049, onUnlock: null },                                        // 3-20→2-20
+      { key: 'class_change',       mapId: 1089, onUnlock: null },                                        // 3-30(不變)
+      { key: 'annihilation',       mapId: 1119, onUnlock: null },                                        // 4-30(不變)
+      { key: 'infinite_dungeon_100',mapId: 1149, onUnlock: null },                                       // 5-30(不變)
+      { key: 'infinite_dungeon_130',mapId: 1179, onUnlock: null },                                       // 6-30(不變)
     ];
     const FEATURE_UNLOCK_META_MAP = {};
     FEATURE_UNLOCK_META.forEach(m => { FEATURE_UNLOCK_META_MAP[m.key] = m; });
@@ -14375,8 +14409,9 @@ let TALENT_CURVE = [
       return new Promise(resolve => {
         Guide._roleSelectResolve = resolve;
         // 教學階段尚未透過天賦解鎖任何職業，暫時將全部職業標示為可選，待玩家確認後只保留其選擇的那一個
-        // 魔王(90007)是劇情/敵方專用的特殊角色，不列入玩家可選職業(玩家可選的是90001~90006共6個職業)
-        const roleCards = CARD_DATABASE.filter(c => c.isRole && c.id < 90008);
+        // 2026-09-10修正(Wei回報神劍使90007仍會出現)：舊寫法用id<90008判斷，90007(高階/tag23,劇情用神劍使)剛好小於90008會被誤含入；
+        // 改成跟renderClassSelectScreen()一致的規則，只用taglist的初階(tag21)標籤來決定教學階段可暫時選擇的職業範圍
+        const roleCards = CARD_DATABASE.filter(c => c.isRole && Array.isArray(c.tag) && c.tag.includes(21));
         Guide._tempRoleIds = roleCards.map(c => c.id).filter(id => !gameState.ownedClasses.has(id));
         Guide._tempRoleIds.forEach(id => gameState.ownedClasses.add(id));
         showScreen('class-select');
