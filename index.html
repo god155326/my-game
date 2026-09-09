@@ -3715,7 +3715,7 @@
             <div class="equip-menu-icon equip-menu-icon-img" style="background-image:url('assets/images/img_86697d85a0b4.png')"></div>
             <div class="equip-menu-label">佈陣</div>
           </div>
-          <div class="equip-menu-btn" onclick="openGemScreen()">
+          <div class="equip-menu-btn" onclick="onGemMenuClick()">
             <div class="equip-menu-icon equip-menu-icon-img" style="background-image:url('assets/images/img_a5f2a912e5f4.png')"></div>
             <div class="equip-menu-label">魔法石</div>
           </div>
@@ -5547,11 +5547,13 @@ let DUNGEONPREFEB_DATABASE = [
     // claimStartGift() 在 runIntroSequence() 一開始靜默呼叫時實際上什麼都沒發，
     // 玩家在後面的 guideGachaStep()(教學引導召喚武器)完全沒有鑽石可以召喚。
     // 已補上 xlsx 的 start_gift 分頁資料，這裡的備援值同步更新(鑽石依 Wei 指示改為3000個)。
+    // 2026-09-09 再次修正：Wei 明確要求「天賦點數創建帳號時只能是0點」，8002(天賦點數)這裡改成0
+    // (實際發放邏輯也已在 claimStartGift() 直接排除 id===8002，這裡只是同步備援值避免混淆)。
     let START_GIFT_DATABASE = [
       { id: 1000, amount: 9999 },
       { id: 1001, amount: 3000 },
       { id: 8001, amount: 9999 },
-      { id: 8002, amount: 9999 },
+      { id: 8002, amount: 0 },
       { id: 8003, amount: 9999 },
       { id: 2000, amount: 9999 },
       { id: 2001, amount: 9999 },
@@ -7453,6 +7455,14 @@ let TALENT_CURVE = [
       openClassEquipScreen();
     }
 
+    // 2026-09-09新增：Wei要求「裝備>魔法石」按鈕比照職業裝備(class_equip)的既有guard寫法上鎖，
+    // 且要跟殲滅任務用同一個檢查點('annihilation'，關卡4-30)，解鎖前點擊擋下並提示「關卡4-30解鎖」，
+    // 沿用onClassEquipClick()完全相同的guardLockedFeature()寫法，不需要額外的視覺鎖定樣式
+    // (裝備選單畫面本身是靜態HTML、沒有重新渲染鎖定外觀的機制，職業裝備按鈕目前也是同樣處理方式)。
+    function onGemMenuClick() {
+      if (!guardLockedFeature('annihilation')) return;
+      openGemScreen();
+    }
     function openGemScreen() {
       showScreen('gem-screen');
       renderGemScreen();
@@ -8320,6 +8330,13 @@ let TALENT_CURVE = [
 
     function claimStartGift() {
       START_GIFT_DATABASE.forEach(g => {
+        // 2026-09-09修正：Wei明確要求「天賦點數創建帳號時只能是0點，之後完全依curve每次升級發放」，
+        // 但xlsx的start_gift分頁裡有一列(id=8002天賦點數)是先前(第28項)依index.html舊備援值原樣還原的
+        // 內容(數量9999)，這其實不該屬於新手禮包的一部分。因為start_gift.xlsx目前被Wei電腦上的Excel
+        // 開啟中(無法直接寫回xlsx移除這一列)，這裡先在程式碼層面直接把8002排除在新手禮包發放範圍外，
+        // 不論xlsx這一列將來被填成什麼數量都不會被領取到，從根本保證「創帳號時天賦點數=0」這條規則；
+        // 等xlsx之後可以編輯時，也建議順手把start_gift分頁裡的8002那一列直接刪除，維持資料一致。
+        if (g.id === 8002) return;
         let card = CARD_DATABASE.find(c => c.id === g.id);
         if (card && card.isRole) {
           gameState.ownedClasses.add(g.id);
@@ -8774,8 +8791,11 @@ let TALENT_CURVE = [
     // 天賦節點圖示美術：物理攻擊+1%效果圖(紅色劍) / 魔法攻擊+1%效果圖(紫色法杖)，取代原本的星星★與問號?
     const TALENT_NODE_ICON_ATK_HTML = "<img src='assets/images/img_f7d894a3dbd6.png' style='width:100%;height:100%;object-fit:contain;pointer-events:none;'>";
     const TALENT_NODE_ICON_MATK_HTML = "<img src='assets/images/img_7f99a8f998d0.png' style='width:100%;height:100%;object-fit:contain;pointer-events:none;'>";
-    // 依節點所屬group決定使用哪一張圖示：group 1~4為物理攻擊系(紅劍)，group 5~6為魔法攻擊系(紫杖)
-    function getTalentNodeIconHtml(node) { return node.group <= 4 ? TALENT_NODE_ICON_ATK_HTML : TALENT_NODE_ICON_MATK_HTML; }
+    // 依節點所屬group決定使用哪一張圖示：group 1~4(劍士/戰士/弓劍手/盜賊)、7~10(對應的二轉職業劍豪/
+    // 狂戰士/神射手/刺客)為物理攻擊系(紅劍)；group 5~6(魔法師/實習祭司)、11~12(對應的二轉職業魔導士/
+    // 神官)為魔法攻擊系(紫杖)。2026-09-09新增group7~12(二轉職業天賦樹)後同步擴充這個判斷式。
+    const TALENT_MAGIC_GROUPS = new Set([5, 6, 11, 12]);
+    function getTalentNodeIconHtml(node) { return TALENT_MAGIC_GROUPS.has(node.group) ? TALENT_NODE_ICON_MATK_HTML : TALENT_NODE_ICON_ATK_HTML; }
 
     function getTalentNodePosition(node) {
       let grid = TALENT_GROUP_GRID[node.group];
