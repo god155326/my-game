@@ -1010,7 +1010,7 @@
     .quest-category-btn img { width: 100%; display: block; opacity: 0.85; }
     .quest-category-btn .quest-category-label { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 18px; font-weight: bold; color: #ffd700; text-shadow: 0 0 6px #000, 0 0 10px #000; }
     .quest-category-btn.locked img { filter: grayscale(0.7) brightness(0.5); }
-    .quest-category-btn.locked .quest-category-label::after { content: ' (敬請期待)'; font-size: 11px; color: #aaa; }
+    .quest-category-btn.locked .quest-category-label::after { content: attr(data-lock-hint); display: block; font-size: 11px; color: #aaa; }
     /* 無限地城首頁 */
     .infinite-dungeon-home-body { flex: 1; overflow-y: auto; }
     .infinite-dungeon-level-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 10px 0; }
@@ -6402,53 +6402,90 @@ let GOD_TRIAL_VARIANTS = {
     // ============ 神格試煉：畫面渲染與挑戰邏輯 ============
     // 4種難度對應 mapdata 的 mapId(600普通/601中等/602高級/603惡夢)，名稱僅用於畫面顯示
     const GOD_TRIAL_DIFFICULTY_META = [
-      { mapId: 600, name: '普通' },
-      { mapId: 601, name: '中等' },
-      { mapId: 602, name: '高級' },
-      { mapId: 603, name: '惡夢' }
+      { mapId: 600, name: '普通', refreshCost: 5000 },
+      { mapId: 601, name: '中等', refreshCost: 20000 },
+      { mapId: 602, name: '高級', refreshCost: 60000 },
+      { mapId: 603, name: '惡夢', refreshCost: 150000 }
     ];
+    // 每個難度底下的8個變體，現在各自對應一種魔物種族tag(見批次2b：怪物依tag_limit分成8種)，
+    // 「目前提供哪一個tag」由 gameState.godTrialChoice[mapId] 記錄(未設定時第一次隨機決定)；
+    // 玩家可花金幣「刷新」重骰成另一個不同的tag，換到自己已用黑暗契約捕捉到的種族
+    function getGodTrialChosenVariant(mapId) {
+      let variants = GOD_TRIAL_VARIANTS[mapId];
+      if (!variants || variants.length === 0) return null;
+      let idx = gameState.godTrialChoice[mapId];
+      if (idx == null || idx < 0 || idx >= variants.length) {
+        idx = Math.floor(Math.random() * variants.length);
+        gameState.godTrialChoice[mapId] = idx;
+      }
+      return variants[idx];
+    }
+    // 花費金幣重骰「目前提供的tag變體」：固定換到一個跟目前不同的variant index(避免花錢卻骰到同一個)
+    function refreshGodTrialStage(mapId) {
+      let meta = GOD_TRIAL_DIFFICULTY_META.find(m => m.mapId === mapId);
+      let variants = GOD_TRIAL_VARIANTS[mapId];
+      if (!meta || !variants || variants.length <= 1) return;
+      if (getItemAmount(1000) < meta.refreshCost) {
+        showGenericInfoModal('金幣不足', `刷新「${meta.name}」神格關卡需要 ${meta.refreshCost.toLocaleString()} 金幣，目前持有不足！`);
+        return;
+      }
+      spendItem(1000, meta.refreshCost);
+      let curIdx = gameState.godTrialChoice[mapId];
+      let nextIdx;
+      do { nextIdx = Math.floor(Math.random() * variants.length); } while (variants.length > 1 && nextIdx === curIdx);
+      gameState.godTrialChoice[mapId] = nextIdx;
+      updateTopHeader();
+      renderGodTrialScreen();
+    }
     function renderGodTrialScreen() {
       document.getElementById('god-trial-banner').src = GOD_TRIAL_BANNER_IMG;
       let ticketAmount = getItemAmount(2006);
       document.getElementById('god-trial-ticket-hint').innerText = `📜 神格試煉卷持有數量：${ticketAmount}（每次挑戰消耗1張，無論勝敗皆會消耗）`;
       const list = document.getElementById('god-trial-list');
       list.innerHTML = GOD_TRIAL_DIFFICULTY_META.map(meta => {
-        let sample = GOD_TRIAL_VARIANTS[meta.mapId][0]; // 僅取第一個變體作為畫面預覽用(8個變體等級/掉落/入場限制皆相同，僅敵陣組成不同)
+        let sample = getGodTrialChosenVariant(meta.mapId); // 目前提供的tag變體(可透過刷新更換)，預覽跟實際挑戰的敵陣/tag保證一致
+        if (!sample) return '';
         let previewQuest = { mapId: meta.mapId, level: sample.level, enemyIds: sample.enemyIds };
         const capability = estimateQuestCapability(previewQuest);
         const tagName = (TAGLIST_DATABASE[sample.tagLimit] || ('標籤#' + sample.tagLimit)).replace(/^#/, '');
+        const ownedTagCount = CARD_DATABASE.filter(c => gameState.ownedCards.has(c.id) && Array.isArray(c.tag) && c.tag.includes(sample.tagLimit)).length;
         return `
           <div class="quest-card">
             <div class="quest-card-header-v2">
               <div class="quest-card-title-block">
                 <div class="quest-card-title">神格試煉</div>
-                <div class="quest-card-hint-big">${meta.name}</div>
+                <div class="quest-card-hint-big">${meta.name}・限定「${tagName}」</div>
               </div>
               <div class="quest-card-summary-block">
                 <div>怪物等級：LV.${sample.level}</div>
-                <div>入場限制：僅「${tagName}」武器可上陣</div>
+                <div>入場限制：僅「${tagName}」武器/魔物可上陣（目前持有 ${ownedTagCount} 隻）</div>
                 <div>推薦戰力：${capability != null ? capability.toLocaleString() : '--'}</div>
               </div>
             </div>
             <div class="reward-bar-label">🎁 通關獎勵</div>
-            <div class="idle-reward-preview">${renderIdleRewardPreviewHtml([{ id: sample.loot1Id, rate: sample.loot1Rate }])}</div>
+            <div class="idle-reward-preview">${renderIdleRewardPreviewHtml([
+              { id: sample.loot1Id, rate: sample.loot1Rate },
+              { id: sample.loot2Id, rate: sample.loot2Rate },
+              { id: sample.loot3Id, rate: sample.loot3Rate },
+            ].filter(x => x.id))}</div>
             <div class="action-bar">
               <button class="btn-restart" onclick="onGodTrialChallengeClick(${meta.mapId})">挑戰 (消耗1張門票)</button>
+              <button class="btn-restart" onclick="refreshGodTrialStage(${meta.mapId})">🔄 刷新 (${meta.refreshCost.toLocaleString()}金幣)</button>
             </div>
           </div>
         `;
       }).join('');
     }
-    // 點擊某難度的「挑戰」：檢查門票→從該難度的8個等機率變體中隨機骰一個組成敵陣→導引至佈陣畫面(tag_limit限制可上陣武器)
-    // 門票實際扣除時機在startArrangedBattle()確認開始戰鬥的當下，避免玩家在佈陣畫面中途放棄卻已被扣款
+    // 點擊某難度的「挑戰」：檢查門票→直接採用目前畫面上顯示的那個variant(getGodTrialChosenVariant)，
+    // 不再另外重新隨機(避免玩家看到的預覽跟實際打的敵陣/tag_limit兜不起來)
     function onGodTrialChallengeClick(mapId) {
       if (getItemAmount(2006) < 1) {
         showGenericInfoModal('門票不足', '沒有「神格試煉卷」了，請先取得後再挑戰！');
         return;
       }
       let meta = GOD_TRIAL_DIFFICULTY_META.find(m => m.mapId === mapId);
-      let variants = GOD_TRIAL_VARIANTS[mapId];
-      let variant = variants[Math.floor(Math.random() * variants.length)];
+      let variant = getGodTrialChosenVariant(mapId);
+      if (!variant) return;
       let quest = {
         mapId, type: 'god_trial', chapter: null, capability: null,
         hint: `神格試煉 - ${meta ? meta.name : ''}`,
@@ -6456,7 +6493,8 @@ let GOD_TRIAL_VARIANTS = {
         requiresArrangement: true, requiresPlayerRole: true, forcedPlayerRoleId: null,
         playerWeaponSlots: 5, enemyIds: [...variant.enemyIds], enemyTeamSize: variant.enemyIds.length, enemyRoleId: null,
         loot1Id: variant.loot1Id, loot1Amount: variant.loot1Amount, loot1Rate: variant.loot1Rate,
-        loot2Id: null, loot2Amount: 0, loot2Rate: 0,
+        loot2Id: variant.loot2Id, loot2Amount: variant.loot2Amount, loot2Rate: variant.loot2Rate,
+        loot3Id: variant.loot3Id, loot3Amount: variant.loot3Amount, loot3Rate: variant.loot3Rate,
         playerPresetUnits: [], enemyUnitOverrides: variant.enemyIds.map(() => ({})),
         event1: null, event2: null,
         tagLimit: variant.tagLimit
@@ -6598,6 +6636,14 @@ let TALENT_CURVE = [
       // 職業系統：各職業累計經驗值分開計算(id 8000經驗道具會依「目前使用中職業」累加至此，而非進入一般道具背包)；等級由 LEVELCURVE_DATABASE 換算
       classExp: { 90001: 0, 90002: 0, 90003: 0, 90004: 0, 90005: 0 },
       pendingClassId: null, // 職業畫面中「點選但尚未按替換」的暫定選擇
+      // 神格試煉「目前提供的tag變體」：{ mapId: variantIndex }，未設定時第一次進畫面隨機決定一個；
+      // 「刷新」按鈕會花費金幣重骰成另一個不同的variantIndex，讓玩家能換到自己已捕捉的種族tag
+      godTrialChoice: {},
+      // 批次3/4：16個「新手引導/系統開放」檢查點中，已經播放過引導的checkpoint key集合(每個key只會播放一次，
+      // 對應的功能解鎖判定則獨立於此，見isFeatureUnlocked——刪掉text分頁的guide列只會讓說明文字不再出現，不會讓功能永久卡住)
+      firedGuideKeys: new Set(),
+      // 主線關卡通關當下記錄「這一關mapId有沒有新解鎖的檢查點待播放引導」，實際播放時機在結算彈窗關閉之後(見checkAndFireStageGuides)
+      _pendingStageGuideMapId: null,
       // 佈陣系統：持久儲存的5個武器上陣位置(id或null)，需於「裝備->佈陣」中設定
       formation: [null, null, null, null, null],
       // 裝備系統(魔法石)：每個武器id可裝備最多2個魔法石實例id，未裝備為null
@@ -6687,7 +6733,13 @@ let TALENT_CURVE = [
     }
     function spendItem(itemId, amount) { gameState.items[itemId] = Math.max(0, getItemAmount(itemId) - amount); }
     function hasEnoughItem(itemId, amount) { return getItemAmount(itemId) >= amount; }
-    function itemName(itemId) { return (ITEM_DATABASE[itemId] && ITEM_DATABASE[itemId].name) || `道具#${itemId}`; }
+    // 批次1新增「掛機/主線首通掉落裝備」後，預覽用的 itemName/itemIcon 也可能收到裝備id(而非一般item id)，
+    // 找不到一般道具資料時再往 EQUIPMENT_DATABASE 查一次，讓裝備類獎勵在各處預覽(掛機/神格試煉/主線關卡卡片)都能正確顯示名稱/圖示
+    function itemName(itemId) {
+      if (ITEM_DATABASE[itemId] && ITEM_DATABASE[itemId].name) return ITEM_DATABASE[itemId].name;
+      if (EQUIPMENT_DATABASE[itemId] && EQUIPMENT_DATABASE[itemId].name) return EQUIPMENT_DATABASE[itemId].name;
+      return `道具#${itemId}`;
+    }
     // 純 emoji 版本(不含任何 HTML 標籤)，給 itemIcon() 在找不到圖片時當 fallback，
     // 也直接給 'text' 模式使用(innerText/textContent 情境絕對不能混到 HTML 標籤)。
     function itemIconEmoji(itemId) {
@@ -6713,10 +6765,17 @@ let TALENT_CURVE = [
     //                只能回傳 emoji，否則畫面會把 HTML 原始碼直接當文字印出來
     function itemIcon(itemId, mode) {
       mode = mode || 'inline';
-      if (mode === 'text') return itemIconEmoji(itemId);
+      if (mode === 'text') return (EQUIP_ICON_MAP && EQUIP_ICON_MAP[itemId] !== undefined && !ITEM_DATABASE[itemId]) ? EQUIP_ICON_MAP[itemId] : itemIconEmoji(itemId);
       let data = ITEM_DATABASE[itemId];
       let fallback = itemIconEmoji(itemId);
-      if (!data || !data.icon) return fallback;
+      if (!data || !data.icon) {
+        // 一般道具資料庫查不到時，再試著當作裝備id處理(批次1新增裝備類掛機/關卡獎勵預覽用)
+        if (EQUIPMENT_DATABASE[itemId]) {
+          if (mode === 'box') return (EQUIP_ICON_MAP[itemId] !== undefined ? EQUIP_ICON_MAP[itemId] : '❔');
+          return buildInlineIconWithFallback('equipment', itemId, EQUIP_ICON_MAP[itemId] !== undefined ? EQUIP_ICON_MAP[itemId] : '❔');
+        }
+        return fallback;
+      }
       if (mode === 'box') return data.icon;
       return buildInlineIconWithFallback('item', itemId, fallback);
     }
@@ -7098,6 +7157,7 @@ let TALENT_CURVE = [
     // 顯示所有職業(role)：目前職業以綠框標示、點選其他職業框則暫定選取(黃框)，按下「替換」才會真正切換
     // ============ 職業選單子分頁：職業 / 神格 ============
     function switchClassSubTab(tab) {
+      if (tab === 'god' && !guardLockedFeature('god_stat')) return;
       gameState.classSubTab = tab;
       document.getElementById('class-sub-tab-class').classList.toggle('active', tab === 'class');
       document.getElementById('class-sub-tab-god').classList.toggle('active', tab === 'god');
@@ -7353,6 +7413,8 @@ let TALENT_CURVE = [
 
     function confirmClassReplace() {
       if (!gameState.pendingClassId || gameState.pendingClassId === gameState.selectedRole) return;
+      // 批次4：轉職(替換為二轉職業)要等class_change檢查點(關卡3-30)才開放；轉一般同級職業不受此限制
+      if (gameState.pendingClassId >= 90008 && !guardLockedFeature('class_change')) return;
       gameState.selectedRole = gameState.pendingClassId;
       gameState.pendingClassId = null;
       updateTopHeader();
@@ -7361,6 +7423,7 @@ let TALENT_CURVE = [
 
     // ============ 裝備系統：主選單 ============
     function onClassEquipClick() {
+      if (!guardLockedFeature('class_equip')) return;
       openClassEquipScreen();
     }
 
@@ -7706,6 +7769,8 @@ let TALENT_CURVE = [
       let lootPreview = [];
       if (quest.loot1Id) lootPreview.push({ id: quest.loot1Id, rate: quest.loot1Rate != null ? quest.loot1Rate : 1 });
       if (quest.loot2Id) lootPreview.push({ id: quest.loot2Id, rate: quest.loot2Rate != null ? quest.loot2Rate : 1 });
+      if (quest.loot3Id) lootPreview.push({ id: quest.loot3Id, rate: quest.loot3Rate != null ? quest.loot3Rate : 1 });
+      if (quest.loot4Id) lootPreview.push({ id: quest.loot4Id, rate: quest.loot4Rate != null ? quest.loot4Rate : 1 });
 
       return `
         <div class="quest-card-header-v2">
@@ -8085,6 +8150,7 @@ let TALENT_CURVE = [
 
     // 領取獎勵預覽彈窗：顯示目前累積次數與獎勵機率表，實際領取(擲骰+發放)在確認後才執行
     function openRewardPreviewModal() {
+      if (!guardLockedFeature('idle_unlock')) return;
       let n = computeIdlePendingIntervals();
       let zone = IDLEZONE_DATABASE[gameState.idle.mapId];
       const body = document.getElementById('reward-preview-body');
@@ -8122,11 +8188,26 @@ let TALENT_CURVE = [
           }
         });
       }
-      Object.keys(totals).forEach(id => addItem(parseInt(id, 10), totals[id]));
+      // 依 lootId 判斷是裝備(magic石/武器/防具...)還是一般道具(含經驗值8000/8002/8003)：
+      // 批次1新增「R~SR階裝備」掛機掉落類別後，這裡不能再無腦全部 addItem，否則裝備會被當成一般道具塞進背包格；
+      // 統一改用跟 grantLoot() 完全一致的判斷邏輯(EQUIPMENT_DATABASE 有找到就走 grantGem/grantGear)
+      let gainedNames = [];
+      Object.keys(totals).forEach(idStr => {
+        let id = parseInt(idStr, 10);
+        let amount = totals[idStr];
+        let eq = EQUIPMENT_DATABASE[id];
+        if (eq) {
+          if (eq.type === 'gem') grantGem(id, amount); else grantGear(id, amount);
+          gainedNames.push(`${EQUIP_ICON_MAP[id] !== undefined ? EQUIP_ICON_MAP[id] : '❔'} ${eq.name} x${amount}`);
+        } else {
+          addItem(id, amount);
+          gainedNames.push(`${itemIcon(id, 'text')} ${itemName(id)} x${amount}`);
+        }
+      });
       gameState.idle.lastClaimTime += intervals * 5 * 60 * 1000;
       updateTopHeader();
       closeRewardPreviewModal();
-      let text = Object.keys(totals).map(id => `${itemIcon(id, 'text')} ${itemName(id)} x${totals[id]}`).join('、') || '（本次未獲得任何獎勵）';
+      let text = gainedNames.join('、') || '（本次未獲得任何獎勵）';
       showGenericInfoModal('探索獎勵領取', `累積 ${intervals} 次 (每5分鐘一次)：\n${text}`);
       renderMainlineIdleWidget();
     }
@@ -9579,6 +9660,7 @@ let TALENT_CURVE = [
     // times=1為單次升級(原本行為)，times=10為一次升10級：兩者共用同一個彈窗與確認流程，只是消耗/等級的計算方式不同
     // 武器升級彈窗：一次算出並顯示「升1級」與「升10級」兩種預覽(各自的屬性變化與消耗)，彈窗內兩顆按鈕分別對應各自升級
     function onWeaponLevelUpClick() {
+      if (!guardLockedFeature('weapon_levelup')) return;
       let cardId = gameState.weaponMenuSelectedId;
       let card = cardId ? CARD_DATABASE.find(c => c.id === cardId) : null;
       if (!card) { showGenericInfoModal('升級', '請先選擇要升級的武器！'); return; }
@@ -9650,6 +9732,7 @@ let TALENT_CURVE = [
     }
 
     function onWeaponStarUpClick() {
+      if (!guardLockedFeature('weapon_starup')) return;
       let cardId = gameState.weaponMenuSelectedId;
       let card = cardId ? CARD_DATABASE.find(c => c.id === cardId) : null;
       if (!card) { showGenericInfoModal('升星', '請先選擇要升星的武器！'); return; }
@@ -9906,6 +9989,9 @@ let TALENT_CURVE = [
         Guide.toast('尚未解鎖，請先完成新手引導！');
         return;
       }
+      // 批次4：天賦分頁雖然在新手引導結束時已一併解除粗略鎖定，但要等到talent_intro檢查點(關卡1-5)才真正開放
+      if (key === 'talent' && !guardLockedFeature('talent_intro')) return;
+      applyNavLockVisuals();
       // 任何一種正式關卡戰鬥進行中，不論想切去哪個分頁(職業/天賦/裝備/主線/副本/召喚)都必須先確認才會中斷；
       // 確認後才真正中止戰鬥(含清除特效)並繼續切換，選「否」則完全不切換、停留在原本的戰鬥畫面
       if (isRealBattleInProgress()) {
@@ -9972,9 +10058,20 @@ let TALENT_CURVE = [
       document.getElementById('generic-info-desc').innerText = desc;
       document.getElementById('generic-info-modal').style.display = 'flex';
     }
+    // 批次3：檢查點解鎖說明彈窗(共用generic-info-modal的DOM)，關閉後可接續播放下一個檢查點的引導(見fireNextStageGuide)
+    let _stageGuideOnCloseCallback = null;
+    function showStageGuideModal(text, onClose) {
+      _stageGuideOnCloseCallback = onClose || null;
+      showGenericInfoModal('📖 新功能解鎖', text);
+    }
     function closeGenericInfoModal() {
       document.getElementById('generic-info-modal').style.display = 'none';
       refreshCurrentScreenData();
+      if (_stageGuideOnCloseCallback) {
+        let cb = _stageGuideOnCloseCallback;
+        _stageGuideOnCloseCallback = null;
+        cb();
+      }
     }
 
     const QUESTS_PER_PAGE = 4;
@@ -10613,6 +10710,18 @@ let TALENT_CURVE = [
       showScreen('quest-select');
     }
 
+    // mapdata的loot1~4_id欄位支援跟idlezone一樣的「逗號共享機率」寫法(例如"2003,2004")：
+    // 呼叫grantLoot前，先用這個函式把「可能是逗號清單的原始欄位值」解析成「這次實際骰中的單一id」
+    function resolveLootId(lootIdField) {
+      if (lootIdField == null || lootIdField === '') return null;
+      if (typeof lootIdField === 'string' && lootIdField.indexOf(',') !== -1) {
+        let ids = lootIdField.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+        if (ids.length === 0) return null;
+        return ids[Math.floor(Math.random() * ids.length)];
+      }
+      let n = typeof lootIdField === 'string' ? parseInt(lootIdField, 10) : lootIdField;
+      return isNaN(n) ? null : n;
+    }
     // 通用戰利品發放：依 lootId 判斷是魔法石(equipment)還是一般道具(item，含經驗8000)
     function grantLoot(lootId, amount) {
       if (!lootId) return null;
@@ -10647,6 +10756,7 @@ let TALENT_CURVE = [
     }
 
     function toggleAutoNextStage() {
+      if (!gameState.autoNextStage && !guardLockedFeature('auto_next')) return; // 只有「打開」需要檢查，關閉一律放行
       gameState.autoNextStage = !gameState.autoNextStage;
       syncAutoNextStageUI();
       if (!gameState.autoNextStage) clearAutoNextStageCountdown(); // 玩家在倒数過程中途手動關閉，立即取消倒數
@@ -10744,16 +10854,29 @@ let TALENT_CURVE = [
           let gained = [];
           if (quest) {
             if (quest.loot1Id && Math.random() < (quest.loot1Rate != null ? quest.loot1Rate : 1)) {
-              let g = grantLoot(quest.loot1Id, quest.loot1Amount);
+              let g = grantLoot(resolveLootId(quest.loot1Id), quest.loot1Amount);
               if (g) gained.push(g);
             }
             if (quest.loot2Id && Math.random() < (quest.loot2Rate != null ? quest.loot2Rate : 1)) {
-              let g = grantLoot(quest.loot2Id, quest.loot2Amount);
+              let g = grantLoot(resolveLootId(quest.loot2Id), quest.loot2Amount);
+              if (g) gained.push(g);
+            }
+            // loot3/loot4：批次1b(主線首通鑽石+職業經驗)、批次5(神格試煉item2008+8003)、批次3(試煉之塔/殲滅副本)
+            // 新增的第3/4組掉落欄位，判斷邏輯與loot1/loot2完全相同(含逗號共享機率清單，見resolveLootId)；
+            // 其餘關卡類型沒有這兩欄資料時quest.loot3Id/loot4Id為undefined，直接跳過，不影響既有行為
+            if (quest.loot3Id && Math.random() < (quest.loot3Rate != null ? quest.loot3Rate : 1)) {
+              let g = grantLoot(resolveLootId(quest.loot3Id), quest.loot3Amount);
+              if (g) gained.push(g);
+            }
+            if (quest.loot4Id && Math.random() < (quest.loot4Rate != null ? quest.loot4Rate : 1)) {
+              let g = grantLoot(resolveLootId(quest.loot4Id), quest.loot4Amount);
               if (g) gained.push(g);
             }
             // 主線關卡通關：記錄進度，解鎖對應的探索(idlezone)，並立即開始累積掛機獎勵時間(不需玩家手動開啟探索分頁)；實際戰鬥演出則於進入「探索」分頁時才開始
             if (quest.type === 'main') {
               gameState.clearedMainMapIds.add(quest.mapId);
+              // 批次3/4：這一關mapId若剛好是某個系統開放檢查點的觸發點，記錄下來，待結算彈窗關閉後才播放引導(見checkAndFireStageGuides)
+              gameState._pendingStageGuideMapId = quest.mapId;
               if (IDLEZONE_DATABASE[quest.mapId] && !gameState.idle.sessionStart) {
                 gameState.idle.sessionStart = Date.now();
                 gameState.idle.lastClaimTime = Date.now();
@@ -10828,6 +10951,8 @@ let TALENT_CURVE = [
       let nextMapId = parseInt(document.getElementById('btn-result-next-stage').dataset.nextMapId, 10);
       let nextQuest = QUEST_DATABASE.find(q => q.mapId === nextMapId);
       document.getElementById('result-modal').style.display = 'none';
+      // 批次3：剛通關的這一關若觸發了系統開放檢查點，優先播放引導/教學(播放完會停在主線首頁，玩家可自行點下一關)
+      if (checkAndFireStageGuides()) return;
       if (!nextQuest) { returnToQuestMenu(); return; }
       gameState.selectedQuest = null;
       gameState.selectedRoster = [];
@@ -10841,6 +10966,8 @@ let TALENT_CURVE = [
       let backType = gameState.selectedQuest ? gameState.selectedQuest.type : 'dungeon';
       gameState.selectedQuest = null;
       gameState.selectedRoster = [];
+      // 批次3：剛通關的這一關若觸發了系統開放檢查點，優先播放引導/教學(內部會自行導回主線首頁)
+      if (checkAndFireStageGuides()) return;
       if (backType === 'main') {
         showScreen('mainline');
         renderMainStage();
@@ -10870,17 +10997,23 @@ let TALENT_CURVE = [
     function renderQuestCategoryScreen() {
       const list = document.getElementById('quest-category-list');
       list.innerHTML = MAPLIST_DATABASE.map(c => {
-        let ready = c.key === 'infinite_dungeon' || c.key === 'god_trial' || !!c.type; // 無限地城/神格試煉已個別實作；其餘只要maplist有填type就視為已收束開放，type為空則是尚未製作的特殊玩法
+        // 批次4：四種副本(試煉之塔/神格試煉/無限地城/殲滅任務)都已個別實作，但要依各自的檢查點反鎖；
+        // 沒有對應checkpoint、也還沒填type的分類，維持原本「尚未開放，敬請期待」的顯示
+        let ckKey = CATEGORY_CHECKPOINT_KEY[c.key];
+        let unlocked = ckKey ? isFeatureUnlocked(ckKey) : !!c.type;
+        let lockHint = ckKey ? featureLockHint(ckKey) : '敬請期待';
         return `
-        <button class="quest-category-btn ${ready ? '' : 'locked'}" onclick="onQuestCategoryClick('${c.key}')">
+        <button class="quest-category-btn ${unlocked ? '' : 'locked'}" onclick="onQuestCategoryClick('${c.key}')">
           <img src="${DUNGEON_CATEGORY_BANNER_IMG[c.key]}">
-          <span class="quest-category-label">${c.info}</span>
+          <span class="quest-category-label" data-lock-hint="（${lockHint}）">${c.info}</span>
         </button>
       `;
       }).join('');
     }
     function onQuestCategoryClick(key) {
       let cat = MAPLIST_DATABASE.find(c => c.key === key);
+      let ckKey = CATEGORY_CHECKPOINT_KEY[key];
+      if (ckKey && !guardLockedFeature(ckKey)) return;
       if (key === 'infinite_dungeon') {
         showScreen('infinite-dungeon-home');
         renderInfiniteDungeonHomeScreen();
@@ -10951,8 +11084,10 @@ let TALENT_CURVE = [
 
     // ============ 無限地城：首頁(選擇等級/開啟地城) ============
     function changeInfiniteDungeonLevel(delta) {
+      // 批次4：地城等級上限依infinite_dungeon_100/130兩個檢查點逐步開放(見getInfiniteDungeonMaxLevel)
+      let maxLv = getInfiniteDungeonMaxLevel();
       let lv = gameState.infiniteDungeon.selectedLevel + delta;
-      lv = Math.max(10, Math.min(130, lv));
+      lv = Math.max(10, Math.min(maxLv, lv));
       gameState.infiniteDungeon.selectedLevel = lv;
       renderInfiniteDungeonHomeScreen();
     }
@@ -11164,8 +11299,18 @@ let TALENT_CURVE = [
       let layer = dg.layers[dg.currentLayerIndex];
       let door = layer.doors[quest._doorIndex];
       if (door) door.cleared = true;
-      if (quest.loot1Id) dg.pendingLoot[quest.loot1Id] = (dg.pendingLoot[quest.loot1Id] || 0) + (quest.loot1Amount || 0);
-      if (quest.loot2Id) dg.pendingLoot[quest.loot2Id] = (dg.pendingLoot[quest.loot2Id] || 0) + (quest.loot2Amount || 0);
+      if (quest.loot1Id) { let id = resolveLootId(quest.loot1Id); if (id) dg.pendingLoot[id] = (dg.pendingLoot[id] || 0) + (quest.loot1Amount || 0); }
+      if (quest.loot2Id) { let id = resolveLootId(quest.loot2Id); if (id) dg.pendingLoot[id] = (dg.pendingLoot[id] || 0) + (quest.loot2Amount || 0); }
+      // loot3/loot4：批次3新增(無限地城戰鬥門新增R~SSR裝備+裝備洗鍊石掉落)，判斷邏輯與loot1/loot2相同，
+      // 並支援逗號共享機率清單(resolveLootId)，例如「R~SSR裝備」欄位就是一長串裝備id共用同一個機率
+      if (quest.loot3Id && Math.random() < (quest.loot3Rate != null ? quest.loot3Rate : 1)) {
+        let id = resolveLootId(quest.loot3Id);
+        if (id) dg.pendingLoot[id] = (dg.pendingLoot[id] || 0) + (quest.loot3Amount || 0);
+      }
+      if (quest.loot4Id && Math.random() < (quest.loot4Rate != null ? quest.loot4Rate : 1)) {
+        let id = resolveLootId(quest.loot4Id);
+        if (id) dg.pendingLoot[id] = (dg.pendingLoot[id] || 0) + (quest.loot4Amount || 0);
+      }
       if (layer.isFinal) {
         // 最終層通過：一次性發放整趟地城累積的所有掉落，並結束本次地城(active=false，下次要重新開啟需要再消耗一把鑰匙)
         let gained = [];
@@ -11982,6 +12127,7 @@ let TALENT_CURVE = [
       if (gameState.isAnimating) return;
       let activeUnit = gameState.turnQueue[gameState.currentTurnIdx];
       if (!activeUnit || !activeUnit.isRole || activeUnit.side !== 'player' || gameState.isAuto) return;
+      if (!guardLockedFeature('dark_contract')) return;
 
       setActiveTab('CAPTURE');
       let skillObj = SKILL_DATABASE[110000];
@@ -13360,6 +13506,7 @@ let TALENT_CURVE = [
           autoExecuteTurn(activeUnit);
         }
       } else if (gameState.speedMultiplier === 1) {
+        if (!guardLockedFeature('speed2x')) return;
         gameState.speedMultiplier = 2;
         syncAutoButtonUI();
         applySpeedToCSS();
@@ -13501,6 +13648,9 @@ let TALENT_CURVE = [
       central: 'assets/images/img_49275488fb31.jpg'
     };
 
+    // 批次3：16個系統開放檢查點的引導說明文字，由 text 分頁(type=guide 且 timing=<checkpoint key>) 讀入；
+    // 預設為空物件(xlsx讀取失敗、或該checkpoint的列被刪除時，找不到對應key，該檢查點就不顯示說明文字，只保留功能解鎖)
+    let GUIDE_DATABASE = {};
     let STORY_LINES = {
       before100: [
         "夜色籠罩整片魔王領域。",
@@ -13882,7 +14032,9 @@ let TALENT_CURVE = [
     function applyNavLockVisuals() {
       document.querySelectorAll('.bottom-nav-item').forEach(el => {
         const key = el.getAttribute('data-nav');
-        el.classList.toggle('nav-locked', gameState.lockedNavTabs.has(key));
+        // 批次4：天賦分頁除了新手引導的粗略鎖定外，還要額外滿足talent_intro檢查點(關卡1-5)才視為已解鎖
+        let locked = gameState.lockedNavTabs.has(key) || (key === 'talent' && !isFeatureUnlocked('talent_intro'));
+        el.classList.toggle('nav-locked', locked);
       });
     }
     function unlockNavTab(key) {
@@ -13893,6 +14045,130 @@ let TALENT_CURVE = [
         el.classList.remove('nav-locked');
         el.classList.add('nav-unlocking');
         setTimeout(() => el.classList.remove('nav-unlocking'), 900);
+      }
+    }
+
+    // =====================================================================================
+    // 批次3/4：新手引導後續的「16個系統開放檢查點」+ 既有功能反鎖
+    // -------------------------------------------------------------------------------------
+    // 設計原則(與Wei的兩個硬性需求對應)：
+    // 1) 引導文字資料驅動、可關閉：每個checkpoint「是否顯示教學說明文字」完全由 text 分頁
+    //    type=guide 且 timing=<checkpoint key> 的列決定；GUIDE_DATABASE 由 xlsx-loader.js 讀取。
+    //    刪掉該列 -> GUIDE_DATABASE 找不到該key -> 不顯示說明泡泡，但功能解鎖/道具發放仍正常執行
+    //    (避免刪一列教學文字反而讓玩家永久卡關)。不需要改任何程式碼即可關閉單一引導。
+    // 2) 「7天節奏」對應的是主線關卡進度(clearedMainMapIds)，不是登入天數/時間，這裡完全依主線
+    //    通關mapId判斷解鎖，讓解鎖節奏自然跟著玩家實際遊玩進度走。
+    // 功能解鎖判定：isFeatureUnlocked(key) 直接查 gameState.clearedMainMapIds 是否已包含該檢查點
+    // 對應的主線mapId(主線通關進度只增不減，故此判定天然具備「後面關卡也算已解鎖前面檢查點」的效果)。
+    // =====================================================================================
+    const FEATURE_UNLOCK_META = [
+      { key: 'idle_unlock',        mapId: 1002, onUnlock: () => grantCheckpointReward('idle_unlock') },
+      { key: 'talent_intro',       mapId: 1004, onUnlock: null },
+      { key: 'weapon_levelup',     mapId: 1014, onUnlock: () => grantCheckpointReward('weapon_levelup') },
+      { key: 'auto_next',          mapId: 1019, onUnlock: null },
+      { key: 'weapon_starup',      mapId: 1029, onUnlock: () => grantCheckpointReward('weapon_starup') },
+      { key: 'dark_contract',      mapId: 1044, onUnlock: () => grantCheckpointReward('dark_contract') },
+      { key: 'speed2x',            mapId: 1049, onUnlock: null },
+      { key: 'tower',              mapId: 1059, onUnlock: null },
+      { key: 'god_stat',           mapId: 1069, onUnlock: null },
+      { key: 'god_trial',          mapId: 1069, onUnlock: () => grantCheckpointReward('god_trial') },
+      { key: 'infinite_dungeon_50',mapId: 1079, onUnlock: null },
+      { key: 'class_equip',        mapId: 1079, onUnlock: null },
+      { key: 'class_change',       mapId: 1089, onUnlock: null },
+      { key: 'annihilation',       mapId: 1119, onUnlock: null },
+      { key: 'infinite_dungeon_100',mapId: 1149, onUnlock: null },
+      { key: 'infinite_dungeon_130',mapId: 1179, onUnlock: null },
+    ];
+    const FEATURE_UNLOCK_META_MAP = {};
+    FEATURE_UNLOCK_META.forEach(m => { FEATURE_UNLOCK_META_MAP[m.key] = m; });
+
+    // 副本分類畫面(quest-category)的 c.key(來自maplist分頁 MAPLIST_KEY_BY_INFO) 對應到各自的檢查點key
+    const CATEGORY_CHECKPOINT_KEY = {
+      trial_tower: 'tower',
+      god_trial: 'god_trial',
+      infinite_dungeon: 'infinite_dungeon_50',
+      annihilation_quest: 'annihilation',
+    };
+
+    // 各檢查點解鎖當下的一次性獎勵發放(道具/卡片)，與「是否顯示教學文字」完全脫鉤——
+    // 即使Wei刪掉了對應的text列(不顯示說明)，這裡的獎勵/解鎖仍會照常發放，避免功能卡死
+    function grantCheckpointReward(key) {
+      if (key === 'idle_unlock') {
+        // 掛機系統剛解鎖：直接送1份(5分鐘)可立即領取的掛機獎勵，讓玩家馬上體驗一次領取流程
+        if (gameState.idle.lastClaimTime) {
+          gameState.idle.lastClaimTime = Math.min(gameState.idle.lastClaimTime, Date.now() - 5 * 60 * 1000);
+        } else if (gameState.idle.sessionStart) {
+          gameState.idle.sessionStart = Math.min(gameState.idle.sessionStart, Date.now() - 5 * 60 * 1000);
+        }
+      } else if (key === 'weapon_levelup') {
+        addItem(8001, 2500); // 武器經驗，足夠讓玩家馬上體驗升級教學
+      } else if (key === 'weapon_starup') {
+        gameState.ownedCards.add(10026);
+        addItem(9126, 20); // 升星材料
+      } else if (key === 'dark_contract') {
+        addItem(2007, 10); // 暗黑契約卷x10
+        gameState.ownedCards.add(40001); // 模擬「自動進入2-16抓取，必定成功」：直接贈送一支起始魔物作為第一次捕捉成果
+      } else if (key === 'god_trial') {
+        addItem(2006, 1); // 神格試煉卷x1
+      }
+    }
+
+    // 功能是否已解鎖：直接依主線通關進度判定(clearedMainMapIds只增不減，天然滿足「後面章節也算解鎖前面檢查點」)
+    function isFeatureUnlocked(key) {
+      let meta = FEATURE_UNLOCK_META_MAP[key];
+      if (!meta) return true; // 沒有定義的key一律視為不受限制，避免打錯字反而把功能鎖死
+      return gameState.clearedMainMapIds.has(meta.mapId);
+    }
+    // 找出該檢查點對應的主線關卡顯示編號(如"1-3")，組成「關卡1-3解鎖」提示文字
+    function featureLockHint(key) {
+      let meta = FEATURE_UNLOCK_META_MAP[key];
+      if (!meta) return '尚未開放，敬請期待！';
+      let q = QUEST_DATABASE.find(qq => qq.mapId === meta.mapId && qq.type === 'main');
+      return `關卡${q ? q.hint : ''}解鎖`;
+    }
+    // 統一的鎖定守衛：未解鎖時彈出提示並回傳false(呼叫端應中止後續操作)，已解鎖回傳true
+    function guardLockedFeature(key) {
+      if (isFeatureUnlocked(key)) return true;
+      Guide.toast(featureLockHint(key));
+      return false;
+    }
+    // 無限地城可選等級上限：預設50(對應infinite_dungeon_50檢查點)，之後兩個檢查點依序把上限推到100/130
+    function getInfiniteDungeonMaxLevel() {
+      if (isFeatureUnlocked('infinite_dungeon_130')) return 130;
+      if (isFeatureUnlocked('infinite_dungeon_100')) return 100;
+      return 50;
+    }
+
+    // 結算彈窗關閉後才實際播放引導(避免與結算彈窗的顯示層疊在一起)；每次只處理「剛剛那一關」新達成的檢查點，
+    // 依 FEATURE_UNLOCK_META 陣列順序播放(陣列順序已確保共用同一個mapId的兩個檢查點——神格/神格試煉、無限地城/裝備系統
+    // ——會依序播放而非同時出現，對應源始規劃「同一關卡做完上一個才做下一個」的備註)
+    function checkAndFireStageGuides() {
+      let mapId = gameState._pendingStageGuideMapId;
+      gameState._pendingStageGuideMapId = null;
+      if (mapId == null) return false;
+      let pending = FEATURE_UNLOCK_META.filter(m => m.mapId === mapId && !gameState.firedGuideKeys.has(m.key));
+      if (pending.length === 0) return false;
+      // 所有引導觸發前，一律先跳回主線首頁(對應源始規劃row22的共通備註)
+      showScreen('mainline');
+      renderMainStage();
+      applyNavLockVisuals();
+      fireNextStageGuide(pending, 0);
+      return true;
+    }
+    function fireNextStageGuide(list, i) {
+      if (i >= list.length) { applyNavLockVisuals(); return; }
+      let meta = list[i];
+      gameState.firedGuideKeys.add(meta.key);
+      if (typeof meta.onUnlock === 'function') {
+        try { meta.onUnlock(); } catch (e) { console.warn('[checkpoint] onUnlock失敗:', meta.key, e); }
+      }
+      updateTopHeader();
+      let guideRow = (typeof GUIDE_DATABASE !== 'undefined' && GUIDE_DATABASE) ? GUIDE_DATABASE[meta.key] : null;
+      if (guideRow && guideRow.info) {
+        showStageGuideModal(guideRow.info, () => fireNextStageGuide(list, i + 1));
+      } else {
+        // 該檢查點在text分頁對應的guide列已被刪除(資料驅動關閉引導文字)：不顯示說明彈窗，直接視為播放完畢繼續下一個
+        fireNextStageGuide(list, i + 1);
       }
     }
 

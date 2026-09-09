@@ -59,6 +59,22 @@ class NoCacheHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             super().log_message(format, *args)
 
 
+# 2026-09-08新增：改用「多執行緒」+ 加大等待佇列(backlog)。
+# ----------------------------------------------------------------
+# 原本這裡是單執行緒的 socketserver.TCPServer，一次只能處理一個連線，
+# 而且預設的等待佇列(request_queue_size)只有5——遊戲新增「開場一次性
+# 預先載入所有圖片」的功能後，瀏覽器會同時發出多筆(十幾筆)平行請求，
+# 單執行緒伺服器來不及依序處理時，多出來的連線會直接被作業系統拒絕
+# (browser端會看到連線失敗，不是404，而是連不上)，因此才會出現「圖片
+# 有些沒載到、戰鬥特效看不到」的狀況。改成 ThreadingMixIn 讓伺服器能
+# 同時處理多筆請求、並把 request_queue_size 加大，徹底解決這個瓶頸；
+# `python -m http.server`(start.bat 用的那個)本來就預設是多執行緒的，
+# 不受影響，只有這支「免快取」伺服器需要這個修正。
+class NoCacheHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    daemon_threads = True  # 主程式結束時，背景執行緒不會卡住整個程式關不掉
+    request_queue_size = 128  # 預設只有5，撐不住開場預載時的併發請求量
+
+
 def main():
     # 注意：這裡故意「不」開啟 allow_reuse_address。
     # 如果之前已經有一個伺服器(不管是這支程式還是 start.bat)還在背景執行、
@@ -70,7 +86,7 @@ def main():
     # 提示你先執行 stop-server.bat，而不是悄悄地同時跑兩個伺服器。
     handler = functools.partial(NoCacheHTTPRequestHandler, directory=SCRIPT_DIR)
     try:
-        with socketserver.TCPServer(("", PORT), handler) as httpd:
+        with NoCacheHTTPServer(("", PORT), handler) as httpd:
             print(f"[不朽之旅] 免快取伺服器已啟動：http://localhost:{PORT}/index.html")
             print(f"遊戲資料夾：{SCRIPT_DIR}")
             print("已強制關閉瀏覽器快取，重新整理頁面一定會抓到最新的 xlsx / 圖片。")

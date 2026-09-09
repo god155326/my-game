@@ -222,7 +222,9 @@ function buildIdlezoneDatabase(wb) {
   const gen = {};
   xlsxSheetToObjects(wb, 'idlezone').forEach(o => {
     const rewards = [];
-    for (let n = 1; n <= 4; n++) {
+    // 掛機獎勵欄位數量：2026-09新手引導整合計畫批次1擴充為8欄(idlereward1~8)，
+    // 對應R~SR裝備/武器經驗/職業經驗/黑暗契約卷/魔石碎片/裝備強化石/金幣/神格試煉卷共8個產出類別
+    for (let n = 1; n <= 8; n++) {
       const idKey = `idlereward${n}_id`, amtKey = `idlereward${n}_amount`, rateKey = `idlereward${n}_rate`;
       if (o[idKey] !== null && o[idKey] !== undefined) {
         rewards.push({ ids: splitIds(o[idKey]), amount: o[amtKey], rate: o[rateKey] });
@@ -626,6 +628,10 @@ function buildQuestEntry(s) {
   o.enemyRoleId = null;
   o.loot1Id = s.loot1_id; o.loot1Amount = s.loot1_amount; o.loot1Rate = s.loot1_rate;
   o.loot2Id = s.loot2_id; o.loot2Amount = s.loot2_amount; o.loot2Rate = s.loot2_rate;
+  // loot3/loot4：2026-09新手引導整合計畫批次1b新增，主線首通獎勵(loot3=鑽石, loot4=職業經驗)用；
+  // 其餘關卡類型該分頁原本沒有這兩欄資料(undefined)，quest.loot3Id等自然是undefined，showResultModal判斷時視同沒有掉落，不影響既有行為
+  o.loot3Id = s.loot3_id; o.loot3Amount = s.loot3_amount; o.loot3Rate = s.loot3_rate;
+  o.loot4Id = s.loot4_id; o.loot4Amount = s.loot4_amount; o.loot4Rate = s.loot4_rate;
   o.playerPresetUnits = playerPresetUnits;
   o.enemyUnitOverrides = enemyUnitOverrides;
   if (waves !== undefined) o.waves = waves;
@@ -655,6 +661,13 @@ function buildQuestDatabaseAndGodTrial(wb) {
         loot1Id: s.loot1_id,
         loot1Amount: s.loot1_amount,
         loot1Rate: (s.loot1_rate === null || s.loot1_rate === undefined) ? 1 : s.loot1_rate,
+        // loot2/loot3：批次5新增，神格試煉補上item2008(破碎的轉職推薦書)與item8003(屬性點數)掉落
+        loot2Id: s.loot2_id,
+        loot2Amount: s.loot2_amount,
+        loot2Rate: (s.loot2_rate === null || s.loot2_rate === undefined) ? 1 : s.loot2_rate,
+        loot3Id: s.loot3_id,
+        loot3Amount: s.loot3_amount,
+        loot3Rate: (s.loot3_rate === null || s.loot3_rate === undefined) ? 1 : s.loot3_rate,
       };
     });
   });
@@ -665,16 +678,39 @@ function buildQuestDatabaseAndGodTrial(wb) {
 /** STORY_LINES：text 分頁驅動的開場劇情文字（mapId=100 教學劇情 + 職業/召喚介紹） */
 function buildStoryLines(wb) {
   const rows = xlsxSheetToObjects(wb, "text");
-  const map100After = rows.filter(o => o.mapid === 100 && o.type === "story" && o.timing === "after");
-  const map100Before = rows.filter(o => o.mapid === 100 && o.type === "story" && o.timing === "before");
-  const guideDialogue = rows.filter(o => o.type === "guide" && o.mapid === null && !/^\{[a-z_]+\}$/.test(String(o.info || "").trim()));
-  return {
-    before100: map100Before[0].info.split("\n"),
-    after100a: map100After[0].info.split("\n"),
-    after100b: map100After[1].info.split("\n"),
-    classIntro: map100After[2].info.split("\n"),
-    gachaIntro: guideDialogue[0].info.split("\n"),
-  };
+  // 修正：text分頁裡mapid=100/after的第3列(row7)其實是純備註列(info本身是null，只有操作備註有文字)，
+  // 不是真正的劇情文本，過去這裡沒有排除null info，一旦排到它就會整個buildStoryLines()丟例外、
+  // 連帶讓「它後面」的資料表(包含批次3新增的GUIDE_DATABASE)全部讀取失敗、退回內建預設值——這裡改成只取有實際文字的列
+  const map100After = rows.filter(o => o.mapid === 100 && o.type === "story" && o.timing === "after" && o.info);
+  const map100Before = rows.filter(o => o.mapid === 100 && o.type === "story" && o.timing === "before" && o.info);
+  const guideDialogue = rows.filter(o => o.type === "guide" && o.mapid === null && o.info && !/^\{[a-z_]+\}$/.test(String(o.info || "").trim()));
+  // 只回傳xlsx裡實際有文字內容的欄位；缺少的欄位(例如目前classIntro在xlsx裡尚未填寫)則不覆寫，
+  // 由呼叫端(loadGameDataFromXlsx)以Object.assign合併，繼續沿用index.html內建的預設文本，避免覆寫成空字串
+  const out = {};
+  if (map100Before[0]) out.before100 = map100Before[0].info.split("\n");
+  if (map100After[0]) out.after100a = map100After[0].info.split("\n");
+  if (map100After[1]) out.after100b = map100After[1].info.split("\n");
+  if (map100After[2]) out.classIntro = map100After[2].info.split("\n");
+  if (guideDialogue[0]) out.gachaIntro = guideDialogue[0].info.split("\n");
+  return out;
+}
+
+/**
+ * 批次3：GUIDE_DATABASE —— 16個「系統開放檢查點」的引導說明文字，由 text 分頁驅動。
+ * 沿用既有 type=guide 的欄位慣例，用 timing 欄位存放 checkpoint key(既有的教學步驟(戰鬥/命名/職業選擇等)
+ * 的guide列timing欄位一律是null，藉此天然區隔出「新版checkpoint引導」而不影響舊有教學系統)。
+ * 只要 timing 有值就視為一個checkpoint key，回傳 { key: { mapId, info } }；
+ * Wei若要暫時關閉某個checkpoint的引導文字，直接把該列從xlsx刪掉即可，不需要改任何程式碼。
+ */
+function buildFeatureGuideDatabase(wb) {
+  const rows = xlsxSheetToObjects(wb, "text");
+  const out = {};
+  rows.forEach(o => {
+    if (o.type !== "guide") return;
+    if (o.timing === null || o.timing === undefined || String(o.timing).trim() === "") return;
+    out[String(o.timing).trim()] = { mapId: o.mapid, info: o.info };
+  });
+  return out;
 }
 
 /**
@@ -717,7 +753,8 @@ async function loadGameDataFromXlsx() {
     const questResult = buildQuestDatabaseAndGodTrial(wb);
     QUEST_DATABASE = questResult.quest;
     GOD_TRIAL_VARIANTS = questResult.godTrial;
-    STORY_LINES = buildStoryLines(wb);
+    STORY_LINES = Object.assign({}, STORY_LINES, buildStoryLines(wb));
+    GUIDE_DATABASE = buildFeatureGuideDatabase(wb);
 
     console.log('[xlsx-loader] 已從', GAME_XLSX_PATH, '載入資料表');
   } catch (err) {
