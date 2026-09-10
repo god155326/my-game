@@ -343,6 +343,154 @@
       60% { transform: translateY(14px); }
     }
 
+    /* ============ 2026-09-10新增：atk_motion 近戰動作類型(跟著武器/卡片走，見card分頁atk_motion欄位) ============
+       每種動作各自有「正式戰鬥卡面(.card/.role-hp-block)」跟「縮小版卡面(.weapon-slot-card，掛機/主線內嵌戰鬥用)」
+       兩組class，秒數比照原本lunge的比例(正式版較長、縮小版統一0.3~0.4秒左右的簡化版)，方向一律玩家往上/敵方往下(或鏡射)。
+       實際套用哪一組由 triggerCardMeleeMotion() 依攻擊者卡片的 atkMotion 欄位決定，找不到對應值時一律退回atk_stab(=原本的lunge)。 */
+
+    /* 舉盾：整張卡片蓄力縮小10%，再快速放大到130%後回正 */
+    .card.atk-shieldup-player, .role-hp-block.atk-shieldup-player,
+    .card.atk-shieldup-enemy, .role-hp-block.atk-shieldup-enemy { animation: cardShieldUp calc(0.6s / var(--speed, 1)) ease-in-out; }
+    .weapon-slot-card.atk-shieldup-player, .weapon-slot-card.atk-shieldup-enemy { animation: cardShieldUpMini 0.35s ease-in-out; }
+    @keyframes cardShieldUp {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(0.9); }
+      70%  { transform: scale(1.3); }
+      100% { transform: scale(1); }
+    }
+    @keyframes cardShieldUpMini {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(0.92); }
+      70%  { transform: scale(1.22); }
+      100% { transform: scale(1); }
+    }
+
+    /* 揮擊：以卡片底部為軸心，先逆時針蓄力再順時針揮砍 */
+    .card.atk-slash-player, .role-hp-block.atk-slash-player { transform-origin: bottom center; animation: cardSlashPlayer calc(0.5s / var(--speed, 1)) ease-in-out; }
+    .card.atk-slash-enemy, .role-hp-block.atk-slash-enemy { transform-origin: bottom center; animation: cardSlashEnemy calc(0.5s / var(--speed, 1)) ease-in-out; }
+    .weapon-slot-card.atk-slash-player { transform-origin: bottom center; animation: cardSlashPlayer 0.3s ease-in-out; }
+    .weapon-slot-card.atk-slash-enemy { transform-origin: bottom center; animation: cardSlashEnemy 0.3s ease-in-out; }
+    @keyframes cardSlashPlayer {
+      0%   { transform: rotate(0deg); }
+      35%  { transform: rotate(-16deg); }
+      70%  { transform: rotate(10deg); }
+      100% { transform: rotate(0deg); }
+    }
+    @keyframes cardSlashEnemy {
+      0%   { transform: rotate(0deg); }
+      35%  { transform: rotate(16deg); }
+      70%  { transform: rotate(-10deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    /* 魔法：往後蓄力停留較久，再慢慢往前(比stab的節奏更長、更緩) */
+    .card.atk-magic-player, .role-hp-block.atk-magic-player { animation: cardMagicPlayer calc(0.9s / var(--speed, 1)) ease-in-out; }
+    .card.atk-magic-enemy, .role-hp-block.atk-magic-enemy { animation: cardMagicEnemy calc(0.9s / var(--speed, 1)) ease-in-out; }
+    .weapon-slot-card.atk-magic-player { animation: cardMagicMiniPlayer 0.4s ease-in-out; }
+    .weapon-slot-card.atk-magic-enemy { animation: cardMagicMiniEnemy 0.4s ease-in-out; }
+    @keyframes cardMagicPlayer {
+      0%   { transform: translateY(0); }
+      15%  { transform: translateY(10px); }
+      55%  { transform: translateY(10px); }
+      100% { transform: translateY(-6px); }
+    }
+    @keyframes cardMagicEnemy {
+      0%   { transform: translateY(0); }
+      15%  { transform: translateY(-8px); }
+      55%  { transform: translateY(-8px); }
+      100% { transform: translateY(5px); }
+    }
+    @keyframes cardMagicMiniPlayer {
+      0%   { transform: translateY(0); }
+      15%  { transform: translateY(6px); }
+      55%  { transform: translateY(6px); }
+      100% { transform: translateY(-4px); }
+    }
+    @keyframes cardMagicMiniEnemy {
+      0%   { transform: translateY(0); }
+      15%  { transform: translateY(-5px); }
+      55%  { transform: translateY(-5px); }
+      100% { transform: translateY(3px); }
+    }
+
+    /* 蓄力刺：往後停留較久，再瞬間(短時間內)衝刺往前，跟魔法差在最後這段是快照而非慢慢移動 */
+    .card.atk-chargestab-player, .role-hp-block.atk-chargestab-player { animation: cardChargeStabPlayer calc(0.9s / var(--speed, 1)) ease-in; }
+    .card.atk-chargestab-enemy, .role-hp-block.atk-chargestab-enemy { animation: cardChargeStabEnemy calc(0.9s / var(--speed, 1)) ease-in; }
+    .weapon-slot-card.atk-chargestab-player { animation: cardChargeStabMiniPlayer 0.4s ease-in; }
+    .weapon-slot-card.atk-chargestab-enemy { animation: cardChargeStabMiniEnemy 0.4s ease-in; }
+    @keyframes cardChargeStabPlayer {
+      0%   { transform: translateY(0); }
+      15%  { transform: translateY(10px); }
+      65%  { transform: translateY(10px); }
+      85%  { transform: translateY(-20px); }
+      100% { transform: translateY(-4px); }
+    }
+    @keyframes cardChargeStabEnemy {
+      0%   { transform: translateY(0); }
+      15%  { transform: translateY(-8px); }
+      65%  { transform: translateY(-8px); }
+      85%  { transform: translateY(16px); }
+      100% { transform: translateY(3px); }
+    }
+    @keyframes cardChargeStabMiniPlayer {
+      0%   { transform: translateY(0); }
+      15%  { transform: translateY(6px); }
+      65%  { transform: translateY(6px); }
+      85%  { transform: translateY(-14px); }
+      100% { transform: translateY(-3px); }
+    }
+    @keyframes cardChargeStabMiniEnemy {
+      0%   { transform: translateY(0); }
+      15%  { transform: translateY(-5px); }
+      65%  { transform: translateY(-5px); }
+      85%  { transform: translateY(10px); }
+      100% { transform: translateY(2px); }
+    }
+
+    /* 鞭擊：以卡片頂部為軸心，先微往左傾再瞬間往右甩(比揮擊更快、更短促的甩鞭手感) */
+    .card.atk-whip-player, .role-hp-block.atk-whip-player { transform-origin: top center; animation: cardWhipPlayer calc(0.4s / var(--speed, 1)) ease-in; }
+    .card.atk-whip-enemy, .role-hp-block.atk-whip-enemy { transform-origin: top center; animation: cardWhipEnemy calc(0.4s / var(--speed, 1)) ease-in; }
+    .weapon-slot-card.atk-whip-player { transform-origin: top center; animation: cardWhipPlayer 0.28s ease-in; }
+    .weapon-slot-card.atk-whip-enemy { transform-origin: top center; animation: cardWhipEnemy 0.28s ease-in; }
+    @keyframes cardWhipPlayer {
+      0%   { transform: rotate(0deg); }
+      30%  { transform: rotate(-8deg); }
+      55%  { transform: rotate(14deg); }
+      100% { transform: rotate(0deg); }
+    }
+    @keyframes cardWhipEnemy {
+      0%   { transform: rotate(0deg); }
+      30%  { transform: rotate(8deg); }
+      55%  { transform: rotate(-14deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    /* 飛針：整張卡片邊轉邊向前、再邊轉邊向後，全程共轉一圈，類似回力鏢 */
+    .card.atk-dart-player, .role-hp-block.atk-dart-player { animation: cardDartPlayer calc(0.6s / var(--speed, 1)) linear; }
+    .card.atk-dart-enemy, .role-hp-block.atk-dart-enemy { animation: cardDartEnemy calc(0.6s / var(--speed, 1)) linear; }
+    .weapon-slot-card.atk-dart-player { animation: cardDartMiniPlayer 0.35s linear; }
+    .weapon-slot-card.atk-dart-enemy { animation: cardDartMiniEnemy 0.35s linear; }
+    @keyframes cardDartPlayer {
+      0%   { transform: translateY(0) rotate(0deg); }
+      50%  { transform: translateY(-20px) rotate(180deg); }
+      100% { transform: translateY(0) rotate(360deg); }
+    }
+    @keyframes cardDartEnemy {
+      0%   { transform: translateY(0) rotate(0deg); }
+      50%  { transform: translateY(16px) rotate(-180deg); }
+      100% { transform: translateY(0) rotate(-360deg); }
+    }
+    @keyframes cardDartMiniPlayer {
+      0%   { transform: translateY(0) rotate(0deg); }
+      50%  { transform: translateY(-12px) rotate(180deg); }
+      100% { transform: translateY(0) rotate(360deg); }
+    }
+    @keyframes cardDartMiniEnemy {
+      0%   { transform: translateY(0) rotate(0deg); }
+      50%  { transform: translateY(10px) rotate(-180deg); }
+      100% { transform: translateY(0) rotate(-360deg); }
+    }
+
     /* 受擊動作：受擊者卡牌往後晃動 */
     .card.hit-recoil, .role-hp-block.hit-recoil { animation: cardHitRecoil calc(0.4s / var(--speed, 1)) ease-out; }
 
@@ -9002,15 +9150,21 @@ let GOD_POINT_CURVE = [
 
     // 查詢某天賦節點在畫面上的座標：由該節點所屬group共用的排列(TALENT_GROUP_GRID)中尋找此id所在的列/欄
     // 找不到時回傳null(代表資料中此節點未被放進該group的排列裡，暫不渲染)
-    // 天賦節點圖示美術：全體上陣攻擊力/魔法攻擊力+1%效果圖(取代原本的星星★與問號?)
-    // 天賦節點圖示美術：物理攻擊+1%效果圖(紅色劍) / 魔法攻擊+1%效果圖(紫色法杖)，取代原本的星星★與問號?
-    const TALENT_NODE_ICON_ATK_HTML = "<img src='assets/images/img_f7d894a3dbd6.png' style='width:100%;height:100%;object-fit:contain;pointer-events:none;'>";
-    const TALENT_NODE_ICON_MATK_HTML = "<img src='assets/images/img_7f99a8f998d0.png' style='width:100%;height:100%;object-fit:contain;pointer-events:none;'>";
-    // 依節點所屬group決定使用哪一張圖示：group 1~4(劍士/戰士/弓劍手/盜賊)、7~10(對應的二轉職業劍豪/
+    // 2026-09-10 Wei指示：天賦節點圖示改成讀表——telent資料夾底下用「telent_{節點id}.png」命名(例如節點100
+    // 對應telent_100.png)，每個節點各自一張圖。目前Wei還沒把每個節點的圖都準備好，讀不到(圖檔404)時用
+    // <img onerror>原生機制自動退回舊版的兩張通用圖示(物理/魔法系，已搬進telent資料夾內)當備援，
+    // 等之後telent資料夾裡有對應節點id的圖檔，就會自動改顯示那張圖，不需要再改程式碼。
+    const TALENT_NODE_ICON_ATK_FALLBACK = "assets/images/telent/img_f7d894a3dbd6.png";
+    const TALENT_NODE_ICON_MATK_FALLBACK = "assets/images/telent/img_7f99a8f998d0.png";
+    // 依節點所屬group決定備援用哪一張圖示：group 1~4(劍士/戰士/弓劍手/盜賊)、7~10(對應的二轉職業劍豪/
     // 狂戰士/神射手/刺客)為物理攻擊系(紅劍)；group 5~6(魔法師/實習祭司)、11~12(對應的二轉職業魔導士/
     // 神官)為魔法攻擊系(紫杖)。2026-09-09新增group7~12(二轉職業天賦樹)後同步擴充這個判斷式。
     const TALENT_MAGIC_GROUPS = new Set([5, 6, 11, 12]);
-    function getTalentNodeIconHtml(node) { return TALENT_MAGIC_GROUPS.has(node.group) ? TALENT_NODE_ICON_MATK_HTML : TALENT_NODE_ICON_ATK_HTML; }
+    function getTalentNodeIconHtml(node) {
+      const fallbackSrc = TALENT_MAGIC_GROUPS.has(node.group) ? TALENT_NODE_ICON_MATK_FALLBACK : TALENT_NODE_ICON_ATK_FALLBACK;
+      const targetSrc = `assets/images/telent/telent_${node.id}.png`;
+      return `<img src="${targetSrc}" onerror="this.onerror=null;this.src='${fallbackSrc}';" style="width:100%;height:100%;object-fit:contain;pointer-events:none;">`;
+    }
 
     function getTalentNodePosition(node) {
       let grid = TALENT_GROUP_GRID[node.group];
@@ -9155,22 +9309,12 @@ let GOD_POINT_CURVE = [
 
     const ELEMENT_NAME_BY_CODE = { 1: '水', 2: '火', 3: '風' };
     // 組合buff的顯示敘述：若有element/tag條件，前面加上「對X屬性(且Y)的武器追加」的條件敘述；tag目前尚無正式對照表，先直接顯示原始值
+    // 2026-09-10 Wei指示：天賦節點的強化內容說明，不要再用程式碼自己組合數值字串(formatGearStatsLine)，
+    // 統一直接顯示對應buff在xlsx buff分頁裡「buff_info」欄位填的文字(例如「全體上陣攻擊力+1%」)，
+    // 這樣顯示規則完全由Wei在buff分頁裡自己定義，程式碼不用再猜怎麼組字。
     function formatTalentDesc(buffInfo) {
-      let statsStr = formatGearStatsLine({
-        atk: buffInfo.atk, matk: buffInfo.matk, def: buffInfo.def, mdef: buffInfo.mdef, mp: buffInfo.mpFlat,
-        cri: buffInfo.cri, criResist: buffInfo.criResist, criDamage: buffInfo.criDamage, criDamageResist: buffInfo.criDamageResist,
-        skillRate: buffInfo.skillRate, skillResist: buffInfo.skillResist, damageIncrease: buffInfo.damageIncrease,
-        damageReduce: buffInfo.damageReduce, damageReflect: buffInfo.damageReflect
-      });
-      if (statsStr === '無附加詞條') statsStr = '無效果';
-      let condParts = [];
-      if (buffInfo.element != null) condParts.push(`${ELEMENT_NAME_BY_CODE[buffInfo.element] || buffInfo.element}屬性`);
-      if (buffInfo.tag != null && buffInfo.tag.length > 0) {
-        let tagNames = buffInfo.tag.map(tid => TAGLIST_DATABASE[tid] || tid).join('或');
-        condParts.push(tagNames);
-      }
-      if (condParts.length > 0) return `對${condParts.join('且')}的武器追加${statsStr}`;
-      return statsStr;
+      if (buffInfo && buffInfo.info) return buffInfo.info;
+      return '無效果';
     }
 
     function renderTalentInfoBox() {
@@ -13463,7 +13607,37 @@ let GOD_POINT_CURVE = [
       return !!el && el.style.display !== 'none';
     }
 
-    // 依角色所屬陣營觸發攻擊撲擊動畫(近戰攻擊時使用，玩方往上撲、敵方往下撲)
+    // 2026-09-10新增：atk_motion 近戰動作類型對照表(card分頁atk_motion欄位值 -> CSS class前綴)。
+    // overwrite規則：找不到武器卡片、或該卡片沒有填atk_motion、或填的值不在下面這個表裡，一律視為
+    // 「刺」(對應原本的lunge動畫)，不會出錯或沒有動畫可放。中文對照：
+    //   (空白/刺)=lunge(既有)　揮擊=atk-slash　舉盾=atk-shieldup　魔法=atk-magic
+    //   蓄力刺=atk-chargestab　鞭擊=atk-whip　飛針=atk-dart
+    const ATK_MOTION_CLASS = {
+      atk_slash: 'atk-slash',
+      atk_shieldup: 'atk-shieldup',
+      atk_magic: 'atk-magic',
+      atk_chargestab: 'atk-chargestab',
+      atk_whip: 'atk-whip',
+      atk_dart: 'atk-dart',
+    };
+    // 各動作類型「攻擊者動作演出到大約哪個時間點該讓命中特效出現」的參考值(毫秒，未套用速度倍率前的基準值)，
+    // 對應各動作CSS動畫裡視覺上「打到」的那個時間點；找不到對應動作時使用預設值(跟原本lunge的510ms一致)。
+    const ATK_MOTION_HIT_DELAY_MS = {
+      atk_slash: 380,
+      atk_shieldup: 450,
+      atk_magic: 850,
+      atk_chargestab: 800,
+      atk_whip: 250,
+      atk_dart: 550,
+    };
+    // 依攻擊者所持武器卡片的atk_motion欄位，查出這次要套用的動作(找不到/沒填一律當作預設的刺)
+    function getUnitAtkMotion(unit) {
+      if (!unit || unit.isRole) return null; // 主角職業目前沒有武器卡片，一律使用預設的刺
+      let card = CARD_DATABASE.find(c => c.id === unit.cardId);
+      let motion = card && card.atkMotion;
+      return (motion && ATK_MOTION_CLASS[motion]) ? motion : null;
+    }
+    // 依攻擊者所屬陣營與武器的atk_motion，觸發對應的近戰動作動畫(玩方往上/敵方往下，對應各自面向對方的方向)。
     // 2026-09-10修正：不只是掛機演示(idle.exploring)，正式戰鬥縮小到主線首頁顯示時同樣要抓縮小版卡面(mini-card-{id})，
     // 判斷依據改成「目前可見的是不是主線畫面」，而不是只看是否為掛機演出；動畫秒數的固定/縮放判斷則仍只看idle與否
     function triggerCardLunge(unit) {
@@ -13475,7 +13649,11 @@ let GOD_POINT_CURVE = [
           ? document.getElementById(`${unit.side}-role-hp-block`)
           : document.getElementById(`card-${unit.id}`));
       if (!el) return;
-      let cls = unit.side === 'player' ? 'lunge-player' : 'lunge-enemy';
+      let motion = getUnitAtkMotion(unit);
+      let prefix = motion ? ATK_MOTION_CLASS[motion] : 'lunge';
+      let cls = `${prefix}-${unit.side === 'player' ? 'player' : 'enemy'}`;
+      // 清掉所有可能殘留的動作class(避免上一次觸發的動作還沒移除、跟這次的動作疊加衝突)
+      Object.values(ATK_MOTION_CLASS).forEach(p => el.classList.remove(`${p}-player`, `${p}-enemy`));
       el.classList.remove('lunge-player', 'lunge-enemy');
       void el.offsetWidth; // 強制reflow，確保動畫可以重新觸發
       el.classList.add(cls);
@@ -13623,11 +13801,14 @@ let GOD_POINT_CURVE = [
             }, td(280));
 
           } else if (hasDamageEffect || treatAsBuffAnimation) {
-            // 近戰攻擊/純上BUFF效果：無投射物，攻擊者卡牌前後撲擊一次後直接顯示受擊特效
+            // 近戰攻擊/純上BUFF效果：無投射物，攻擊者卡牌依atk_motion播放對應動作後直接顯示受擊特效
+            // (2026-09-10新增：不同動作類型節奏不同，命中時機改依ATK_MOTION_HIT_DELAY_MS查表，不再統一510ms)
             triggerCardLunge(attacker);
+            let attackerMotion = getUnitAtkMotion(attacker);
+            let hitDelayMs = attackerMotion ? ATK_MOTION_HIT_DELAY_MS[attackerMotion] : 510;
             setTimeout(() => {
               playHitEffectsAndApply();
-            }, td(510));
+            }, td(hitDelayMs));
 
           } else {
             // 非攻擊類技能且未配置 prefeb_atk：維持原本輔助類技能的投射視覺(治療等)

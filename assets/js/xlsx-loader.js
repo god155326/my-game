@@ -570,7 +570,7 @@ function buildBuffDatabaseAndSetTiers(wb) {
       const o = plainRows[0];
       const rawName = o['buff名稱'] === null || o['buff名稱'] === undefined ? '' : o['buff名稱'];
       const name = rawName.startsWith('#') ? rawName.slice(1) : rawName;
-      const entry = { id, name, icon: iconInfo.icon, isUp: iconInfo.isUp,
+      const entry = { id, name, icon: iconInfo.icon, isUp: iconInfo.isUp, info: o.buff_info,
         reflashAble: !!o.reflashAble, maxStack: o.max_stack === null || o.max_stack === undefined ? 1 : o.max_stack,
         duration: o['持續回合數'] === null || o['持續回合數'] === undefined ? 1 : o['持續回合數'], ...buffStatFields(o) };
       if (o.invisible) entry.invisible = true;
@@ -579,7 +579,7 @@ function buildBuffDatabaseAndSetTiers(wb) {
     } else {
       const tierRows = [...rs].sort((a, b) => a.set_effective_count - b.set_effective_count);
       const base = tierRows[0];
-      genBuff[id] = { id, name: base['buff名稱'], icon: iconInfo.icon, isSetBase: true, setInfo: base.set_info,
+      genBuff[id] = { id, name: base['buff名稱'], icon: iconInfo.icon, isSetBase: true, setInfo: base.set_info, info: base.buff_info,
         ...buffStatFields(base), invisible: true, reflashAble: !!base.reflashAble, maxStack: base.max_stack, duration: base['持續回合數'] };
       genSetTiers[id] = {
         setInfo: base.set_info,
@@ -680,6 +680,11 @@ function buildCardDatabase(wb) {
     if (s["role_ addition"] !== null) o.roleAddition = parseBraceList(s["role_ addition"]);
     // 捕捉機率(card表 capture_rate 欄位)：只有魔物(monster)才會填此欄位，有填才能被捕捉，沒填(null)則不可捕捉
     if (s.capture_rate !== null && s.capture_rate !== undefined) o.captureRate = s.capture_rate;
+    // 2026-09-10新增：atk_motion(近戰動作類型，跟著武器/卡片走，不是跟著技能走)。採用overwrite規則：
+    // 沒填就是原本的動作(刺/atk_stab)，有填才套用對應的新動作，見index.html的ATK_MOTION_CLASS對照表。
+    if (s.atk_motion !== null && s.atk_motion !== undefined && String(s.atk_motion).trim() !== '') {
+      o.atkMotion = String(s.atk_motion).trim();
+    }
     return o;
   });
   // 二階職業(90008~90013)這6張卡雖然透過上面的名稱比對補回了id，但card分頁本身完全沒有填hp/atk/matk/
