@@ -232,31 +232,41 @@ function buildLevelcurveDatabase(wb) {
   return rows;
 }
 
-// 2026-09-09新增：curve分頁裡type=1(天賦點數)這組資料目前只有level=5/10兩列有填point(分別是2/3)，
-// level=15~55雖然有填level但point是空白，level=60~100連level本身都是空白——也就是說能拿到的天賦點數
-// 實際上封頂在55等之後就再也不會增加。這造成一個連鎖問題：這次依Wei需求「40等時剛好能點出解鎖二階職業、
-// 100等時剛好能點滿整張天賦」設計的天賦樹cost(主線8節點總和355、全組15節點總和3040)，是依照這份參考
-// 曲線(下面TALENT_CURVE_REFERENCE)反推出來的精確數字——如果直接套用xlsx目前殘缺的curve資料，玩家
-// 100等實際能拿到的點數會停在25點，別說解鎖二階職業(需要355點)，連第2個節點都點不起，天賦樹等於形同虛設。
-// 這裡採取跟talent/card分頁相同的處理原則：只有當xlsx這20個里程碑「level+point都確實填好」時才採用
-// xlsx的真實資料，否則整組改用這份參考預設值(對照下方天賦樹cost設計時使用的同一份數字)，確保天賦系統
-// 現在就能正常運作；只要Wei之後把curve分頁type=1這20列的level/point都依這份參考值(或他想要的其他曲線)
-// 填齊，這裡會自動偵測到並改用xlsx的資料，但屆時記得同步調整天賦樹的cost設計(TALENT_DEFAULT_DESIGN)，
-// 否則點數曲線改了、樹的花費沒改，兩者又會對不上。
+// 2026-09-10 Wei新增per_level欄位規則後更新：curve分頁的type=1(天賦點數,item8002)/type=2(屬性點數,item8003)
+// 兩組資料現在都是「級距(level)+每幾等觸發一次(per_level)+每次觸發獲得點數(point)」的通用格式，
+// 例如type=1第一列 per_level=1、level=5、point=2，代表「5等以內，每1等產生2點」；type=2 per_level=5、
+// level=100、point=1，代表「100等以內，每5等產生1點」。實際計算邏輯見index.html的computeCurvePoints()。
+// 這裡的參考預設值僅在xlsx資料不完整時才會用到(見下方buildTalentCurve/buildGodPointCurve的complete判斷)。
 const TALENT_CURVE_REFERENCE = [
-  { level: 5, point: 2 }, { level: 10, point: 3 }, { level: 15, point: 5 }, { level: 20, point: 7 },
-  { level: 25, point: 9 }, { level: 30, point: 12 }, { level: 35, point: 15 }, { level: 40, point: 18 },
-  { level: 45, point: 21 }, { level: 50, point: 25 }, { level: 55, point: 29 }, { level: 60, point: 33 },
-  { level: 65, point: 37 }, { level: 70, point: 41 }, { level: 75, point: 46 }, { level: 80, point: 51 },
-  { level: 85, point: 56 }, { level: 90, point: 61 }, { level: 95, point: 66 }, { level: 100, point: 71 },
+  { level: 5, point: 2, perLevel: 1 }, { level: 10, point: 3, perLevel: 1 }, { level: 15, point: 5, perLevel: 1 }, { level: 20, point: 7, perLevel: 1 },
+  { level: 25, point: 9, perLevel: 1 }, { level: 30, point: 12, perLevel: 1 }, { level: 35, point: 15, perLevel: 1 }, { level: 40, point: 18, perLevel: 1 },
+  { level: 45, point: 21, perLevel: 1 }, { level: 50, point: 25, perLevel: 1 }, { level: 55, point: 29, perLevel: 1 }, { level: 60, point: 33, perLevel: 1 },
+  { level: 65, point: 37, perLevel: 1 }, { level: 70, point: 41, perLevel: 1 }, { level: 75, point: 46, perLevel: 1 }, { level: 80, point: 51, perLevel: 1 },
+  { level: 85, point: 56, perLevel: 1 }, { level: 90, point: 61, perLevel: 1 }, { level: 95, point: 66, perLevel: 1 }, { level: 100, point: 71, perLevel: 1 },
 ];
 function buildTalentCurve(wb) {
   const rows = xlsxSheetToObjects(wb, 'curve').filter(o => o.type === 1)
-    .map(o => ({ level: o.level, point: o.point, total: o['#總點數'] }));
+    .map(o => ({ level: o.level, point: o.point, perLevel: o.per_level, total: o['#總點數'] }));
   const complete = TALENT_CURVE_REFERENCE.every(ref => rows.some(r => r.level === ref.level && r.point !== null && r.point !== undefined));
   if (!complete) {
-    console.warn('[xlsx-loader] curve分頁type=1的天賦點數里程碑資料不完整(目前僅level5/10有填point)，改用內建參考曲線TALENT_CURVE_REFERENCE，詳見程式碼註解。');
-    return TALENT_CURVE_REFERENCE.map(r => ({ level: r.level, point: r.point, total: null }));
+    console.warn('[xlsx-loader] curve分頁type=1的天賦點數里程碑資料不完整，改用內建參考曲線TALENT_CURVE_REFERENCE，詳見程式碼註解。');
+    return TALENT_CURVE_REFERENCE.map(r => ({ level: r.level, point: r.point, perLevel: r.perLevel, total: null }));
+  }
+  return rows;
+}
+
+// type=2：屬性點數(item 8003，用於神格系統)，目前xlsx只有一列(per_level=5、level=100、point=1，
+// 即100等以內每5等產生1點)，跟天賦點數共用同一份curve分頁、同一套通用計算邏輯。
+const GOD_POINT_CURVE_REFERENCE = [
+  { level: 100, point: 1, perLevel: 5 },
+];
+function buildGodPointCurve(wb) {
+  const rows = xlsxSheetToObjects(wb, 'curve').filter(o => o.type === 2)
+    .map(o => ({ level: o.level, point: o.point, perLevel: o.per_level, total: o['#總點數'] }));
+  const complete = GOD_POINT_CURVE_REFERENCE.every(ref => rows.some(r => r.level === ref.level && r.point !== null && r.point !== undefined && r.perLevel != null));
+  if (!complete) {
+    console.warn('[xlsx-loader] curve分頁type=2的屬性點數里程碑資料不完整，改用內建參考曲線GOD_POINT_CURVE_REFERENCE，詳見程式碼註解。');
+    return GOD_POINT_CURVE_REFERENCE.map(r => ({ level: r.level, point: r.point, perLevel: r.perLevel, total: null }));
   }
   return rows;
 }
@@ -1074,6 +1084,7 @@ async function loadGameDataFromXlsx() {
     ITEM_DATABASE = buildItemDatabase(wb);
     LEVELCURVE_DATABASE = buildLevelcurveDatabase(wb);
     TALENT_CURVE = buildTalentCurve(wb);
+    GOD_POINT_CURVE = buildGodPointCurve(wb);
     IDLEZONE_DATABASE = buildIdlezoneDatabase(wb);
     GACHALIST_DATABASE = buildGachalistDatabase(wb);
     DUNGEON_LEVEL_DATABASE = buildDungeonLevelDatabase(wb);

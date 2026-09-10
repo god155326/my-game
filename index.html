@@ -6683,29 +6683,39 @@ let TALENTLIST_DATABASE = {
 
     // ##AUTO-GENERATED:TALENT_CURVE:START##
     // 由 xlsx curve 分頁(type=1)產生：任一職業等級提升跨過這些里程碑等級時，即可獲得對應點數(累加進共用天賦點數池)
+    // per_level：每幾等觸發一次(目前全部是1，即每1等就觸發一次)，point：每次觸發獲得的點數
 let TALENT_CURVE = [
-      { level: 5, point: 2, total: 10 },
-      { level: 10, point: 3, total: 15 },
-      { level: 15, point: 5, total: 25 },
-      { level: 20, point: 7, total: 35 },
-      { level: 25, point: 9, total: 45 },
-      { level: 30, point: 12, total: 60 },
-      { level: 35, point: 15, total: 75 },
-      { level: 40, point: 18, total: 90 },
-      { level: 45, point: 21, total: 105 },
-      { level: 50, point: 25, total: 125 },
-      { level: 55, point: 29, total: 145 },
-      { level: 60, point: 33, total: 165 },
-      { level: 65, point: 37, total: 185 },
-      { level: 70, point: 41, total: 205 },
-      { level: 75, point: 46, total: 230 },
-      { level: 80, point: 51, total: 255 },
-      { level: 85, point: 56, total: 280 },
-      { level: 90, point: 61, total: 305 },
-      { level: 95, point: 66, total: 330 },
-      { level: 100, point: 71, total: 355 }
+      { level: 5, point: 2, perLevel: 1, total: 10 },
+      { level: 10, point: 3, perLevel: 1, total: 15 },
+      { level: 15, point: 5, perLevel: 1, total: 25 },
+      { level: 20, point: 7, perLevel: 1, total: 35 },
+      { level: 25, point: 9, perLevel: 1, total: 45 },
+      { level: 30, point: 12, perLevel: 1, total: 60 },
+      { level: 35, point: 15, perLevel: 1, total: 75 },
+      { level: 40, point: 18, perLevel: 1, total: 90 },
+      { level: 45, point: 21, perLevel: 1, total: 105 },
+      { level: 50, point: 25, perLevel: 1, total: 125 },
+      { level: 55, point: 29, perLevel: 1, total: 145 },
+      { level: 60, point: 33, perLevel: 1, total: 165 },
+      { level: 65, point: 37, perLevel: 1, total: 185 },
+      { level: 70, point: 41, perLevel: 1, total: 205 },
+      { level: 75, point: 46, perLevel: 1, total: 230 },
+      { level: 80, point: 51, perLevel: 1, total: 255 },
+      { level: 85, point: 56, perLevel: 1, total: 280 },
+      { level: 90, point: 61, perLevel: 1, total: 305 },
+      { level: 95, point: 66, perLevel: 1, total: 330 },
+      { level: 100, point: 71, perLevel: 1, total: 355 }
     ];
     // ##AUTO-GENERATED:TALENT_CURVE:END##
+
+    // ##AUTO-GENERATED:GOD_POINT_CURVE:START##
+    // 由 xlsx curve 分頁(type=2)產生：屬性點數(item 8003，用於神格系統)，任一職業等級提升跨過這些
+    // 里程碑等級時，即可獲得對應點數(累加進 gameState.godAvailablePoints)。計算方式跟天賦點數共用
+    // 同一套通用邏輯(見 computeCurvePoints())。
+let GOD_POINT_CURVE = [
+      { level: 100, point: 1, perLevel: 5, total: 20 }
+    ];
+    // ##AUTO-GENERATED:GOD_POINT_CURVE:END##
 
     // 武器id -> 突破碎片item id 對照表(依xlsx item分頁順序1:1對應 10001~10030 -> 9101~9130)
     function getWeaponShardId(weaponCardId) { return weaponCardId - 900; }
@@ -6810,7 +6820,7 @@ let TALENT_CURVE = [
       // mapId=200現在其實是試煉之塔第100層(type=tower)，不再是主線1-1，這裡與下方showResultModal鉤子、
       // runIntroSequence註解原本都還寫著舊的mapId=200，導致新手引導結束後底部導覽列永遠不會真正解鎖——已一併修正為1000
       advancedClassesRevealed: false,
-      // 神格系統：godPoints為已確定套用的各屬性點數，godAvailablePoints為尚可分配的點數(每10等1點+道具取得)
+      // 神格系統：godPoints為已確定套用的各屬性點數，godAvailablePoints為尚可分配的點數(依curve分頁type=2查表+道具取得)
       godPoints: { int: 0, vit: 0, agi: 0, str: 0, dex: 0, spr: 0 },
       godAvailablePoints: 0,
       // 職業選單子分頁：'class'(職業)或'god'(神格)
@@ -6927,17 +6937,41 @@ let TALENT_CURVE = [
       let newLevel = getClassLevel(cid);
       if (newLevel > oldLevel) {
         grantTalentPointsForLevelUp(cid, oldLevel, newLevel);
-        // 神格點數：任一職業每滿10等可獲得1點神格點數(累計跨越幾個10的倍數就給幾點)
-        let gained = Math.floor(newLevel / 10) - Math.floor(oldLevel / 10);
+        // 神格點數(item 8003)：改依curve分頁type=2查表計算(見computeGodPointsAtLevel())，不再是寫死的
+        // 「每滿10等1點」，目前xlsx資料是「100等以內每5等1點」。
+        let gained = computeGodPointsAtLevel(newLevel) - computeGodPointsAtLevel(oldLevel);
         if (gained > 0) gameState.godAvailablePoints = (gameState.godAvailablePoints || 0) + gained;
       }
     }
-    // 2026-09-10 Wei更新規則：天賦點數(item 8002)創帳號時起始為0點，之後不分職業，任一職業每升級5等
-    // 自動獲得1點(例如5等=1點、10等=2點、25等=5點...)，改成純粹的整數公式，不再依賴 TALENT_CURVE
-    // 級距曲線(該表原本是逐級距遞增的複雜設計，現在已不需要，保留在xlsx/index.html純粹是相容舊資料，
-    // 不影響天賦點數的實際計算)。
+    // 2026-09-10 Wei指示：天賦點數(item 8002)/屬性點數(item 8003)都改成統一讀取curve分頁計算，
+    // 兩者資料結構相同(type/per_level/level/point)，共用同一套通用計算邏輯：
+    // 依序檢查每一列(level由小到大排序)，該列代表一個級距(從上一列的level到這一列的level為止)，
+    // 級距內「每per_level等」就會產生「point」點，級距沒有走完的部分(level落在級距中間)按比例(整數無條件捨去)計算。
+    // 例如第一列 per_level=1、level=5、point=2 → 5等以內每1等產生2點；第二列 per_level=1、level=10、point=3
+    // → 6~10等每1等產生3點(承接第一列已經算完的5等)，以此類推。
+    function computeCurvePoints(curveRows, level) {
+      let total = 0;
+      let prevLevel = 0;
+      for (let row of curveRows) {
+        let perLevel = row.perLevel || 1;
+        if (level >= row.level) {
+          total += Math.floor((row.level - prevLevel) / perLevel) * row.point;
+          prevLevel = row.level;
+        } else if (level > prevLevel) {
+          total += Math.floor((level - prevLevel) / perLevel) * row.point;
+          prevLevel = level;
+          break;
+        } else {
+          break;
+        }
+      }
+      return total;
+    }
     function computeTalentPointsAtLevel(level) {
-      return Math.floor((level || 0) / 5);
+      return computeCurvePoints(TALENT_CURVE, level || 0);
+    }
+    function computeGodPointsAtLevel(level) {
+      return computeCurvePoints(GOD_POINT_CURVE, level || 0);
     }
     // 任一職業升級時，依curve查表計算「新等級」與「舊等級」各自累計可得的天賦點數，兩者差額即為本次升級獲得的點數，累加進共用天賦點數池
     function grantTalentPointsForLevelUp(roleId, oldLevel, newLevel) {
@@ -14342,98 +14376,18 @@ let TALENT_CURVE = [
     // 批次3：16個系統開放檢查點的引導說明文字，由 text 分頁(type=guide 且 timing=<checkpoint key>) 讀入；
     // 預設為空物件(xlsx讀取失敗、或該checkpoint的列被刪除時，找不到對應key，該檢查點就不顯示說明文字，只保留功能解鎖)
     let GUIDE_DATABASE = {};
-    let STORY_LINES = {
-      before100: [
-        "夜色籠罩整片魔王領域。",
-        "遠方的天空已經被黑紅色的雲層完全覆蓋。",
-        "終焉神殿懸浮在破碎的大地之上。"
-      ],
-      after100a: [
-        "『世界正在崩塌。』",
-        "魔王：『勇者，你還是不明白。』",
-        "匿名的勇者：『我……一定會阻止你。』",
-        "魔王：『即使再來一次，你也會走上同一條路。』",
-        "匿名的勇者：『再來一次？』",
-        "永恆聖鏡：『時間回溯開始。』",
-        "匿名的勇者：『等等……我的記憶……』",
-        "『時間逆流，戰場消失，無數記憶化為光芒。』"
-      ],
-      after100b: [
-        "匿名的勇者：『我記得我是勇者。』",
-        "匿名的勇者：『但我忘了……為什麼我要打敗魔王。』",
-        "匿名的勇者：『這裡是哪裡？』",
-        "艾琳：『你終於醒了。這裡是中央自由地帶。』",
-        "匿名的勇者：『我叫什麼？』",
-        "艾琳：『你的名字？你沒有告訴任何人。』",
-        "匿名的勇者：『……奇怪，我只知道自己是勇者。』",
-        "艾琳：『勇者？你身上確實有勇者印記。』",
-        "匿名的勇者：『我曾經……打敗過魔王嗎？』",
-        "艾琳：『從你現在的狀態來看，你連一把劍都沒有。』",
-        "匿名的勇者：『所以，我失去了力量。』",
-        "艾琳：『也許你失去的，比力量更多。』",
-        "艾琳：『在踏出第一步以前，先替自己取一個名字吧。』",
-        "匿名的勇者：『名字……以前的我叫什麼？』",
-        "艾琳：『不知道。』",
-        "匿名的勇者：『那就不用追著過去跑。』",
-        "艾琳：『你想自己決定？』",
-        "匿名的勇者：『嗯。這一次，由我決定我是誰。』",
-        "艾琳：『好，那就從名字開始。』"
-      ],
-      classIntro: [
-        "公會長：『勇者也必須從最基本的戰鬥開始。』",
-        "公會長：『劍士，正面突破。』",
-        "公會長：『戰士，守住前線。』",
-        "公會長：『弓手，在遠處支援。』",
-        "公會長：『盜賊，以速度決勝。』",
-        "公會長：『法師，掌握魔力。』",
-        "公會長：『祭司，保護同伴。』",
-        "『選擇您的職業開始嶄新的旅程』"
-      ],
-      gachaIntro: [
-        "艾琳：『選擇好職業了嗎？』",
-        "艾琳：『但勇者，光靠空手我看可無法在「風雨平原」活著呢。』",
-        "<name>：『這是什麼？』",
-        "艾琳：『聖遺物召喚券。』",
-        "<name>：『聖遺物……和我記憶裡的東西有關嗎？』",
-        "艾琳：『它們來自歷史與傳說中的名器，有些甚至曾被英雄使用。』",
-        "<name>：『也就是說，我可以重新選擇自己的武器。』",
-        "艾琳：『沒錯。』",
-        "<name>：『那就來吧。』",
-        "召喚陣：『光芒聚集。』",
-        "『勇者再次握住武器，而沉睡的身體本能，似乎認出了它。』"
-      ]
-    };
+    // 2026-09-10 Wei指示：全部統一改讀text分頁，程式碼裡不再保留任何寫死的劇情/引導文字備援值。
+    // 原本這裡寫死的內容(mapid=100前後劇情、classIntro、gachaIntro)已經匯出成Excel(text_hardcoded_export.xlsx)
+    // 供對照，實際內容現在完全依賴 buildStoryLines() 讀取text分頁(見xlsx-loader.js)，找不到對應資料時
+    // 該段落就不會顯示文字(不會退回任何內建預設文本)。
+    let STORY_LINES = {};
 
-    // 主線關卡(mapdata)綁定的劇情：戰前(before)/戰後(after)，依 mapId 觸發，日後任何主線關卡皆可比照擴充
-    const MAINLINE_STORY = {
-      200: {
-        before: [
-          "公會長：『風雨平原最近不太平靜。』",
-          "<name>：『魔物暴動？』",
-          "公會長：『還沒嚴重到那種程度，但它們正在靠近村鎮。』",
-          "<name>：『我去調查。』",
-          "艾琳：『我正要去平原做採集調查，你要一起同行嗎？』",
-          "<name>：『我們認識嗎？』",
-          "艾琳：『現在還不認識。』",
-          "艾琳：『但我有種感覺，我們之後會一起走很久。』",
-          "<name>：『那就走吧。』",
-          "旁白：『勇者踏出公會大門。七年前的旅程，正式開始。』"
-        ]
-      },
-      209: {
-        after: [
-          "艾琳：『牠們跑得很急。』",
-          "<name>：『像是在逃命。』",
-          "<name>：『最近發生了什麼？』",
-          "『東邊的風鳴峽谷開始有奇怪的聲音。』",
-          "艾琳：『魔力濃度也在上升。』",
-          "<name>：『所以牠們不是突然變兇，而是在躲避某個東西。』",
-          "艾琳：『你以前也會這樣分析嗎？』",
-          "<name>：『不知道……但我好像很熟悉這種判斷方式。』",
-          "『新的線索出現，調查目標轉向風鳴峽谷。』"
-        ]
-      }
-    };
+    // 主線關卡(mapdata)綁定的劇情：戰前(before)/戰後(after)，依 mapId 觸發。
+    // 2026-09-10 Wei指示：全部統一改讀text分頁，這裡不再保留任何寫死的關卡劇情(先前寫死的是mapid=200/209
+    // 這組改版前的舊關卡編號，目前main關卡編號已經是1000起跳，200/209完全不會被觸發到，已匯出成Excel
+    // (text_hardcoded_export.xlsx)供對照後移除)。目前主線關卡的劇情完全由 MAINLINE_STORY_XLSX
+    // (讀取text分頁mapid=實際關卡編號的story列)提供，見下方 getMainlineStoryFor()。
+    const MAINLINE_STORY = {};
     // 2026-09-10新增：text分頁裡mapid≠100的type=story列(Wei陸續填入各關卡自己的劇情)，
     // 由 xlsx-loader.js 的 buildMainlineStoryDatabase() 讀取後存到這裡，{ mapId: { after: [...] } }
     let MAINLINE_STORY_XLSX = {};
