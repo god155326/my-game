@@ -2038,12 +2038,13 @@
       margin-bottom: 6px;
       flex-shrink: 0;
     }
-    /* 自動探索/領取掛機按鈕：疊在黑框左上角，縮小尺寸，不佔用版面空間、不影響掛機演出本身的排列 */
+    /* 自動探索/領取掛機按鈕：疊在黑框左上角，縮小尺寸，不佔用版面空間、不影響掛機演出本身的排列。
+       z-index刻意設得比下面的縮小戰鬥遮罩更高，確保縮小戰鬥時這兩顆按鈕仍在最上層、可以正常點擊。 */
     .mainline-idle-overlay {
       position: absolute;
       top: 4px;
       left: 4px;
-      z-index: 5;
+      z-index: 20;
       display: flex;
       flex-direction: column;
       gap: 3px;
@@ -2057,7 +2058,7 @@
       left: 0;
       right: 0;
       bottom: 0;
-      z-index: 8;
+      z-index: 15;
       background: rgba(0,0,0,0.78);
       border-radius: 0 0 10px 10px;
       display: none;
@@ -2074,7 +2075,7 @@
       position: absolute;
       left: 10px;
       right: 10px;
-      bottom: 64px;
+      bottom: 54px;
       z-index: 129;
       display: none;
       flex-direction: column;
@@ -2101,6 +2102,19 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+    .mini-battle-bar-action-btn {
+      display: block;
+      width: 100%;
+      margin-top: 4px;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #fff;
+      background: linear-gradient(180deg, #d97706 0%, #b45309 100%);
+      border: 1px solid #6b4a2f;
+      border-radius: 6px;
+      cursor: pointer;
     }
     .mainline-idle-mini-btn {
       flex: none;
@@ -3913,10 +3927,6 @@
             </button>
             <button class="btn mainline-idle-mini-btn" id="btn-claim-idle" onclick="openRewardPreviewModal()">領取掛機<span class="red-dot-badge" id="btn-claim-idle-dot" style="display:none;"></span></button>
           </div>
-          <!-- 縮小戰鬥：有正式戰鬥於背景進行且目前在主線首頁時，蓋住掛機演出預覽區塊，見 renderMainlineMinimizedOverlay() -->
-          <div class="mainline-minibattle-overlay" id="mainline-minibattle-overlay">
-            <span id="mainline-minibattle-overlay-text"></span>
-          </div>
           <div class="mainline-battle-side-label">敵方陣容</div>
           <div class="mainline-side-row">
             <div class="weapon-slot-row mini" id="mainline-enemy-row"></div>
@@ -3924,6 +3934,12 @@
           <div class="mainline-battle-side-label mainline-player-label">我方陣容</div>
           <div class="mainline-side-row">
             <div class="weapon-slot-row mini" id="mainline-player-row"></div>
+          </div>
+          <!-- 縮小戰鬥：有正式戰鬥於背景進行且目前在主線首頁時，蓋住掛機演出預覽區塊(敵我卡片列)，見 renderMainlineMinimizedOverlay()。
+               刻意放在同層最後面(DOM順序)+夠高的z-index，確保一定蓋在敵我卡片列(.mainline-side-row)之上；
+               「自動探索/領取掛機」按鈕(.mainline-idle-overlay)的z-index比這個更高，維持在最上層可以點擊。 -->
+          <div class="mainline-minibattle-overlay" id="mainline-minibattle-overlay">
+            <span id="mainline-minibattle-overlay-text"></span>
           </div>
         </div>
         <div id="mainline-stage-detail" style="flex:1; overflow-y:auto; min-height:0;"></div>
@@ -3935,13 +3951,14 @@
       </div>
 
       <!-- 底部固定導覽列為絕對定位覆蓋層(見下方 #bottom-nav)，此處僅保留等高的版位間距 -->
-      <div style="height:54px; flex-shrink:0;"></div>
+      <div id="bottom-reserved-space" style="height:54px; flex-shrink:0;"></div>
     </div>
 
     <!-- 縮小戰鬥狀態列：有正式戰鬥在背景進行、且目前不在戰鬥畫面時顯示，點擊直接切回戰鬥畫面，見 updateMiniBattleBar() -->
     <div class="mini-battle-bar" id="mini-battle-bar" onclick="onMiniBattleBarClick()">
       <div class="mini-battle-bar-title" id="mini-battle-bar-title"></div>
       <div class="mini-battle-bar-log" id="mini-battle-bar-log"></div>
+      <div id="mini-battle-bar-action-row"></div>
     </div>
 
     <!-- 底部功能分頁導覽列：絕對定位於畫面最下方，戰鬥中與非戰鬥畫面皆常駐顯示、可自由切換 -->
@@ -10349,13 +10366,19 @@ let TALENT_CURVE = [
     function updateMiniBattleBar() {
       const bar = document.getElementById('mini-battle-bar');
       if (!bar) return;
-      // 戰鬥已經在縮小狀態下分出勝負：不強制蓋掉玩家目前畫面，狀態列改顯示「戰鬥結束，點擊查看結算」，
-      // 點擊後才真正開啟結算彈窗(見 onMiniBattleBarClick())，見 showResultModal() 的對應處理。
+      const actionRow = document.getElementById('mini-battle-bar-action-row');
+      // 戰鬥已經在縮小狀態下分出勝負：不開啟原本圖示版的結算彈窗(那個流程只保留給「玩家正在看著戰鬥畫面」時使用)，
+      // 改成直接在狀態列顯示純文字的獎勵資訊，並提供「下一關」(找得到下一關時)或「返回」(找不到，例如副本類)按鈕，
+      // 點了才真正接續/結束(見 onMiniResultActionClick())，內容在 showResultModal() 結束時就已經算好存在這裡。
       if (gameState.pendingResultModal) {
         syncBattlePopupsForMinimize(true);
-        document.getElementById('mini-battle-bar-title').innerText = `${gameState.pendingResultModalHint || ''} 戰鬥結束，點擊查看結算`;
-        document.getElementById('mini-battle-bar-log').innerHTML = '';
+        const r = gameState.pendingResultModal;
+        document.getElementById('mini-battle-bar-title').innerText = `${r.hint || ''} ${r.isWin ? '戰鬥勝利' : '戰鬥失敗'}`;
+        document.getElementById('mini-battle-bar-log').innerHTML = r.isWin
+          ? `<div class="mini-battle-bar-log-line">獲得獎勵：${r.rewardText}</div>` : '';
+        actionRow.innerHTML = `<button type="button" class="mini-battle-bar-action-btn" onclick="onMiniResultActionClick(event)">${r.hasNext ? '下一關' : '返回'}</button>`;
         bar.style.display = 'flex';
+        layoutMiniBattleBar(true);
         renderMainlineMinimizedOverlay();
         return;
       }
@@ -10363,6 +10386,8 @@ let TALENT_CURVE = [
       syncBattlePopupsForMinimize(minimized);
       if (!minimized) {
         bar.style.display = 'none';
+        actionRow.innerHTML = '';
+        layoutMiniBattleBar(false);
         renderMainlineMinimizedOverlay(); // 戰鬥已結束或已切回戰鬥畫面：確保主線遮罩也一併隱藏，避免殘留
         return;
       }
@@ -10370,20 +10395,38 @@ let TALENT_CURVE = [
       document.getElementById('mini-battle-bar-title').innerText = `${quest ? (quest.hint || '') : ''} 縮小戰鬥中`;
       document.getElementById('mini-battle-bar-log').innerHTML = (gameState.miniBattleLog || [])
         .map(line => `<div class="mini-battle-bar-log-line">${line}</div>`).join('');
+      actionRow.innerHTML = '';
       bar.style.display = 'flex';
+      layoutMiniBattleBar(true);
       renderMainlineMinimizedOverlay();
     }
+    // 縮小戰鬥狀態列跟底部導覽列是「同一個層級」的版面元素：狀態列顯示時，要讓所有畫面最下方那排功能按鈕
+    // (佈陣/挑戰/自動下一關...等，每個畫面各自的action-bar)一起往上位移讓出空間，而不是直接蓋在上面。
+    // 做法：這些按鈕實際上都緊貼著 #bottom-reserved-space 這個共用保留版位(見畫面結構)，只要動態調整它的
+    // 高度(平時54px，狀態列顯示時再加上狀態列本身量到的實際高度)，screen-wrapper的flex排版就會自動把每個
+    // 畫面的內容(含最下面那排按鈕)整組往上推，狀態列則貼著同一個底線精準補進多出來的空間，兩者不會重疊。
+    function layoutMiniBattleBar(show) {
+      const spacer = document.getElementById('bottom-reserved-space');
+      if (!spacer) return;
+      if (!show) { spacer.style.height = '54px'; return; }
+      const bar = document.getElementById('mini-battle-bar');
+      const barHeight = bar ? bar.offsetHeight : 0;
+      spacer.style.height = (54 + barHeight) + 'px';
+    }
     // 縮小戰鬥狀態列點擊行為：一般情況下是切回目前進行中的戰鬥；若戰鬥已經在縮小狀態下結束(pendingResultModal)，
-    // 改成開啟結算彈窗(內容/獎勵早在戰鬥結束當下就已經算好，這裡只是把原本隱藏的彈窗顯示出來)。
+    // 這個狀態改由狀態列內嵌的「下一關/返回」按鈕處理(見上方渲染邏輯)，點擊列的其他地方不做任何事。
     function onMiniBattleBarClick() {
-      if (gameState.pendingResultModal) {
-        gameState.pendingResultModal = false;
-        gameState.pendingResultModalHint = null;
-        document.getElementById('result-modal').style.display = 'flex';
-        updateMiniBattleBar();
-        return;
-      }
+      if (gameState.pendingResultModal) return;
       returnToMinimizedBattle();
+    }
+    // 縮小戰鬥狀態列內嵌的「下一關/返回」按鈕：點擊後才真正接續下一關或回到關卡選單，等同玩家在原本結算
+    // 彈窗上點擊同樣的按鈕，只是這次彈窗本身從頭到尾都沒有被打開過(彈窗維持關閉，避免蓋掉玩家目前的畫面)。
+    function onMiniResultActionClick(event) {
+      if (event) event.stopPropagation(); // 避免向上冒泡觸發外層狀態列本身的onclick
+      const hasNext = gameState.pendingResultModal && gameState.pendingResultModal.hasNext;
+      gameState.pendingResultModal = null;
+      document.getElementById('result-modal').style.display = 'none';
+      if (hasNext) goToNextMainStage(); else returnToQuestMenu();
     }
     // 主線首頁：縮小戰鬥進行中時，把掛機演出的預覽區塊蓋上一層深透明遮罩，顯示「X戰鬥中」，
     // 且掛機演出本身已於proceedSelectQuest呼叫stopMainlineIdleLoop()中止、startMainlineIdleLoop()也會擋下重啟，
@@ -10393,7 +10436,7 @@ let TALENT_CURVE = [
       if (!overlay) return;
       if (!isMainlineScreenVisible()) { overlay.style.display = 'none'; return; }
       if (gameState.pendingResultModal) {
-        document.getElementById('mainline-minibattle-overlay-text').innerText = `${gameState.pendingResultModalHint || ''}戰鬥結束，點擊下方查看結算`;
+        document.getElementById('mainline-minibattle-overlay-text').innerText = `${gameState.pendingResultModal.hint || ''}戰鬥結束，點擊下方查看結算`;
         overlay.style.display = 'flex';
         return;
       }
@@ -10688,6 +10731,9 @@ let TALENT_CURVE = [
     function proceedSelectQuest(quest) {
       // 掛機演出若正在背景進行，開始正式關卡戰鬥時靜默中止(掛機沒有輸贏成本，無需確認)
       if (gameState.idle.exploring) stopMainlineIdleLoop();
+      // 縮小戰鬥：若上一場戰鬥是在縮小狀態下結束、玩家還沒點開查看結算就直接開始下一場戰鬥，
+      // 先清掉這個殘留狀態，避免縮小戰鬥狀態列卡在顯示「上一場」的結算資訊，蓋掉這一場真正在進行的戰鬥。
+      gameState.pendingResultModal = null;
 
       gameState.selectedQuest = quest;
       let { squad, overrides } = buildQuestSquad(quest);
@@ -11266,6 +11312,7 @@ let TALENT_CURVE = [
 
       const quest = gameState.selectedQuest;
       const hint = (quest && quest.hint) ? quest.hint : '';
+      let plainRewardText = ''; // 縮小戰鬥用：純文字版獎勵清單(不含icon)，見函式尾端wasMinimized分流
 
       // 黑暗契約(捕捉)：契約簽訂成功的魔物，只有在戰鬥「勝利」時才真正加入武器清單；戰敗則全數作廢(玩家已消耗的契約卷不退還)
       if (isWin && gameState.pendingCapturedCardIds && gameState.pendingCapturedCardIds.length) {
@@ -11368,6 +11415,7 @@ let TALENT_CURVE = [
             }
           }
           lootEl.innerText = gained.length ? gained.map(g => `${g.icon} ${g.name} x${g.amount}`).join(' · ') : '沒有獲得獎勵';
+          plainRewardText = gained.length ? gained.map(g => `${g.name} x${g.amount}`).join(' · ') : '沒有獲得獎勵';
 
           // 自動下一關：僅main/tower這兩種連續性關卡適用，且結算彈窗確實有顯示「下一關」按鈕(找得到下一關)時，才倒數3秒後自動接續。
           // 縮小戰鬥：若戰鬥是在縮小狀態下結束的(wasMinimized)，不自動倒數接關——結算彈窗這次會先被隱藏、
@@ -11389,13 +11437,16 @@ let TALENT_CURVE = [
         }
       }
 
-      // 縮小戰鬥：戰鬥是在縮小狀態下結束的話，不強制彈出結算彈窗蓋掉玩家目前正在看的畫面——
-      // 獎勵/進度都已經在上面正常算完發放，這裡只是「先不顯示」，改用狀態列(見updateMiniBattleBar())
-      // 提示「戰鬥結束，點擊查看結算」，玩家自己點了才真正顯示這個已經準備好內容的彈窗(見onMiniBattleBarClick())。
+      // 縮小戰鬥：戰鬥是在縮小狀態下結束的話，不開啟原本圖示版的結算彈窗(彈窗維持關閉、蓋在裡面不顯示)，
+      // 改成直接在縮小戰鬥狀態列顯示純文字獎勵資訊 + 「下一關/返回」按鈕，讓玩家不用被強制切走目前畫面。
       if (wasMinimized) {
         modal.style.display = 'none';
-        gameState.pendingResultModal = true;
-        gameState.pendingResultModalHint = hint;
+        gameState.pendingResultModal = {
+          hint,
+          isWin,
+          rewardText: plainRewardText,
+          hasNext: nextBtn.style.display === 'block'
+        };
         updateMiniBattleBar();
         return;
       }
