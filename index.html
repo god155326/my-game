@@ -466,10 +466,11 @@
     }
 
     /* 飛針：整張卡片邊轉邊向前、再邊轉邊向後，全程共轉一圈，類似回力鏢 */
-    .card.atk-dart-player, .role-hp-block.atk-dart-player { animation: cardDartPlayer calc(0.6s / var(--speed, 1)) linear; }
-    .card.atk-dart-enemy, .role-hp-block.atk-dart-enemy { animation: cardDartEnemy calc(0.6s / var(--speed, 1)) linear; }
-    .weapon-slot-card.atk-dart-player { animation: cardDartMiniPlayer 0.35s linear; }
-    .weapon-slot-card.atk-dart-enemy { animation: cardDartMiniEnemy 0.35s linear; }
+    /* 2026-09-10調整：飛針整體表演時間縮短(卡面版0.6s→0.35s、掛機縮小版0.35s→0.2s)，旋轉/位移的比例結構不變，只是整體播放更快 */
+    .card.atk-dart-player, .role-hp-block.atk-dart-player { animation: cardDartPlayer calc(0.35s / var(--speed, 1)) linear; }
+    .card.atk-dart-enemy, .role-hp-block.atk-dart-enemy { animation: cardDartEnemy calc(0.35s / var(--speed, 1)) linear; }
+    .weapon-slot-card.atk-dart-player { animation: cardDartMiniPlayer 0.2s linear; }
+    .weapon-slot-card.atk-dart-enemy { animation: cardDartMiniEnemy 0.2s linear; }
     @keyframes cardDartPlayer {
       0%   { transform: translateY(0) rotate(0deg); }
       50%  { transform: translateY(-20px) rotate(180deg); }
@@ -13631,7 +13632,7 @@ let GOD_POINT_CURVE = [
       atk_magic: 850,
       atk_chargestab: 800,
       atk_whip: 250,
-      atk_dart: 550,
+      atk_dart: 300,
     };
     // 依攻擊者所持武器卡片的atk_motion欄位，查出這次要套用的動作(找不到/沒填一律當作預設的刺)
     function getUnitAtkMotion(unit) {
@@ -13660,7 +13661,15 @@ let GOD_POINT_CURVE = [
       el.classList.remove('lunge-player', 'lunge-enemy');
       void el.offsetWidth; // 強制reflow，確保動畫可以重新觸發
       el.classList.add(cls);
-      setTimeout(() => el.classList.remove(cls), isIdle ? 300 : td(850));
+      // 2026-09-10修正：atk_shieldup用scale()放大到130%時，若攻擊者卡片沒有比同排其他卡片更高的堆疊順序，
+      // 放大出來的部分會被「排在它後面(DOM順序更後)」的相鄰卡片蓋住，視覺上就像沒有效果一樣。
+      // 這裡在動作播放期間統一把該卡片暫時提高z-index，播完後(跟class一起)還原，讓放大效果能完整顯示在最上層。
+      const prevZIndex = el.style.zIndex;
+      el.style.zIndex = 50;
+      setTimeout(() => {
+        el.classList.remove(cls);
+        el.style.zIndex = prevZIndex;
+      }, isIdle ? 300 : td(850));
     }
 
     // 觸發受擊者卡牌的後仰晃動動畫
@@ -14636,7 +14645,12 @@ let GOD_POINT_CURVE = [
       // 解析單句："名稱：內容"視為人物對話；<name> 除了可能出現在說話者位置，也可能出現在對話內文中間
       // (例如「艾琳：『<name>，你終於醒了』」)，所以先把整行裡「所有」<name>都代換成玩家實際輸入的名字，
       // 再進行說話者/內容的切割判斷；命名前的主角以「匿名的勇者」稱呼(仍對應主角立繪)，沒有名稱前綴的視為旁白
+      // 2026-09-10修正：text分頁裡多行劇情用「\n」換行時，xlsx儲存格內容常常每一行開頭都多一個空白(例如
+      // " 露娜：...")，這個空白會讓下面比對「說話者」的正規表達式(要求從行首^就是名字，不能有任何空白)整段
+      // 失敗，導致這一行被誤判為旁白——文字本身還是照樣顯示得出來(所以看起來像是「文字有抓到，人物圖片沒有」)，
+      // 只是沒有被正確辨識出是誰在講話，立繪自然不會出現。先trim()整行前後空白再解析，就能正確辨識。
       _parseLine(line) {
+        line = (line || '').trim();
         const playerName = (gameState.profile && gameState.profile.name && gameState.profile.name !== '匿名的勇者') ? gameState.profile.name : '勇者';
         line = line.split('<name>').join(playerName);
         const m = line.match(/^([^\s:：]{1,10})[:：](.*)$/);
