@@ -13790,6 +13790,10 @@ let GOD_POINT_CURVE = [
           if (skillObj.prefebAtk) {
             // 遠程攻擊：依 prefeb_atk 名稱直接對應到生成好的飛行物素材圖片(magic開頭=魔法系，throw=物理系)
             // 掛機演出時，只有停留在主線首頁(看得到縮小版戰鬥區塊)才會顯示投射物，其餘情況仍維持相同的時間節奏，確保回合推進步調一致
+            // 2026-09-10修正：不論這個技能是遠程(有prefeb_atk)還是近戰，攻擊者卡片本身的atk_motion一律都要播放，
+            // 不再因為有配置prefeb_atk就整個跳過——飛行物照常飛，卡片動作也照常演出，兩者同時進行；
+            // 命中特效/傷害仍維持原本的時間點(td(280))一起出現，不受atk_motion影響。
+            triggerCardLunge(attacker);
             let proj = null;
             if (shouldShowBattleEffects()) {
               proj = document.createElement('img');
@@ -13823,7 +13827,8 @@ let GOD_POINT_CURVE = [
             }, td(hitDelayMs));
 
           } else {
-            // 非攻擊類技能且未配置 prefeb_atk：維持原本輔助類技能的投射視覺(治療等)
+            // 非攻擊類技能且未配置 prefeb_atk：維持原本輔助類技能的投射視覺(治療等)，攻擊者卡片的atk_motion同樣照常播放
+            triggerCardLunge(attacker);
             let proj = null;
             if (shouldShowBattleEffects()) {
               proj = document.createElement('div');
