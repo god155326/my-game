@@ -12296,7 +12296,10 @@ let TALENT_CURVE = [
         // 讓「無法行動」的閃爍提示在縮小版戰鬥區塊上也能正確顯示，不會找不到元素而silently no-op
         if (shouldShowBattleEffects()) {
           let isIdle = gameState.idle.exploring;
-          let el = isIdle
+          // 2026-09-10修正：主線首頁現在也會顯示縮小中的正式戰鬥(不只是掛機演出)，只要目前可見的是主線畫面
+          // (screen-battle被隱藏)，特效就要抓縮小版卡片元素，而不是只看是否為掛機演出
+          let useMini = isMainlineScreenVisible();
+          let el = useMini
             ? document.getElementById(`mini-card-${activeUnit.id}`)
             : (activeUnit.isRole
               ? document.getElementById(`${activeUnit.side}-role-hp-block`)
@@ -13394,10 +13397,12 @@ let TALENT_CURVE = [
       return !!el && el.style.display !== 'none';
     }
     // 掛機演出中，只有停留在主線首頁(看得到縮小版戰鬥區塊)才要顯示戰鬥特效；
-    // 正式關卡戰鬥(main/tower/god_trial/annihilation/dungeon_infinite...)：只有「戰鬥畫面本身正在顯示」才播放特效，
-    // 若玩家已使用「縮小戰鬥」切到其他分頁(screen-battle被隱藏)，戰鬥邏輯仍在背景繼續執行，但不再播放任何演出特效
+    // 正式關卡戰鬥(main/tower/god_trial/annihilation/dungeon_infinite...)：戰鬥畫面本身顯示、或縮小後主線首頁
+    // 顯示縮小版戰鬥時都要播放特效(2026-09-10修正：主線首頁現在也會即時顯示縮小中的正式戰鬥，先前這裡只認
+    // screen-battle，導致切到主線後所有特效都被誤判成「沒有畫面可看」而被跳過，只剩下血條數字會變動)；
+    // 若切到裝備/天賦等其他畫面(兩者都不可見)，才真的略過特效播放。
     function shouldShowBattleEffects() {
-      if (isRealBattleInProgress()) return isBattleScreenVisible();
+      if (isRealBattleInProgress()) return isBattleScreenVisible() || isMainlineScreenVisible();
       return !gameState.idle.exploring || isMainlineScreenVisible();
     }
     // 縮小戰鬥：戰鬥畫面(screen-battle)目前是否為使用者正在瀏覽中的畫面
@@ -13407,10 +13412,12 @@ let TALENT_CURVE = [
     }
 
     // 依角色所屬陣營觸發攻擊撲擊動畫(近戰攻擊時使用，玩方往上撲、敵方往下撲)
-    // 掛機演示(idle.exploring)由於畫面上使用的是主線縮小版卡面(mini-card-{id})而非正式戰鬥的卡面(card-{id})，改用對應的縮小版元素id，且動畫固定0.3秒(不受戰鬥加速倍率影響)
+    // 2026-09-10修正：不只是掛機演示(idle.exploring)，正式戰鬥縮小到主線首頁顯示時同樣要抓縮小版卡面(mini-card-{id})，
+    // 判斷依據改成「目前可見的是不是主線畫面」，而不是只看是否為掛機演出；動畫秒數的固定/縮放判斷則仍只看idle與否
     function triggerCardLunge(unit) {
       let isIdle = gameState.idle.exploring;
-      let el = isIdle
+      let useMini = isMainlineScreenVisible();
+      let el = useMini
         ? document.getElementById(`mini-card-${unit.id}`)
         : (unit.isRole
           ? document.getElementById(`${unit.side}-role-hp-block`)
@@ -13428,7 +13435,8 @@ let TALENT_CURVE = [
       if (!unit) return;
       if (!shouldShowBattleEffects()) return; // 掛機演出且目前不在主線首頁(沒有畫面可看)才略過
       let isIdle = gameState.idle.exploring;
-      let el = isIdle
+      let useMini = isMainlineScreenVisible();
+      let el = useMini
         ? document.getElementById(`mini-card-${unit.id}`)
         : (unit.isRole
           ? document.getElementById(`${unit.side}-role-hp-block`)
@@ -13976,7 +13984,7 @@ let TALENT_CURVE = [
 
     function getCrystalPos(side) {
       const overlay = document.getElementById('anim-overlay');
-      let useMini = gameState.idle.exploring && isMainlineScreenVisible();
+      let useMini = isMainlineScreenVisible();
       let el = document.getElementById(useMini ? `mainline-${side}-role-thumb` : `${side}-role-hp-block`);
       if (!el || !overlay) return null;
       let rectT = el.getBoundingClientRect();
@@ -13996,7 +14004,7 @@ let TALENT_CURVE = [
       if (!overlay) return null;
       // #anim-overlay 覆蓋整個遊戲畫面(不論目前顯示哪個畫面)；若目前是主線內嵌的掛機戰鬥且主線畫面可見，
       // 真正的戰鬥主畫面是隱藏的(display:none 的元素 getBoundingClientRect 一律回傳0)，改抓可見的縮小版卡片位置，特效才會對齊正確位置
-      let useMini = gameState.idle.exploring && isMainlineScreenVisible();
+      let useMini = isMainlineScreenVisible();
       let el = document.getElementById(useMini ? `mini-card-${unit.id}` : `card-${unit.id}`);
       if (!el) return null;
       let rectT = el.getBoundingClientRect();
