@@ -3475,7 +3475,7 @@
     #story-narration {
       display: none; width: 100%; box-sizing: border-box; background: rgba(10,8,6,0.88);
       border: 1px solid #6b5238; border-radius: 8px; padding: 10px 16px;
-      color: #f5e6c8; font-size: 28px; line-height: 1.6; text-align: left;
+      color: #f5e6c8; font-size: 20px; line-height: 1.6; text-align: left;
       box-shadow: 0 0 14px rgba(0,0,0,0.6);
     }
     #story-dialogue-wrap { width: 100%; box-sizing: border-box; padding: 0 14px; }
@@ -3486,15 +3486,15 @@
     }
     #story-speaker-name {
       display: inline-block; background: linear-gradient(180deg,#4a3520,#2a1c10);
-      border: 1px solid #a3843f; color: #ffd77a; font-size: 26px; font-weight: bold;
+      border: 1px solid #a3843f; color: #ffd77a; font-size: 18px; font-weight: bold;
       padding: 3px 14px; border-radius: 6px; margin: -24px 0 8px 0; box-shadow: 0 2px 6px rgba(0,0,0,0.5);
     }
     #story-dialogue-text {
-      color: #f5e6c8; font-size: 28px; line-height: 1.6; min-height: 44px; white-space: pre-wrap;
+      color: #f5e6c8; font-size: 20px; line-height: 1.6; min-height: 44px; white-space: pre-wrap;
       text-align: left;
     }
     #story-next-hint {
-      text-align: right; color: #d8bd88; font-size: 22px; margin-top: 4px; opacity: 0.85;
+      text-align: right; color: #d8bd88; font-size: 15px; margin-top: 4px; opacity: 0.85;
       animation: story-hint-blink 1.1s ease-in-out infinite;
     }
     @keyframes story-hint-blink { 0%,100%{opacity:0.3;} 50%{opacity:0.95;} }
@@ -3549,8 +3549,22 @@
     /* 2026-09(Wei要求引導/劇情UI文字放大2倍)：只放大檢查點解鎖引導彈窗(📖新功能解鎖)的文字，
        generic-info-modal本身是全遊戲共用的通用提示彈窗(職業技能說明/強化結果/各種錯誤提示等都共用同一個DOM)，
        用一個額外class限定範圍，避免連帶把其他非引導用途的提示文字也放大。 */
-    #generic-info-modal.stage-guide-active #generic-info-title { font-size: 26px; }
-    #generic-info-modal.stage-guide-active #generic-info-desc { font-size: 24px; }
+    #generic-info-modal.stage-guide-active #generic-info-title { font-size: 39px; }
+    #generic-info-modal.stage-guide-active #generic-info-desc { font-size: 36px; }
+    /* 新功能解鎖引導彈窗專用的「確定」按鈕：平時(一般提示彈窗)隱藏，只有引導模式(stage-guide-active)才顯示 */
+    .generic-info-confirm-btn {
+      display: none;
+      margin: 14px auto 0 auto;
+      padding: 10px 32px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #fff;
+      background: linear-gradient(180deg, #d97706 0%, #b45309 100%);
+      border: 1px solid #6b4a2f;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #generic-info-modal.stage-guide-active .generic-info-confirm-btn { display: block; }
     .bottom-nav-item.nav-locked { opacity: 0.4; filter: grayscale(1); position: relative; }
     .bottom-nav-item.nav-locked::after {
       content: "\1F512"; position: absolute; top: 2px; right: 8px; font-size: 11px;
@@ -3991,14 +4005,16 @@
       </div>
     </div>
 
-    <!-- 通用資訊彈窗(職業技能說明等，非戰鬥畫面共用) -->
-    <div class="cheat-modal" id="generic-info-modal" style="display:none;" onclick="closeGenericInfoModal()">
+    <!-- 通用資訊彈窗(職業技能說明等，非戰鬥畫面共用)：引導類(stage-guide-active)不可點擊外部/✕關閉，
+         只能透過下方新增的「確定」按鈕關閉，其餘一般用途(職業技能說明/強化結果/錯誤提示等)維持原本點外部即可關閉 -->
+    <div class="cheat-modal" id="generic-info-modal" style="display:none;" onclick="onGenericInfoModalBackdropClick()">
       <div class="cheat-modal-box" onclick="event.stopPropagation()">
         <div class="cheat-modal-header">
           <span id="generic-info-title">標題</span>
-          <span class="skill-close-x" onclick="closeGenericInfoModal()">✕</span>
+          <span class="skill-close-x" onclick="onGenericInfoModalBackdropClick()">✕</span>
         </div>
         <div class="cheat-modal-desc" id="generic-info-desc" style="text-align:left;font-size:12px;"></div>
+        <button type="button" class="generic-info-confirm-btn" id="generic-info-confirm-btn" onclick="closeGenericInfoModal()">確定</button>
       </div>
     </div>
 
@@ -10579,6 +10595,13 @@ let TALENT_CURVE = [
         cb();
       }
     }
+    // 2026-09-10 Wei指示：新功能解鎖引導彈窗(stage-guide-active)只能透過「確定」按鈕關閉，
+    // 點擊彈窗外的空白處或右上角✕都不應該關閉它；其餘一般用途的提示彈窗(職業技能說明/強化結果/錯誤
+    // 提示等)則維持原本點外部/✕即可關閉的行為不變。背景/✕的onclick統一改呼叫這個函式做把關。
+    function onGenericInfoModalBackdropClick() {
+      if (document.getElementById('generic-info-modal').classList.contains('stage-guide-active')) return; // 引導模式進行中：忽略點擊外部/✕，只有「確定」按鈕能關閉
+      closeGenericInfoModal();
+    }
 
     const QUESTS_PER_PAGE = 4;
 
@@ -11498,32 +11521,62 @@ let TALENT_CURVE = [
     }
 
     // 點擊「下一關」：關閉結果彈窗，直接接續挑戰下一個主線關卡(不需玩家手動重新選擇關卡)
+    // 2026-09-10 Wei指示：text分頁的劇情內容(任何mapid，只要有填story)一律要中斷戰鬥的繼續/自動繼續，
+    // 通關的當下就要立即顯示，不能被「下一關」「縮小戰鬥自動接關」等流程默默略過。這裡統一收斂成一個
+    // 共用檢查：只要有尚未播放的劇情(Guide._pendingMainAfterMapId，由showResultModal監聽勝利時記錄)，
+    // 就先播放完劇情，才會繼續執行原本要做的事(afterFn)；回傳true代表劇情正在播放中(呼叫端應該直接return，
+    // 不要再往下執行)，false代表沒有待播放劇情，呼叫端可以照常立即繼續。
+    function checkPendingMainStory(afterFn) {
+      if (Guide._pendingMainAfterMapId != null) {
+        const mapId = Guide._pendingMainAfterMapId;
+        Guide._pendingMainAfterMapId = null;
+        document.getElementById('result-modal').style.display = 'none';
+        // 縮小戰鬥狀態列若殘留「戰鬥結束，點擊查看結算」的提示，劇情播放時一併清掉(劇情本身就是全螢幕蓋板)
+        gameState.pendingResultModal = null;
+        updateMiniBattleBar();
+        const storyMeta = getMainlineStoryFor(mapId);
+        Story.playAsync(storyMeta.after, { bgFile: storyMeta.bgFile }).then(afterFn);
+        return true;
+      }
+      return false;
+    }
+
     function goToNextMainStage() {
       clearAutoNextStageCountdown(); // 不論是玩家手動點擊、還是倒數結束後自動觸發，都先確保計時器不會殘留
       let nextMapId = parseInt(document.getElementById('btn-result-next-stage').dataset.nextMapId, 10);
       let nextQuest = QUEST_DATABASE.find(q => q.mapId === nextMapId);
       document.getElementById('result-modal').style.display = 'none';
-      // 批次3：剛通關的這一關若觸發了系統開放檢查點，優先播放引導/教學(播放完會停在主線首頁，玩家可自行點下一關)
-      if (checkAndFireStageGuides()) return;
-      if (!nextQuest) { returnToQuestMenu(); return; }
-      gameState.selectedQuest = null;
-      gameState.selectedRoster = [];
-      proceedSelectQuest(nextQuest);
+      function proceed() {
+        // 批次3：剛通關的這一關若觸發了系統開放檢查點，優先播放引導/教學(播放完會停在主線首頁，玩家可自行點下一關)
+        if (checkAndFireStageGuides()) return;
+        if (!nextQuest) { returnToQuestMenu(); return; }
+        gameState.selectedQuest = null;
+        gameState.selectedRoster = [];
+        proceedSelectQuest(nextQuest);
+      }
+      if (checkPendingMainStory(proceed)) return; // 有待播放劇情：優先播完，播完才繼續走上面這段流程
+      proceed();
     }
 
     // 縮小戰鬥＋自動下一關都開啟時使用：邏輯跟 goToNextMainStage() 完全相同，唯一差異是接續下一關時
     // 不強迫玩家切回戰鬥畫面(keepMinimized:true)，讓玩家可以繼續留在原本瀏覽的畫面上，戰鬥在背景自動接續。
+    // 若這一關剛好有劇情要播放，checkPendingMainStory()會強制播放(劇情本身是全螢幕蓋板，等同中斷了
+    // 「縮小戰鬥自動接關不打擾玩家」這個預設行為)，播完才會真的接續下一關，符合「劇情一定要中斷自動繼續」的需求。
     function goToNextMainStageKeepMinimized() {
       clearAutoNextStageCountdown();
       let nextMapId = parseInt(document.getElementById('btn-result-next-stage').dataset.nextMapId, 10);
       let nextQuest = QUEST_DATABASE.find(q => q.mapId === nextMapId);
       document.getElementById('result-modal').style.display = 'none';
-      // 系統開放檢查點的引導/教學，重要性優先於「不強迫切畫面」，一律照原本邏輯(會自動導回主線首頁播放)
-      if (checkAndFireStageGuides()) return;
-      if (!nextQuest) { returnToQuestMenu(); return; }
-      gameState.selectedQuest = null;
-      gameState.selectedRoster = [];
-      proceedSelectQuest(nextQuest, { keepMinimized: true });
+      function proceed() {
+        // 系統開放檢查點的引導/教學，重要性優先於「不強迫切畫面」，一律照原本邏輯(會自動導回主線首頁播放)
+        if (checkAndFireStageGuides()) return;
+        if (!nextQuest) { returnToQuestMenu(); return; }
+        gameState.selectedQuest = null;
+        gameState.selectedRoster = [];
+        proceedSelectQuest(nextQuest, { keepMinimized: true });
+      }
+      if (checkPendingMainStory(proceed)) return;
+      proceed();
     }
 
     // 戰鬥結束後返回關卡選單(依剛才挑戰的關卡類型返回副本或主線畫面)
@@ -11662,17 +11715,22 @@ let TALENT_CURVE = [
       `;
     }
     // 開啟地城：需消耗1把「無限地城之鑰」(item 2005)，消耗後依目前選定等級跑生成演算法，直接進入逐層畫面
+    // 2026-09-10 Wei指示：無限地城不支援縮小戰鬥，若玩家點擊「開啟地城」的當下背景其實還有另一場縮小中的戰鬥
+    // (main/tower/annihilation/god_trial...)，必須先跳出「同時只有一個戰鬥可以進行」的確認彈窗，選「是」才會
+    // 中斷那場背景戰鬥並真正開啟地城；沒有背景戰鬥時則直接開啟，行為不變。
     function startInfiniteDungeon() {
-      if (gameState.infiniteDungeon.active) { showScreen('infinite-dungeon-layers'); renderInfiniteDungeonLayerScreen(); return; }
-      if (getItemAmount(2005) < 1) {
-        showGenericInfoModal('鑰匙不足', '沒有「無限地城之鑰」了，請先取得後再開啟地城！');
-        return;
-      }
-      spendItem(2005, 1);
-      generateInfiniteDungeon(gameState.infiniteDungeon.selectedLevel);
-      showScreen('infinite-dungeon-layers');
-      renderInfiniteDungeonLayerScreen();
-      refreshCurrentScreenData();
+      guardSingleBattleSlot(null, () => {
+        if (gameState.infiniteDungeon.active) { showScreen('infinite-dungeon-layers'); renderInfiniteDungeonLayerScreen(); return; }
+        if (getItemAmount(2005) < 1) {
+          showGenericInfoModal('鑰匙不足', '沒有「無限地城之鑰」了，請先取得後再開啟地城！');
+          return;
+        }
+        spendItem(2005, 1);
+        generateInfiniteDungeon(gameState.infiniteDungeon.selectedLevel);
+        showScreen('infinite-dungeon-layers');
+        renderInfiniteDungeonLayerScreen();
+        refreshCurrentScreenData();
+      });
     }
 
     // ============ 無限地城：逐層選擇門畫面 ============
@@ -12450,6 +12508,14 @@ let TALENT_CURVE = [
 
     // 事件蓋板(三選一)：我方加強(select_self)/敵方弱化(select_enemy)，選一個套用後才繼續
     function showEventSelectModal(evt, onDone) {
+      // 2026-09-10 Wei指示：場地變化event只在玩家「正在看著戰鬥畫面」時才顯示彈窗；縮小戰鬥或掛機戰鬥
+      // 進行中時，不彈出任何畫面，直接隨機選一項套用效果後照常繼續戰鬥(等同全自動2倍速時的既有隨機邏輯)。
+      if (!shouldShowBattleEffects()) {
+        let randomBuffId = evt.buffIds[Math.floor(Math.random() * evt.buffIds.length)];
+        applyEventBuffs(evt, [randomBuffId]);
+        onDone();
+        return;
+      }
       const modal = document.getElementById('event-select-modal');
       const box = document.getElementById('event-select-box');
       const title = document.getElementById('event-select-title');
@@ -12519,6 +12585,12 @@ let TALENT_CURVE = [
     }
 
     function showEventAnnounceModal(evt, onDone) {
+      // 2026-09-10同上：不在戰鬥畫面前台時，不彈出公告彈窗，直接套用效果照常繼續
+      if (!shouldShowBattleEffects()) {
+        applyEventBuffs(evt, evt.buffIds);
+        onDone();
+        return;
+      }
       const modal = document.getElementById('event-announce-modal');
       const box = document.getElementById('event-announce-box');
       const title = document.getElementById('event-announce-title');
@@ -14150,7 +14222,20 @@ let TALENT_CURVE = [
     }
 
     // 多波次戰鬥：播放NEXT WAVE蓋板，蓋板播完再等1秒，才把我方全員行動值歸零(取消任何正在進行中的行動)並生成下一波敵人，接著繼續戰鬥
+    // 縮小戰鬥：跟戰鬥開始蓋板同理，NEXT WAVE蓋板也是獨立的全螢幕浮動元素，玩家沒在看戰鬥畫面時不應該播放，
+    // 直接跳過蓋板與1秒延遲、立即接續下一波，避免蓋在玩家目前瀏覽的其他畫面上方。
     function advanceToNextWave() {
+      if (!isBattleScreenVisible()) {
+        gameState.battleWaveInfo.currentWaveIndex++;
+        updateWaveInfoDisplay();
+        gameState.playerTeam.forEach(u => { if (!u.isDead) { u.agiGauge = 0; u.actedThisRound = false; } });
+        spawnNextWaveEnemies();
+        renderBoard();
+        log(`⚔️ WAVE ${gameState.battleWaveInfo.currentWaveIndex + 1} 開始！`, 'sys');
+        setButtonsDisabled(false);
+        advanceToNextActor();
+        return;
+      }
       showNextWaveOverlay(() => {
         setTimeout(() => {
           gameState.battleWaveInfo.currentWaveIndex++;
@@ -14366,7 +14451,8 @@ let TALENT_CURVE = [
       if (!xlsxEntry && !builtin) return null;
       return {
         before: (builtin && builtin.before) || null,
-        after: (xlsxEntry && xlsxEntry.after) || (builtin && builtin.after) || null
+        after: (xlsxEntry && xlsxEntry.after) || (builtin && builtin.after) || null,
+        bgFile: (xlsxEntry && xlsxEntry.bgFile) || null // text分頁background欄位：assets/images/background/底下的檔名
       };
     }
 
@@ -14413,12 +14499,16 @@ let TALENT_CURVE = [
         return { speaker: rawSpeaker, text, identity: rawSpeaker };
       },
 
-      // options: { bg: 'castle'|'central'|null, fadeOut: true|false }
+      // options: { bg: 'castle'|'central'|null, bgFile: 'assets/images/background/底下的檔名(text分頁background欄位)', fadeOut: true|false }
       play(lines, options, onDone) {
         if (typeof options === 'function') { onDone = options; options = null; }
         options = options || {};
         const bgEl = document.getElementById('story-bg-fullscreen');
-        if (options.bg && BG_ASSETS[options.bg]) {
+        // 2026-09-10新增：text分頁background欄位(bgFile，例如"forest.jpg")優先於既有的bg代稱寫法(bg:'castle'等)，
+        // 直接讀取 assets/images/background/ 底下同名圖片；沒有bgFile時完全比照既有行為，不影響原本的before100等呼叫。
+        if (options.bgFile) {
+          bgEl.style.backgroundImage = `url('assets/images/background/${options.bgFile}')`;
+        } else if (options.bg && BG_ASSETS[options.bg]) {
           bgEl.style.backgroundImage = `url('${BG_ASSETS[options.bg]}')`;
         } else {
           bgEl.style.backgroundImage = 'none';
@@ -15018,7 +15108,9 @@ let TALENT_CURVE = [
       }
       if (isWin) {
         const quest = gameState.selectedQuest;
-        const storyMetaForAfter = quest && quest.type === 'main' && getMainlineStoryFor(quest.mapId);
+        // 2026-09-10 Wei指示：text分頁的劇情內容不限定只有主線(main)才會觸發，任何關卡類型(副本/試煉之塔/
+        // 神格試煉/殲滅任務...)只要該mapId在text分頁裡有填story，通關當下都要能顯示，故拿掉quest.type==='main'的限制。
+        const storyMetaForAfter = quest && getMainlineStoryFor(quest.mapId);
         const afterLines = storyMetaForAfter && storyMetaForAfter.after;
         const key = quest ? ('after_' + quest.mapId) : null;
         if (afterLines && key && !gameState.playedStoryKeys.has(key)) {
@@ -15037,13 +15129,7 @@ let TALENT_CURVE = [
 
     const __origReturnToQuestMenu = returnToQuestMenu;
     returnToQuestMenu = function() {
-      if (Guide._pendingMainAfterMapId != null) {
-        const mapId = Guide._pendingMainAfterMapId;
-        Guide._pendingMainAfterMapId = null;
-        document.getElementById('result-modal').style.display = 'none';
-        Story.playAsync(getMainlineStoryFor(mapId).after).then(() => __origReturnToQuestMenu());
-        return;
-      }
+      if (checkPendingMainStory(() => __origReturnToQuestMenu())) return;
       __origReturnToQuestMenu();
     };
 
@@ -15102,6 +15188,16 @@ let TALENT_CURVE = [
     advanceToNextActor = function() {
       if (gameState._battleStartOverlayPending) {
         gameState._battleStartOverlayPending = false;
+        // 2026-09-10 Wei回報「自動下一關還是會跳回戰鬥畫面」：根因在這裡——每場新戰鬥開始的第一次
+        // advanceToNextActor()一律會播放「戰鬥開始」蓋板(#battle-start-overlay)，這是一個獨立的全螢幕
+        // 浮動元素，不受screen-battle是否顯示影響，縮小戰鬥/背景自動接關時一樣會蓋在玩家目前畫面最上層，
+        // 視覺上就像被強制切回戰鬥畫面。改成只在「玩家正在看著戰鬥畫面」時才播放這個蓋板，縮小戰鬥/背景
+        // 接關時直接跳過蓋板、立即繼續戰鬥邏輯，不會有任何畫面蓋上來。
+        if (!isBattleScreenVisible()) {
+          __origAdvanceToNextActor();
+          if (__battleReadyResolve) { const r = __battleReadyResolve; __battleReadyResolve = null; r(); }
+          return;
+        }
         showBattleStartOverlay(() => {
           __origAdvanceToNextActor();
           if (__battleReadyResolve) { const r = __battleReadyResolve; __battleReadyResolve = null; r(); }

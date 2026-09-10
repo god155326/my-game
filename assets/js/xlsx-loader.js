@@ -997,8 +997,10 @@ function buildStoryLines(wb) {
  * Wei目前指示「暫時均改使用after功能」：不論該列原本的timing欄位填的是before還是after，
  * 這裡統一歸類到「戰鬥勝利、結算彈窗關閉後才播放」的after清單裡(同一個mapId若有多列，依xlsx原本
  * 排列順序依序串接播放)；之後如果要恢復區分before/after，只需要把下面這行判斷式拆開即可。
- * 回傳 { mapId: { after: [文字陣列] } }，index.html的getMainlineStoryFor()會優先採用這裡的資料，
- * 找不到時才退回內建的MAINLINE_STORY(僅涵蓋mapId=200/209等舊版關卡編號，供舊資料相容)。
+ * 2026-09-10再新增：text分頁新增了background欄位(劇情用背景圖檔名，例如"forest.jpg")，讀取
+ * assets/images/background/<檔名> 當作該劇情播放時的背景圖；只是新增讀取功能，其餘播放行為不變。
+ * 回傳 { mapId: { after: [文字陣列], bgFile: "檔名或undefined" } }，index.html的getMainlineStoryFor()
+ * 會優先採用這裡的資料，找不到時才退回內建的MAINLINE_STORY(僅涵蓋mapId=200/209等舊版關卡編號，供舊資料相容)。
  */
 function buildMainlineStoryDatabase(wb) {
   const rows = xlsxSheetToObjects(wb, "text");
@@ -1009,6 +1011,9 @@ function buildMainlineStoryDatabase(wb) {
     if (!o.info) return; // 純備註列(info為null)略過，同buildStoryLines()的既有防呆
     if (!out[o.mapid]) out[o.mapid] = { after: [] };
     out[o.mapid].after = out[o.mapid].after.concat(String(o.info).split("\n"));
+    if (o.background != null && String(o.background).trim() !== '') {
+      out[o.mapid].bgFile = String(o.background).trim();
+    }
   });
   return out;
 }
