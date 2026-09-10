@@ -2048,6 +2048,58 @@
       flex-direction: column;
       gap: 3px;
     }
+    /* 縮小戰鬥：主線首頁掛機演出區塊蓋上的深透明遮罩，顯示「X戰鬥中」，見 renderMainlineMinimizedOverlay() */
+    .mainline-minibattle-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      background: rgba(0,0,0,0.78);
+      border-radius: 10px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: #f0c98a;
+      font-size: 15px;
+      font-weight: bold;
+      text-align: center;
+      padding: 10px;
+    }
+    /* 縮小戰鬥：常駐於底部導覽列上方的浮動狀態列，顯示關卡名稱/狀態 + 最近3行戰鬥LOG，點擊可切回戰鬥畫面 */
+    .mini-battle-bar {
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      bottom: 64px;
+      z-index: 129;
+      display: none;
+      flex-direction: column;
+      gap: 2px;
+      background: rgba(15,12,10,0.94);
+      border: 1px solid #6b4a2f;
+      border-radius: 8px;
+      padding: 6px 8px;
+      cursor: pointer;
+    }
+    .mini-battle-bar-title {
+      font-size: 12px;
+      font-weight: bold;
+      color: #f0c98a;
+    }
+    .mini-battle-bar-log {
+      font-size: 10px;
+      color: #cbb89a;
+      line-height: 1.3;
+      max-height: 40px;
+      overflow: hidden;
+    }
+    .mini-battle-bar-log-line {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .btn-minimize-battle {
+      margin-left: 6px;
+    }
     .mainline-idle-mini-btn {
       flex: none;
       width: auto;
@@ -3539,9 +3591,8 @@
         <div class="result-capture-label" id="result-capture-label" style="display:none;">🌑 契約成功</div>
         <div class="result-capture-gained" id="result-capture-gained"></div>
         <div class="result-btn-row">
-          <button class="btn-restart" onclick="returnToQuestMenu()">回到副本選單</button>
+          <button class="btn-restart" id="btn-result-return" onclick="returnToQuestMenu()">返回</button>
           <button class="btn-restart" id="btn-result-next-stage" style="display:none;" onclick="goToNextMainStage()">下一關</button>
-          <button class="btn-restart" id="btn-result-retry" style="display:none;" onclick="retryCurrentQuest()">重新挑戰</button>
         </div>
         <!-- 自動下一關倒數文字：僅在「自動下一關」設定為ON、且戰鬥勝利有下一關可接續時才會顯示與倒數 -->
         <div class="result-auto-next-countdown" id="result-auto-next-countdown"></div>
@@ -3860,6 +3911,10 @@
             </button>
             <button class="btn mainline-idle-mini-btn" id="btn-claim-idle" onclick="openRewardPreviewModal()">領取掛機<span class="red-dot-badge" id="btn-claim-idle-dot" style="display:none;"></span></button>
           </div>
+          <!-- 縮小戰鬥：有正式戰鬥於背景進行且目前在主線首頁時，蓋住掛機演出預覽區塊，見 renderMainlineMinimizedOverlay() -->
+          <div class="mainline-minibattle-overlay" id="mainline-minibattle-overlay">
+            <span id="mainline-minibattle-overlay-text"></span>
+          </div>
           <div class="mainline-battle-side-label">敵方陣容</div>
           <div class="mainline-side-row">
             <div class="weapon-slot-row mini" id="mainline-enemy-row"></div>
@@ -3879,6 +3934,12 @@
 
       <!-- 底部固定導覽列為絕對定位覆蓋層(見下方 #bottom-nav)，此處僅保留等高的版位間距 -->
       <div style="height:54px; flex-shrink:0;"></div>
+    </div>
+
+    <!-- 縮小戰鬥狀態列：有正式戰鬥在背景進行、且目前不在戰鬥畫面時顯示，點擊直接切回戰鬥畫面，見 updateMiniBattleBar() -->
+    <div class="mini-battle-bar" id="mini-battle-bar" onclick="returnToMinimizedBattle()">
+      <div class="mini-battle-bar-title" id="mini-battle-bar-title"></div>
+      <div class="mini-battle-bar-log" id="mini-battle-bar-log"></div>
     </div>
 
     <!-- 底部功能分頁導覽列：絕對定位於畫面最下方，戰鬥中與非戰鬥畫面皆常駐顯示、可自由切換 -->
@@ -4186,6 +4247,8 @@
             <span class="log-header-text" id="turn-info">第1回合</span>
           </div>
           <button class="btn-auto-float" id="btn-auto" onclick="toggleAuto()">自動戰鬥: OFF</button>
+          <!-- 縮小戰鬥：無限地城不支援，顯示與否見 syncMinimizeBattleBtnVisibility() -->
+          <button class="btn-auto-float btn-minimize-battle" id="btn-minimize-battle" style="display:none;" onclick="minimizeBattle()">縮小戰鬥</button>
         </div>
         <div class="log-box-wrap">
           <div class="log-box" id="log-box"></div>
@@ -6542,7 +6605,8 @@ let GOD_TRIAL_VARIANTS = {
         event1: null, event2: null,
         tagLimit: variant.tagLimit
       };
-      routeToQuestOrArrangement(quest);
+      // 縮小戰鬥：同時只能有一場正式戰鬥存在，交由 guardSingleBattleSlot() 統一把關
+      guardSingleBattleSlot(mapId, () => routeToQuestOrArrangement(quest));
     }
     // 放棄挑戰：尚在佈陣畫面、戰鬥尚未真正開始時可直接放棄，門票尚未扣除故不會有任何損失
     function abandonGodTrialArrangement() {
@@ -10128,6 +10192,8 @@ let TALENT_CURVE = [
       });
 
       if (name !== 'battle') updateTopHeader();
+      // 縮小戰鬥：每次切換畫面都同步狀態列/主線遮罩的顯示與否(切到battle本身時isBattleScreenVisible()會判定為未縮小，自動隱藏)
+      updateMiniBattleBar();
     }
 
     // 頂部角色資訊列：顯示玩家資料(名稱/等級/金幣/鑽石)；金幣鑽石一律讀取玩家實際持有的道具數量
@@ -10194,6 +10260,9 @@ let TALENT_CURVE = [
       syncAutoButtonUI(); // 自動戰鬥設定持續保留，不因中斷戰鬥而重置，直到玩家自己再次切換
       gameState.selectedQuest = null;
       gameState.selectedRoster = [];
+      gameState.miniBattleLog = [];
+      resetBattleTitle();
+      updateMiniBattleBar();
     }
 
     // 戰鬥開始/NEXT WAVE蓋板為獨立元素(見showBattleStartOverlay/showNextWaveOverlay)，中斷戰鬥時若正在顯示中一併關閉；沒有對應元素時安全略過
@@ -10205,6 +10274,120 @@ let TALENT_CURVE = [
       gameState._battleStartOverlayPending = false; // 若戰鬥開始蓋板尚未播放就被中斷，避免下次進入戰鬥時誤判為「還有蓋板要播」
     }
 
+    // ============ 縮小戰鬥(背景戰鬥)系統 ============
+    // 除無限地城外，目前所有正式關卡戰鬥(主線/神格試煉/試煉之塔/殲滅任務...)都支援「縮小戰鬥」：
+    // 玩家可以在戰鬥進行中切到其他分頁操作(佈陣/裝備/天賦...等)，戰鬥邏輯本身在背景繼續執行(仍是同一份
+    // gameState.playerTeam/enemyTeam快照，不受玩家之後變更佈陣/裝備等影響)，直到分出勝負或玩家自行切回為止。
+    function canMinimizeCurrentBattle() {
+      return isRealBattleInProgress() && gameState.activeBattleType !== 'dungeon_infinite';
+    }
+    // 「縮小戰鬥」按鈕：僅隱藏戰鬥畫面、切回該關卡類型對應的選單畫面，戰鬥本身完全不受影響(不中止、不清除任何狀態)
+    function minimizeBattle() {
+      if (!canMinimizeCurrentBattle()) return;
+      routeBackForQuestType(gameState.selectedQuest ? gameState.selectedQuest.type : null);
+      updateMiniBattleBar();
+    }
+    // 從其他畫面點擊縮小戰鬥列，切回目前縮小中的戰鬥畫面(不影響戰鬥本身進度，畫面重新渲染成目前的即時狀態)
+    function returnToMinimizedBattle() {
+      if (!isRealBattleInProgress()) return;
+      showScreen('battle');
+      renderBoard();
+      updateWaveInfoDisplay();
+      syncActionDimVisual();
+    }
+    // 依關卡類型導向對應的選單畫面(不清除gameState.selectedQuest、不中止戰鬥)：
+    // 供「縮小戰鬥」按鈕使用；returnToQuestMenu()(戰鬥已分出勝負後)也共用同一套路由邏輯
+    function routeBackForQuestType(type) {
+      if (type === 'main') {
+        showScreen('mainline');
+        renderMainStage();
+      } else if (type === 'dungeon_infinite') {
+        if (gameState.infiniteDungeon.active) {
+          showScreen('infinite-dungeon-layers');
+          renderInfiniteDungeonLayerScreen();
+        } else {
+          showScreen('quest-category');
+          renderQuestCategoryScreen();
+        }
+      } else if (type === 'god_trial') {
+        showScreen('god-trial');
+        renderGodTrialScreen();
+      } else if (type === 'tower' || type === 'annihilation') {
+        let cat = MAPLIST_DATABASE.find(c => c.type === type);
+        showScreen('quest-type-list');
+        renderQuestTypeListScreen(cat);
+      } else {
+        showScreen('quest-select');
+      }
+    }
+    // 同時只能有一場正式戰鬥存在：任何「開始新戰鬥」的入口(挑戰主線/神格試煉/試煉之塔/殲滅任務/無限地城的門...)
+    // 都必須先經過這裡把關。sameMapId若與目前縮小中的戰鬥剛好是同一關，直接切回去看戰鬥即可(不視為開新戰鬥)；
+    // 否則若目前已有其他戰鬥在進行(不論是否縮小中)，跳出確認彈窗，選「是」才會中斷舊戰鬥並繼續執行proceedFn。
+    function guardSingleBattleSlot(sameMapId, proceedFn) {
+      if (isRealBattleInProgress()) {
+        if (sameMapId != null && gameState.selectedQuest && gameState.selectedQuest.mapId === sameMapId) {
+          showScreen('battle');
+          renderBoard();
+          updateWaveInfoDisplay();
+          syncActionDimVisual();
+          return;
+        }
+        showConfirmModal('同時只有一個戰鬥可以進行，是否中斷現在的戰鬥？', () => {
+          abortCurrentBattle();
+          proceedFn();
+        });
+        return;
+      }
+      proceedFn();
+    }
+    // 縮小戰鬥期間，浮動於畫面下方(蓋在底部導覽列上方)的戰鬥狀態列：顯示關卡名稱/狀態 + 最近3行戰鬥LOG，
+    // 點擊可直接切回戰鬥畫面。僅在「有正式戰鬥進行中且目前不在戰鬥畫面」時顯示，其餘情況一律隱藏。
+    function updateMiniBattleBar() {
+      const bar = document.getElementById('mini-battle-bar');
+      if (!bar) return;
+      const minimized = isRealBattleInProgress() && !isBattleScreenVisible();
+      if (!minimized) {
+        bar.style.display = 'none';
+        renderMainlineMinimizedOverlay(); // 戰鬥已結束或已切回戰鬥畫面：確保主線遮罩也一併隱藏，避免殘留
+        return;
+      }
+      const quest = gameState.selectedQuest;
+      document.getElementById('mini-battle-bar-title').innerText = `${quest ? (quest.hint || '') : ''} 縮小戰鬥中`;
+      document.getElementById('mini-battle-bar-log').innerHTML = (gameState.miniBattleLog || [])
+        .map(line => `<div class="mini-battle-bar-log-line">${line}</div>`).join('');
+      bar.style.display = 'flex';
+      renderMainlineMinimizedOverlay();
+    }
+    // 主線首頁：縮小戰鬥進行中時，把掛機演出的預覽區塊蓋上一層深透明遮罩，顯示「X戰鬥中」，
+    // 且掛機演出本身已於proceedSelectQuest呼叫stopMainlineIdleLoop()中止、startMainlineIdleLoop()也會擋下重啟，
+    // 畫面會凍結停在「尚未遭遇(尋怪中)」的預設狀態，不會有動畫演出
+    function renderMainlineMinimizedOverlay() {
+      const overlay = document.getElementById('mainline-minibattle-overlay');
+      if (!overlay) return;
+      if (!isMainlineScreenVisible()) { overlay.style.display = 'none'; return; }
+      const minimized = isRealBattleInProgress() && !isBattleScreenVisible();
+      if (!minimized) { overlay.style.display = 'none'; return; }
+      const quest = gameState.selectedQuest;
+      document.getElementById('mainline-minibattle-overlay-text').innerText = `${quest ? (quest.hint || '') : ''}戰鬥中`;
+      overlay.style.display = 'flex';
+    }
+    // 瀏覽器分頁標題：戰鬥進行中顯示「(關卡名稱) (戰鬥中/戰鬥勝利/戰鬥失敗)」，讓玩家縮小戰鬥切到其他畫面、
+    // 甚至切到其他瀏覽器分頁時，仍能從分頁標題掌握戰鬥現況；戰鬥結束離開後恢復遊戲原本的標題
+    const ORIGINAL_DOCUMENT_TITLE = document.title;
+    function setBattleTitle(statusText) {
+      const quest = gameState.selectedQuest;
+      document.title = `${quest ? (quest.hint || '戰鬥') : '戰鬥'} ${statusText}`;
+    }
+    function resetBattleTitle() {
+      document.title = ORIGINAL_DOCUMENT_TITLE;
+    }
+    // 「縮小戰鬥」按鈕：無限地城不支援縮小戰鬥，戰鬥開始時依關卡類型決定要不要顯示這顆按鈕
+    function syncMinimizeBattleBtnVisibility() {
+      const btn = document.getElementById('btn-minimize-battle');
+      if (!btn) return;
+      btn.style.display = canMinimizeCurrentBattle() ? 'inline-block' : 'none';
+    }
+
     function onNavClick(key) {
       // 帳號初期(或引導進行中)尚未解鎖的分頁：僅顯示鎖頭視覺是不夠的，這裡要真正擋下切換
       if (gameState.lockedNavTabs && gameState.lockedNavTabs.has(key)) {
@@ -10214,16 +10397,18 @@ let TALENT_CURVE = [
       // 批次4：天賦分頁雖然在新手引導結束時已一併解除粗略鎖定，但要等到talent_intro檢查點(關卡1-5)才真正開放
       if (key === 'talent' && !guardLockedFeature('talent_intro')) return;
       applyNavLockVisuals();
-      // 任何一種正式關卡戰鬥進行中，不論想切去哪個分頁(職業/天賦/裝備/主線/副本/召喚)都必須先確認才會中斷；
-      // 確認後才真正中止戰鬥(含清除特效)並繼續切換，選「否」則完全不切換、停留在原本的戰鬥畫面
-      if (isRealBattleInProgress()) {
-        showConfirmModal('將會中斷目前進行中的戰鬥，確定要離開嗎？', () => {
+      // 縮小戰鬥：除了無限地城外，其餘正式關卡戰鬥(main/tower/god_trial/annihilation...)切換分頁不再詢問、
+      // 也不會中斷戰鬥——戰鬥直接於背景繼續進行(screen-battle被隱藏)，直到玩家切回戰鬥畫面或戰鬥分出勝負為止。
+      // 無限地城系統設計上不支援縮小戰鬥，離開時仍需先確認，確認後才會真正中止戰鬥。
+      if (gameState.activeBattleType === 'dungeon_infinite') {
+        showConfirmModal('無限地城系統不適用縮小戰鬥，是否中斷現在的戰鬥？', () => {
           abortCurrentBattle();
           performNav(key);
         });
         return;
       }
       performNav(key);
+      updateMiniBattleBar();
     }
 
     function performNav(key) {
@@ -10390,15 +10575,9 @@ let TALENT_CURVE = [
 
     function selectQuest(mapId) {
       let quest = QUEST_DATABASE.find(q => q.mapId === mapId);
-      // 副本/主線互斥：若另一類型的正式戰鬥正在進行中，需先確認才會中斷
-      if (isRealBattleInProgress() && gameState.activeBattleType !== quest.type) {
-        showConfirmModal('切換將會中斷目前進行中的戰鬥，確定要離開嗎？', () => {
-          abortCurrentBattle();
-          routeToQuestOrArrangement(quest);
-        });
-        return;
-      }
-      routeToQuestOrArrangement(quest);
+      // 縮小戰鬥：同時只能有一場正式戰鬥存在，交由 guardSingleBattleSlot() 統一把關
+      // (同mapId直接切回該戰鬥畫面；不同戰鬥時跳出「同時只有一個戰鬥可以進行」確認彈窗，選「是」才中斷舊戰鬥)
+      guardSingleBattleSlot(mapId, () => routeToQuestOrArrangement(quest));
     }
 
     // mapdata的arrangement欄位=1時，進入關卡前需先導引至佈陣頁面完成上陣，而非直接開戰
@@ -10495,6 +10674,7 @@ let TALENT_CURVE = [
         enemyRoleId: quest.enemyRoleId
       } : null;
       // 自動戰鬥設定(isAuto / speedMultiplier)沿用玩家上一場戰鬥設定的值，不在此重置為OFF
+      gameState.miniBattleLog = []; // 縮小戰鬥狀態列用的最近LOG，每場新戰鬥開始時清空
       showScreen('battle');
       initGame(
         [...squad], [...quest.enemyIds],
@@ -10503,6 +10683,8 @@ let TALENT_CURVE = [
       applyQuestUnitOverrides(quest, overrides); // quest表指定的個別數值覆寫(id為負數的預設武器、每隻敵人各自的level/hp/atk等)在雙方隊伍建立後套用
       applySpeedToCSS();
       syncAutoButtonUI();
+      setBattleTitle('戰鬥中');
+      syncMinimizeBattleBtnVisibility();
       // 若玩家先前已開啟自動戰鬥，新戰鬥一開始就直接接續自動演出，不需要玩家重新點一次
       if (gameState.isAuto) {
         let activeUnit = gameState.turnQueue[gameState.currentTurnIdx];
@@ -11023,19 +11205,21 @@ let TALENT_CURVE = [
     }
 
     function showResultModal(isWin) {
+      setBattleTitle(isWin ? '戰鬥勝利' : '戰鬥失敗'); // TITLE顯示關卡名稱+戰鬥結果；需在activeBattleType清空前(quest仍在)呼叫
       gameState.activeBattleType = null; // 戰鬥已分出勝負，副本/主線可自由切換
+      updateMiniBattleBar(); // 縮小戰鬥狀態列/主線遮罩：戰鬥已結束，一律隱藏(結算彈窗會蓋在目前畫面最上層顯示)
       clearAutoNextStageCountdown(); // 每次開啟結算彈窗都先清掉上一次殘留的倒數(理論上不會有殘留，防呆)
       const modal = document.getElementById('result-modal');
       const logo = document.getElementById('result-logo');
       const subtitle = document.getElementById('result-subtitle');
       const lootEl = document.getElementById('result-loot');
       const nextBtn = document.getElementById('btn-result-next-stage');
-      const retryBtn = document.getElementById('btn-result-retry');
+      const returnBtn = document.getElementById('btn-result-return');
       lootEl.innerText = '';
       nextBtn.style.display = 'none'; // 戰敗、或非主線關卡、或找不到下一關時一律不顯示
       nextBtn.innerText = '下一關';
       nextBtn.onclick = goToNextMainStage; // 每次開啟都重設回預設行為，避免沿用上一次(例如無限地城)覆寫過的行為
-      retryBtn.style.display = 'none'; // 只有戰敗時顯示
+      returnBtn.style.display = 'block'; // 預設顯示，若判定有「下一關」可接續，稍後會改成隱藏(兩者互斥，見下方)
       document.getElementById('result-capture-label').style.display = 'none';
       document.getElementById('result-capture-gained').innerText = '';
 
@@ -11154,13 +11338,16 @@ let TALENT_CURVE = [
         logo.src = RESULT_DEFEAT_LOGO;
         subtitle.innerText = (hint ? hint + ' ' : '') + '挑戰失敗';
         lootEl.innerText = '沒有獲得獎勵';
-        retryBtn.style.display = 'block'; // 戰敗額外提供「重新挑戰」，直接重新進入同一關卡
+        // 戰敗僅提供「返回」按鈕(不再提供「重新挑戰」)，returnBtn預設已是顯示狀態，這裡不需額外處理
         // 停止條件：只要戰鬥失敗，就自動關閉「自動下一關」設定(戰敗畫面本來就不會顯示下一關按鈕，故不會有倒數)
         if (gameState.autoNextStage) {
           gameState.autoNextStage = false;
           syncAutoNextStageUI();
         }
       }
+
+      // 「下一關」與「返回」互斥：只要判定出有下一關可接續(nextBtn已顯示)，「返回」按鈕就隱藏，避免同時出現兩顆容易混淆的按鈕
+      if (nextBtn.style.display === 'block') returnBtn.style.display = 'none';
 
       modal.style.display = 'flex';
     }
@@ -11205,34 +11392,13 @@ let TALENT_CURVE = [
     function returnToQuestMenu() {
       clearAutoNextStageCountdown();
       document.getElementById('result-modal').style.display = 'none';
+      resetBattleTitle();
       let backType = gameState.selectedQuest ? gameState.selectedQuest.type : 'dungeon';
       gameState.selectedQuest = null;
       gameState.selectedRoster = [];
       // 批次3：剛通關的這一關若觸發了系統開放檢查點，優先播放引導/教學(內部會自行導回主線首頁)
       if (checkAndFireStageGuides()) return;
-      if (backType === 'main') {
-        showScreen('mainline');
-        renderMainStage();
-      } else if (backType === 'dungeon_infinite') {
-        if (gameState.infiniteDungeon.active) {
-          showScreen('infinite-dungeon-layers');
-          renderInfiniteDungeonLayerScreen();
-        } else {
-          showScreen('quest-category');
-          renderQuestCategoryScreen();
-        }
-      } else if (backType === 'god_trial') {
-        // 神格試煉戰鬥結束(無論勝敗)：回到難度選擇畫面，重新整理門票數量顯示
-        showScreen('god-trial');
-        renderGodTrialScreen();
-      } else if (backType === 'tower' || backType === 'annihilation') {
-        // 試煉之塔/殲滅任務戰鬥結束後，回到各自的分類清單畫面重新整理(試煉之塔會自動換成下一關)
-        let cat = MAPLIST_DATABASE.find(c => c.type === backType);
-        showScreen('quest-type-list');
-        renderQuestTypeListScreen(cat);
-      } else {
-        showScreen('quest-select');
-      }
+      routeBackForQuestType(backType);
     }
 
     // ============ 副本分類選單(神格試煉/試煉之塔/無限地城/殲滅任務) ============
@@ -11463,7 +11629,8 @@ let TALENT_CURVE = [
       if (!baseQuest) return;
       // 依本次地城選定的等級覆寫關卡等級(取代mapdata原本讀到的等級)；並記錄door索引，戰鬥結算時用來標記通過與記錄掉落
       let quest = { ...baseQuest, level: dg.level, type: 'dungeon_infinite', _doorIndex: idx };
-      proceedSelectQuest(quest);
+      // 縮小戰鬥：無限地城本身不支援縮小，但仍需經過guardSingleBattleSlot()避免跟其他背景中的戰鬥類型同時存在
+      guardSingleBattleSlot(null, () => proceedSelectQuest(quest));
     }
 
     // ============ 無限地城：黃門增益選擇彈窗 ============
@@ -13015,9 +13182,17 @@ let TALENT_CURVE = [
       const el = document.getElementById('screen-mainline');
       return !!el && el.style.display !== 'none';
     }
-    // 掛機演出中，只有停留在主線首頁(看得到縮小版戰鬥區塊)才要顯示戰鬥特效；正式戰鬥則一律顯示
+    // 掛機演出中，只有停留在主線首頁(看得到縮小版戰鬥區塊)才要顯示戰鬥特效；
+    // 正式關卡戰鬥(main/tower/god_trial/annihilation/dungeon_infinite...)：只有「戰鬥畫面本身正在顯示」才播放特效，
+    // 若玩家已使用「縮小戰鬥」切到其他分頁(screen-battle被隱藏)，戰鬥邏輯仍在背景繼續執行，但不再播放任何演出特效
     function shouldShowBattleEffects() {
+      if (isRealBattleInProgress()) return isBattleScreenVisible();
       return !gameState.idle.exploring || isMainlineScreenVisible();
+    }
+    // 縮小戰鬥：戰鬥畫面(screen-battle)目前是否為使用者正在瀏覽中的畫面
+    function isBattleScreenVisible() {
+      const el = document.getElementById('screen-battle');
+      return !!el && el.style.display !== 'none';
     }
 
     // 依角色所屬陣營觸發攻擊撲擊動畫(近戰攻擊時使用，玩方往上撲、敵方往下撲)
@@ -13857,6 +14032,13 @@ let TALENT_CURVE = [
       div.innerText = `> ${msg}`;
       box.appendChild(div);
       box.scrollTop = box.scrollHeight;
+      // 縮小戰鬥：僅在有正式戰鬥進行中(掛機演出的log不需要，掛機沒有縮小戰鬥狀態列)時，同步最近3行到狀態列
+      if (isRealBattleInProgress()) {
+        if (!gameState.miniBattleLog) gameState.miniBattleLog = [];
+        gameState.miniBattleLog.push(msg);
+        if (gameState.miniBattleLog.length > 3) gameState.miniBattleLog.shift();
+        updateMiniBattleBar();
+      }
     }
 
     // ============ 自動縮放成裝置螢幕大小 ============
