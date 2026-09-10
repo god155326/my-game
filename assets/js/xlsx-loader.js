@@ -995,6 +995,12 @@ function buildStoryLines(wb) {
   if (map100Before[0]) out.before100 = map100Before[0].info.split("\n");
   if (map100After[0]) out.after100a = map100After[0].info.split("\n");
   if (map100After[1]) out.after100b = map100After[1].info.split("\n");
+  // 2026-09-10新增：mapid=100這幾列的background欄位過去完全沒有被讀取，教學劇情的背景圖一直是寫死的
+  // bg:'castle'/'central'(對照BG_ASSETS)，即使Wei在text分頁這幾列填了background欄位也不會生效。
+  // 這裡比照MAINLINE_STORY_XLSX的bgFile做法一併讀出，index.html會優先採用這裡的值，找不到才退回寫死的bg key。
+  if (map100Before[0] && map100Before[0].background) out.before100Bg = String(map100Before[0].background).trim();
+  if (map100After[0] && map100After[0].background) out.after100aBg = String(map100After[0].background).trim();
+  if (map100After[1] && map100After[1].background) out.after100bBg = String(map100After[1].background).trim();
   // 2026-09-10修正(Wei要求把引導文字統一接回text表)：這裡過去把map100After[2]（永遠不存在，
   // mapid=100/after的story列實際上只有2筆有文字）指派給classIntro，導致classIntro從未真正讀到xlsx內容、
   // 永遠退回index.html內建預設值；同時guideDialogue[0]（教官/職業介紹對話）被誤接到gachaIntro，

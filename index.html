@@ -7960,8 +7960,11 @@ let GOD_POINT_CURVE = [
       if (_mainlineChapterBannerLoadedFor === chapter) return;
       const row = document.getElementById('mainline-node-row');
       if (!row) return;
-      const FALLBACK_URL = 'assets/images/chapter/chapter1_banner.jpg';
-      const targetUrl = `assets/images/chapter/chapter${chapter}_banner.jpg`;
+      // 2026-09-10修正：補上跟其他所有動態圖片路徑一致的?v=${ASSET_VERSION}快取破除參數——沒有這個參數的話，
+      // 瀏覽器很容易把「圖檔還沒上傳前試過的404」快取住，之後就算Wei把真正的圖檔放上去了，畫面仍然讀不到，
+      // 只能等玩家自己強制重新整理才會恢復正常，這裡統一補上避免這個問題。
+      const FALLBACK_URL = `assets/images/chapter/chapter1_banner.jpg?v=${ASSET_VERSION}`;
+      const targetUrl = `assets/images/chapter/chapter${chapter}_banner.jpg?v=${ASSET_VERSION}`;
       const applyBg = (url) => {
         row.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${url}')`;
       };
@@ -14654,7 +14657,7 @@ let GOD_POINT_CURVE = [
         // 2026-09-10新增：text分頁background欄位(bgFile，例如"forest.jpg")優先於既有的bg代稱寫法(bg:'castle'等)，
         // 直接讀取 assets/images/background/ 底下同名圖片；沒有bgFile時完全比照既有行為，不影響原本的before100等呼叫。
         if (options.bgFile) {
-          bgEl.style.backgroundImage = `url('assets/images/background/${options.bgFile}')`;
+          bgEl.style.backgroundImage = `url('assets/images/background/${options.bgFile}?v=${ASSET_VERSION}')`;
         } else if (options.bg && BG_ASSETS[options.bg]) {
           bgEl.style.backgroundImage = `url('${BG_ASSETS[options.bg]}')`;
         } else {
@@ -15382,7 +15385,8 @@ let GOD_POINT_CURVE = [
       renderMainStage();
 
       // 戰前劇情：全螢幕覆蓋魔王城的圖，播完後淡出再進入戰鬥
-      await Story.playAsync(STORY_LINES.before100, { bg: 'castle', fadeOut: true });
+      // 2026-09-10修正：background欄位(bgFile)優先於寫死的bg:'castle'代稱，找不到才退回內建預設圖
+      await Story.playAsync(STORY_LINES.before100, { bg: 'castle', bgFile: STORY_LINES.before100Bg, fadeOut: true });
 
       // {battle}：教學戰鬥(mapId 100)，引導玩家點擊技能→對象完成一次行動，之後交由自動戰鬥快速結束
       Guide._introTutorialActive = true;
@@ -15403,9 +15407,9 @@ let GOD_POINT_CURVE = [
 
       // 戰後劇情：戰勝後仍回到魔王城背景(魔王/永恆聖鏡對話)，看完永恆聖鏡的對話、時間回溯瞬間全白閃爍，
       // 之後換上中央地帶背景(艾琳喚醒對話)
-      await Story.playAsync(STORY_LINES.after100a, { bg: 'castle' });
+      await Story.playAsync(STORY_LINES.after100a, { bg: 'castle', bgFile: STORY_LINES.after100aBg });
       await flashWhite();
-      await Story.playAsync(STORY_LINES.after100b, { bg: 'central' });
+      await Story.playAsync(STORY_LINES.after100b, { bg: 'central', bgFile: STORY_LINES.after100bBg });
 
       // {name}：命名輸入
       await guideNameStep();
