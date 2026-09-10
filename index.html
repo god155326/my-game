@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>召喚英雄 - 七宗罪戰術對戰</title>
+  <title>Hero</title>
   <style>
     * {
       box-sizing: border-box;
@@ -2106,7 +2106,7 @@
       padding: 18px 6px 8px;
       background:
         linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)),
-        url('assets/images/chapter/chapter1_bannre.jpg');
+        url('assets/images/chapter/chapter1_banner.jpg');
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -7952,16 +7952,16 @@ let GOD_POINT_CURVE = [
     }
     const CHAPTER_NUM_CN = { 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九', 10: '十' };
 
-    // 主線首頁章節地圖的橫幅背景圖：依目前所在章節動態切換 assets/images/chapter/chapter{N}_bannre.jpg，
-    // 讀不到(該章節還沒有對應圖檔)時統一顯示 chapter1_bannre.jpg 當預設圖。用Image()物件預先讀取判斷
+    // 主線首頁章節地圖的橫幅背景圖：依目前所在章節動態切換 assets/images/chapter/chapter{N}_banner.jpg，
+    // 讀不到(該章節還沒有對應圖檔)時統一顯示 chapter1_banner.jpg 當預設圖。用Image()物件預先讀取判斷
     // 成功/失敗(onload/onerror)，避免CSS background-image讀取失敗時只會整片空白、沒有任何備援畫面。
     let _mainlineChapterBannerLoadedFor = null; // 記錄目前畫面上的橫幅是哪個章節(成功load過的)，同一章節不重複觸發圖片讀取
     function updateMainlineChapterBanner(chapter) {
       if (_mainlineChapterBannerLoadedFor === chapter) return;
       const row = document.getElementById('mainline-node-row');
       if (!row) return;
-      const FALLBACK_URL = 'assets/images/chapter/chapter1_bannre.jpg';
-      const targetUrl = `assets/images/chapter/chapter${chapter}_bannre.jpg`;
+      const FALLBACK_URL = 'assets/images/chapter/chapter1_banner.jpg';
+      const targetUrl = `assets/images/chapter/chapter${chapter}_banner.jpg`;
       const applyBg = (url) => {
         row.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${url}')`;
       };
