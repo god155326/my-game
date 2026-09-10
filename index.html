@@ -11499,13 +11499,6 @@ let GOD_POINT_CURVE = [
           }
           lootEl.innerText = gained.length ? gained.map(g => `${g.icon} ${g.name} x${g.amount}`).join(' · ') : '沒有獲得獎勵';
           plainRewardText = gained.length ? gained.map(g => `${g.name} x${g.amount}`).join(' · ') : '沒有獲得獎勵';
-
-          // 自動下一關：僅main/tower這兩種連續性關卡適用，且結算彈窗確實有顯示「下一關」按鈕(找得到下一關)時，才倒數3秒後自動接續。
-          // 縮小戰鬥：若戰鬥是在縮小狀態下結束的(wasMinimized)，不自動倒數接關——結算彈窗這次會先被隱藏、
-          // 改用狀態列提示玩家自行點擊查看，倒數是給「正在看著戰鬥畫面」的情境用的，兩者不應同時發生。
-          if (gameState.autoNextStage && !wasMinimized && quest && (quest.type === 'main' || quest.type === 'tower') && nextBtn.style.display === 'block') {
-            startAutoNextStageCountdown();
-          }
         }
       } else {
         modal.className = 'result-modal lose';
@@ -11520,16 +11513,20 @@ let GOD_POINT_CURVE = [
         }
       }
 
+      // 2026-09-10 Wei指示：只要「自動下一關」是開啟狀態、且確實找得到下一關(main/tower)，一律不彈出
+      // 結算彈窗——不論玩家目前是否正在看著戰鬥畫面，統一直接無縫接續下一關(用keepMinimized版本，不強迫
+      // 切換畫面)，讓戰鬥維持在玩家目前正在看的畫面(戰鬥LOG或主線首頁)上繼續進行，不再彈出任何UI打斷。
+      const hasNextForAutoChain = nextBtn.style.display === 'block';
+      if (isWin && hasNextForAutoChain && gameState.autoNextStage && quest && (quest.type === 'main' || quest.type === 'tower')) {
+        modal.style.display = 'none';
+        goToNextMainStageKeepMinimized();
+        return;
+      }
+
       // 縮小戰鬥：戰鬥是在縮小狀態下結束的話，不開啟原本圖示版的結算彈窗(彈窗維持關閉、蓋在裡面不顯示)。
       if (wasMinimized) {
         modal.style.display = 'none';
         const hasNext = nextBtn.style.display === 'block';
-        // 若「自動下一關」也是開啟狀態且找得到下一關：不用玩家手動點擊查看結算，直接在背景自動接續下一關，
-        // 且不強迫玩家切回戰鬥畫面(見 goToNextMainStageKeepMinimized())，符合「縮小戰鬥中自動下一關也要能自動接關」的需求。
-        if (isWin && hasNext && gameState.autoNextStage && quest && (quest.type === 'main' || quest.type === 'tower')) {
-          goToNextMainStageKeepMinimized();
-          return;
-        }
         // 其餘情況：改成直接在縮小戰鬥狀態列顯示純文字獎勵資訊 + 「下一關/返回」按鈕，讓玩家自己點擊決定何時繼續。
         gameState.pendingResultModal = { hint, isWin, rewardText: plainRewardText, hasNext };
         updateMiniBattleBar();
@@ -14452,18 +14449,18 @@ let GOD_POINT_CURVE = [
       _centerChar: null,
       _fadeOut: false,
 
-      // 解析單句："名稱：內容"視為人物對話；名稱為 <name> 時代換成玩家實際輸入的名字；
-      // 命名前的主角以「匿名的勇者」稱呼(仍對應主角立繪)；沒有名稱前綴的視為旁白
+      // 解析單句："名稱：內容"視為人物對話；<name> 除了可能出現在說話者位置，也可能出現在對話內文中間
+      // (例如「艾琳：『<name>，你終於醒了』」)，所以先把整行裡「所有」<name>都代換成玩家實際輸入的名字，
+      // 再進行說話者/內容的切割判斷；命名前的主角以「匿名的勇者」稱呼(仍對應主角立繪)，沒有名稱前綴的視為旁白
       _parseLine(line) {
+        const playerName = (gameState.profile && gameState.profile.name && gameState.profile.name !== '匿名的勇者') ? gameState.profile.name : '勇者';
+        line = line.split('<name>').join(playerName);
         const m = line.match(/^([^\s:：]{1,10})[:：](.*)$/);
         if (!m) return { speaker: null, text: line, identity: null };
         let rawSpeaker = m[1];
         const text = m[2];
         if (rawSpeaker === '旁白') return { speaker: null, text, identity: null };
-        if (rawSpeaker === '<name>') {
-          const playerName = (gameState.profile && gameState.profile.name && gameState.profile.name !== '匿名的勇者') ? gameState.profile.name : '勇者';
-          return { speaker: playerName, text, identity: 'hero' };
-        }
+        if (rawSpeaker === playerName) return { speaker: rawSpeaker, text, identity: 'hero' };
         if (rawSpeaker === '匿名的勇者') return { speaker: rawSpeaker, text, identity: 'hero' };
         return { speaker: rawSpeaker, text, identity: rawSpeaker };
       },
