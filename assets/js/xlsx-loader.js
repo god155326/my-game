@@ -1281,6 +1281,29 @@ function buildStoryLines(wb) {
 }
 
 /**
+ * 2026-09-10新增：MAINLINE_STORY_XLSX —— text分頁裡「mapid不是100」的type=story列，
+ * 對應各主線關卡自己的劇情(Wei陸續在xlsx新增，例如mapid=1009/1029/1030...)，過去這些列完全沒有
+ * 程式碼讀取(buildStoryLines()只處理mapid=100)，導致Wei填了新關卡的劇情卻永遠不會被觸發。
+ * Wei目前指示「暫時均改使用after功能」：不論該列原本的timing欄位填的是before還是after，
+ * 這裡統一歸類到「戰鬥勝利、結算彈窗關閉後才播放」的after清單裡(同一個mapId若有多列，依xlsx原本
+ * 排列順序依序串接播放)；之後如果要恢復區分before/after，只需要把下面這行判斷式拆開即可。
+ * 回傳 { mapId: { after: [文字陣列] } }，index.html的getMainlineStoryFor()會優先採用這裡的資料，
+ * 找不到時才退回內建的MAINLINE_STORY(僅涵蓋mapId=200/209等舊版關卡編號，供舊資料相容)。
+ */
+function buildMainlineStoryDatabase(wb) {
+  const rows = xlsxSheetToObjects(wb, "text");
+  const out = {};
+  rows.forEach(o => {
+    if (o.type !== "story") return;
+    if (o.mapid == null || o.mapid === 100) return; // mapid=100(教學劇情)由buildStoryLines()專門處理，這裡不重複收錄
+    if (!o.info) return; // 純備註列(info為null)略過，同buildStoryLines()的既有防呆
+    if (!out[o.mapid]) out[o.mapid] = { after: [] };
+    out[o.mapid].after = out[o.mapid].after.concat(String(o.info).split("\n"));
+  });
+  return out;
+}
+
+/**
  * 批次3：GUIDE_DATABASE —— 16個「系統開放檢查點」的引導說明文字，由 text 分頁驅動。
  * 沿用既有 type=guide 的欄位慣例，用 timing 欄位存放 checkpoint key(既有的教學步驟(戰鬥/命名/職業選擇等)
  * 的guide列timing欄位一律是null，藉此天然區隔出「新版checkpoint引導」而不影響舊有教學系統)。
@@ -1355,6 +1378,7 @@ async function loadGameDataFromXlsx() {
     QUEST_DATABASE = questResult.quest;
     GOD_TRIAL_VARIANTS = questResult.godTrial;
     STORY_LINES = Object.assign({}, STORY_LINES, buildStoryLines(wb));
+    MAINLINE_STORY_XLSX = buildMainlineStoryDatabase(wb);
     GUIDE_DATABASE = buildFeatureGuideDatabase(wb);
 
     console.log('[xlsx-loader] 已從', GAME_XLSX_PATH, '載入資料表');

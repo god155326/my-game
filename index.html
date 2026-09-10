@@ -2051,10 +2051,15 @@
     /* 縮小戰鬥：主線首頁掛機演出區塊蓋上的深透明遮罩，顯示「X戰鬥中」，見 renderMainlineMinimizedOverlay() */
     .mainline-minibattle-overlay {
       position: absolute;
-      inset: 0;
+      /* 不用inset:0整片蓋住：左上角保留給「自動探索/領取掛機」既有按鈕(.mainline-idle-overlay)的空間，
+         避免縮小戰鬥時把這兩顆功能按鈕整個蓋住、變成看不到也點不到 */
+      top: 46px;
+      left: 0;
+      right: 0;
+      bottom: 0;
       z-index: 8;
       background: rgba(0,0,0,0.78);
-      border-radius: 10px;
+      border-radius: 0 0 10px 10px;
       display: none;
       align-items: center;
       justify-content: center;
@@ -3934,7 +3939,7 @@
     </div>
 
     <!-- 縮小戰鬥狀態列：有正式戰鬥在背景進行、且目前不在戰鬥畫面時顯示，點擊直接切回戰鬥畫面，見 updateMiniBattleBar() -->
-    <div class="mini-battle-bar" id="mini-battle-bar" onclick="returnToMinimizedBattle()">
+    <div class="mini-battle-bar" id="mini-battle-bar" onclick="onMiniBattleBarClick()">
       <div class="mini-battle-bar-title" id="mini-battle-bar-title"></div>
       <div class="mini-battle-bar-log" id="mini-battle-bar-log"></div>
     </div>
@@ -8111,6 +8116,10 @@ let TALENT_CURVE = [
 
     // 掛機演出已無獨立畫面(探索分頁改為即將開放)：改為在背景以無畫面方式持續運行，主線畫面中會顯示縮小版的狀態摘要
     function startMainlineIdleLoop() {
+      // 縮小戰鬥：有正式關卡戰鬥在背景進行時，絕對不能啟動掛機演出——兩者共用同一份
+      // gameState.playerTeam/enemyTeam/activeBattleType，掛機演出一旦啟動會直接覆蓋掉正在進行的
+      // 正式戰鬥狀態，導致玩家切回主線畫面後「縮小戰鬥」看起來像是被關閉、必須重新點擊挑戰。
+      if (isRealBattleInProgress()) return;
       const zones = getUnlockedIdleZones();
       if (zones.length === 0) return;
       // 掛機地區一律自動鎖定為「玩家已通關的最後一個有掛機資料的主線關卡」(zones[0])，
@@ -10340,7 +10349,18 @@ let TALENT_CURVE = [
     function updateMiniBattleBar() {
       const bar = document.getElementById('mini-battle-bar');
       if (!bar) return;
+      // 戰鬥已經在縮小狀態下分出勝負：不強制蓋掉玩家目前畫面，狀態列改顯示「戰鬥結束，點擊查看結算」，
+      // 點擊後才真正開啟結算彈窗(見 onMiniBattleBarClick())，見 showResultModal() 的對應處理。
+      if (gameState.pendingResultModal) {
+        syncBattlePopupsForMinimize(true);
+        document.getElementById('mini-battle-bar-title').innerText = `${gameState.pendingResultModalHint || ''} 戰鬥結束，點擊查看結算`;
+        document.getElementById('mini-battle-bar-log').innerHTML = '';
+        bar.style.display = 'flex';
+        renderMainlineMinimizedOverlay();
+        return;
+      }
       const minimized = canMinimizeCurrentBattle() && !isBattleScreenVisible();
+      syncBattlePopupsForMinimize(minimized);
       if (!minimized) {
         bar.style.display = 'none';
         renderMainlineMinimizedOverlay(); // 戰鬥已結束或已切回戰鬥畫面：確保主線遮罩也一併隱藏，避免殘留
@@ -10353,6 +10373,18 @@ let TALENT_CURVE = [
       bar.style.display = 'flex';
       renderMainlineMinimizedOverlay();
     }
+    // 縮小戰鬥狀態列點擊行為：一般情況下是切回目前進行中的戰鬥；若戰鬥已經在縮小狀態下結束(pendingResultModal)，
+    // 改成開啟結算彈窗(內容/獎勵早在戰鬥結束當下就已經算好，這裡只是把原本隱藏的彈窗顯示出來)。
+    function onMiniBattleBarClick() {
+      if (gameState.pendingResultModal) {
+        gameState.pendingResultModal = false;
+        gameState.pendingResultModalHint = null;
+        document.getElementById('result-modal').style.display = 'flex';
+        updateMiniBattleBar();
+        return;
+      }
+      returnToMinimizedBattle();
+    }
     // 主線首頁：縮小戰鬥進行中時，把掛機演出的預覽區塊蓋上一層深透明遮罩，顯示「X戰鬥中」，
     // 且掛機演出本身已於proceedSelectQuest呼叫stopMainlineIdleLoop()中止、startMainlineIdleLoop()也會擋下重啟，
     // 畫面會凍結停在「尚未遭遇(尋怪中)」的預設狀態，不會有動畫演出
@@ -10360,6 +10392,11 @@ let TALENT_CURVE = [
       const overlay = document.getElementById('mainline-minibattle-overlay');
       if (!overlay) return;
       if (!isMainlineScreenVisible()) { overlay.style.display = 'none'; return; }
+      if (gameState.pendingResultModal) {
+        document.getElementById('mainline-minibattle-overlay-text').innerText = `${gameState.pendingResultModalHint || ''}戰鬥結束，點擊下方查看結算`;
+        overlay.style.display = 'flex';
+        return;
+      }
       const minimized = canMinimizeCurrentBattle() && !isBattleScreenVisible();
       if (!minimized) { overlay.style.display = 'none'; return; }
       const quest = gameState.selectedQuest;
@@ -10401,6 +10438,13 @@ let TALENT_CURVE = [
           performNav(key);
         });
         return;
+      }
+      // 縮小戰鬥：離開戰鬥畫面前，先關掉戰鬥中彈出、但不屬於screen-battle內部的浮動UI(技能說明浮窗/目標選取遮罩)，
+      // 避免它們蓋在切過去的新畫面上方；三選一事件彈窗則交由 syncBattlePopupsForMinimize() 隱藏並保留狀態，
+      // 切回戰鬥畫面時會自動還原(玩家還沒做出選擇的話)。
+      if (isRealBattleInProgress() && isBattleScreenVisible()) {
+        closeSkillModal();
+        removeTargetMask();
       }
       performNav(key);
       updateMiniBattleBar();
@@ -11199,9 +11243,12 @@ let TALENT_CURVE = [
     }
 
     function showResultModal(isWin) {
+      // 縮小戰鬥：記錄戰鬥結束「當下」玩家是否正在看著戰鬥畫面——如果是縮小狀態，稍後不強制彈出結算彈窗蓋掉
+      // 玩家目前正在瀏覽的畫面，而是先把獎勵/進度都正常算好，改用縮小戰鬥狀態列提示「點擊查看結算」，
+      // 由玩家自己選擇何時查看(見函式尾端的分流、以及 updateMiniBattleBar()/onMiniBattleBarClick())。
+      const wasMinimized = isRealBattleInProgress() && !isBattleScreenVisible();
       setBattleTitle(isWin ? '戰鬥勝利' : '戰鬥失敗'); // TITLE顯示關卡名稱+戰鬥結果；需在activeBattleType清空前(quest仍在)呼叫
       gameState.activeBattleType = null; // 戰鬥已分出勝負，副本/主線可自由切換
-      updateMiniBattleBar(); // 縮小戰鬥狀態列/主線遮罩：戰鬥已結束，一律隱藏(結算彈窗會蓋在目前畫面最上層顯示)
       clearAutoNextStageCountdown(); // 每次開啟結算彈窗都先清掉上一次殘留的倒數(理論上不會有殘留，防呆)
       const modal = document.getElementById('result-modal');
       const logo = document.getElementById('result-logo');
@@ -11213,7 +11260,7 @@ let TALENT_CURVE = [
       nextBtn.style.display = 'none'; // 戰敗、或非主線關卡、或找不到下一關時一律不顯示
       nextBtn.innerText = '下一關';
       nextBtn.onclick = goToNextMainStage; // 每次開啟都重設回預設行為，避免沿用上一次(例如無限地城)覆寫過的行為
-      returnBtn.style.display = 'block'; // 預設顯示，若判定有「下一關」可接續，稍後會改成隱藏(兩者互斥，見下方)
+      returnBtn.style.display = 'block'; // 「返回」與「下一關」原本就是各自獨立顯示，兩者可以同時出現，不互斥
       document.getElementById('result-capture-label').style.display = 'none';
       document.getElementById('result-capture-gained').innerText = '';
 
@@ -11322,8 +11369,10 @@ let TALENT_CURVE = [
           }
           lootEl.innerText = gained.length ? gained.map(g => `${g.icon} ${g.name} x${g.amount}`).join(' · ') : '沒有獲得獎勵';
 
-          // 自動下一關：僅main/tower這兩種連續性關卡適用，且結算彈窗確實有顯示「下一關」按鈕(找得到下一關)時，才倒數3秒後自動接續
-          if (gameState.autoNextStage && quest && (quest.type === 'main' || quest.type === 'tower') && nextBtn.style.display === 'block') {
+          // 自動下一關：僅main/tower這兩種連續性關卡適用，且結算彈窗確實有顯示「下一關」按鈕(找得到下一關)時，才倒數3秒後自動接續。
+          // 縮小戰鬥：若戰鬥是在縮小狀態下結束的(wasMinimized)，不自動倒數接關——結算彈窗這次會先被隱藏、
+          // 改用狀態列提示玩家自行點擊查看，倒數是給「正在看著戰鬥畫面」的情境用的，兩者不應同時發生。
+          if (gameState.autoNextStage && !wasMinimized && quest && (quest.type === 'main' || quest.type === 'tower') && nextBtn.style.display === 'block') {
             startAutoNextStageCountdown();
           }
         }
@@ -11340,9 +11389,16 @@ let TALENT_CURVE = [
         }
       }
 
-      // 「下一關」與「返回」互斥：只要判定出有下一關可接續(nextBtn已顯示)，「返回」按鈕就隱藏，避免同時出現兩顆容易混淆的按鈕
-      if (nextBtn.style.display === 'block') returnBtn.style.display = 'none';
-
+      // 縮小戰鬥：戰鬥是在縮小狀態下結束的話，不強制彈出結算彈窗蓋掉玩家目前正在看的畫面——
+      // 獎勵/進度都已經在上面正常算完發放，這裡只是「先不顯示」，改用狀態列(見updateMiniBattleBar())
+      // 提示「戰鬥結束，點擊查看結算」，玩家自己點了才真正顯示這個已經準備好內容的彈窗(見onMiniBattleBarClick())。
+      if (wasMinimized) {
+        modal.style.display = 'none';
+        gameState.pendingResultModal = true;
+        gameState.pendingResultModalHint = hint;
+        updateMiniBattleBar();
+        return;
+      }
       modal.style.display = 'flex';
     }
 
@@ -12315,9 +12371,14 @@ let TALENT_CURVE = [
       title.innerText = `⚡ ${evt.name}`;
 
       let resolved = false;
+      // 縮小戰鬥：記錄「目前有一個尚未選擇的三選一事件」，讓玩家切到其他分頁時能先把這個彈窗隱藏起來
+      // (見 syncBattlePopupsForMinimize())，避免它蓋在玩家切過去的其他畫面上方擋住操作；
+      // 玩家切回戰鬥畫面時，只要還沒選擇(resolved仍是false)，會依這個flag重新顯示同一個彈窗。
+      gameState.pendingEventModalState = { evt, onDone };
       function resolveChoice(bId) {
         if (resolved) return;
         resolved = true;
+        gameState.pendingEventModalState = null;
         applyEventBuffs(evt, [bId]);
         modal.style.display = 'none';
         onDone();
@@ -12348,6 +12409,16 @@ let TALENT_CURVE = [
           resolveChoice(randomBuffId);
         }, td(900));
       }
+    }
+
+    // 縮小戰鬥：切到其他分頁(戰鬥畫面被隱藏)時，把戰鬥中彈出、且不屬於screen-battle內部的浮動彈窗一併隱藏，
+    // 避免它們蓋在玩家切過去的畫面上方擋住操作；切回戰鬥畫面時，若還有尚未處理完的彈窗(仍記錄在gameState裡)，
+    // 就重新顯示同一個彈窗(內容/按鈕事件都還在，不需要重新產生)。目前只有「三選一事件」符合這個情境
+    // (技能說明浮窗/目標選取遮罩在切換分頁的當下就會被直接關閉，不需要之後還原，見 onNavClick 呼叫的地方)。
+    function syncBattlePopupsForMinimize(minimized) {
+      const evtModal = document.getElementById('event-select-modal');
+      if (!evtModal) return;
+      evtModal.style.display = (gameState.pendingEventModalState && !minimized) ? 'flex' : 'none';
     }
 
     // 事件蓋板(場地buff/debuff)：短暫顯示後自動套用給對應對象(target未填=全場)
@@ -14196,6 +14267,20 @@ let TALENT_CURVE = [
         ]
       }
     };
+    // 2026-09-10新增：text分頁裡mapid≠100的type=story列(Wei陸續填入各關卡自己的劇情)，
+    // 由 xlsx-loader.js 的 buildMainlineStoryDatabase() 讀取後存到這裡，{ mapId: { after: [...] } }
+    let MAINLINE_STORY_XLSX = {};
+    // 統一查詢入口：優先採用xlsx填的劇情(MAINLINE_STORY_XLSX)，找不到時才退回內建的MAINLINE_STORY
+    // (僅供mapId=200/209等舊版關卡編號的既有內容相容用)。目前xlsx只會提供after，before仍只有內建資料有。
+    function getMainlineStoryFor(mapId) {
+      const xlsxEntry = MAINLINE_STORY_XLSX ? MAINLINE_STORY_XLSX[mapId] : null;
+      const builtin = MAINLINE_STORY[mapId];
+      if (!xlsxEntry && !builtin) return null;
+      return {
+        before: (builtin && builtin.before) || null,
+        after: (xlsxEntry && xlsxEntry.after) || (builtin && builtin.after) || null
+      };
+    }
 
     // 職業選擇時的介紹文字：實際職業(騎士/聖騎士/恢復士/盜賊/魔法師)與 xlsx 中六種職業名稱並非一一對應，
     // 依角色定位就近取用最接近的介紹文字(盜賊/魔法師直接對應；恢復士對應治療系的實習祭司；騎士/聖騎士對應戰士/劍士)
@@ -14797,7 +14882,7 @@ let TALENT_CURVE = [
     gameState.playedStoryKeys = gameState.playedStoryKeys || new Set();
     const __origProceedSelectQuest = proceedSelectQuest;
     proceedSelectQuest = function(quest) {
-      const beforeLines = MAINLINE_STORY[quest.mapId] && MAINLINE_STORY[quest.mapId].before;
+      const beforeLines = getMainlineStoryFor(quest.mapId) && getMainlineStoryFor(quest.mapId).before;
       const key = 'before_' + quest.mapId;
       if (beforeLines && !gameState.playedStoryKeys.has(key)) {
         gameState.playedStoryKeys.add(key);
@@ -14845,7 +14930,8 @@ let TALENT_CURVE = [
       }
       if (isWin) {
         const quest = gameState.selectedQuest;
-        const afterLines = quest && quest.type === 'main' && MAINLINE_STORY[quest.mapId] && MAINLINE_STORY[quest.mapId].after;
+        const storyMetaForAfter = quest && quest.type === 'main' && getMainlineStoryFor(quest.mapId);
+        const afterLines = storyMetaForAfter && storyMetaForAfter.after;
         const key = quest ? ('after_' + quest.mapId) : null;
         if (afterLines && key && !gameState.playedStoryKeys.has(key)) {
           gameState.playedStoryKeys.add(key);
@@ -14867,7 +14953,7 @@ let TALENT_CURVE = [
         const mapId = Guide._pendingMainAfterMapId;
         Guide._pendingMainAfterMapId = null;
         document.getElementById('result-modal').style.display = 'none';
-        Story.playAsync(MAINLINE_STORY[mapId].after).then(() => __origReturnToQuestMenu());
+        Story.playAsync(getMainlineStoryFor(mapId).after).then(() => __origReturnToQuestMenu());
         return;
       }
       __origReturnToQuestMenu();
