@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>WeaponMamster</title>
+  <title>召喚英雄 - 七宗罪戰術對戰</title>
   <style>
     * {
       box-sizing: border-box;
@@ -1958,7 +1958,7 @@
       padding: 18px 6px 8px;
       background:
         linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)),
-        url('assets/images/img_36bc0ede9850.jpg');
+        url('assets/images/chapter/chapter1_bannre.jpg');
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -7804,10 +7804,31 @@ let GOD_POINT_CURVE = [
     }
     const CHAPTER_NUM_CN = { 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九', 10: '十' };
 
+    // 主線首頁章節地圖的橫幅背景圖：依目前所在章節動態切換 assets/images/chapter/chapter{N}_bannre.jpg，
+    // 讀不到(該章節還沒有對應圖檔)時統一顯示 chapter1_bannre.jpg 當預設圖。用Image()物件預先讀取判斷
+    // 成功/失敗(onload/onerror)，避免CSS background-image讀取失敗時只會整片空白、沒有任何備援畫面。
+    let _mainlineChapterBannerLoadedFor = null; // 記錄目前畫面上的橫幅是哪個章節(成功load過的)，同一章節不重複觸發圖片讀取
+    function updateMainlineChapterBanner(chapter) {
+      if (_mainlineChapterBannerLoadedFor === chapter) return;
+      const row = document.getElementById('mainline-node-row');
+      if (!row) return;
+      const FALLBACK_URL = 'assets/images/chapter/chapter1_bannre.jpg';
+      const targetUrl = `assets/images/chapter/chapter${chapter}_bannre.jpg`;
+      const applyBg = (url) => {
+        row.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${url}')`;
+      };
+      if (chapter === 1) { applyBg(FALLBACK_URL); _mainlineChapterBannerLoadedFor = chapter; return; }
+      const img = new Image();
+      img.onload = () => { applyBg(targetUrl); _mainlineChapterBannerLoadedFor = chapter; };
+      img.onerror = () => { applyBg(FALLBACK_URL); _mainlineChapterBannerLoadedFor = chapter; };
+      img.src = targetUrl;
+    }
+
     function renderMainStage() {
       let { chapter, stage, nodes } = getCurrentMainProgress();
       gameState.currentMainStageId = stage.mapId;
       document.getElementById('mainline-chapter-tag').innerText = `第${CHAPTER_NUM_CN[chapter] || chapter}章`;
+      updateMainlineChapterBanner(chapter);
 
       // 章節地圖節點列：每次僅顯示11個節點的視窗，並讓玩家目前挑戰的節點盡量置中；
       // 靠近章節頭尾時視窗貼齊邊界(例如推進到1-5時顯示1-1~1-11)，需持續推進才會看到後面的節點，不做左右滑動
