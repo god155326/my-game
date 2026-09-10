@@ -1755,6 +1755,17 @@
       flex-shrink: 0;
     }
     .talent-reset-btn { flex: 0 0 auto; width: 50px; margin-left: auto; padding: 4px 0; font-size: 10px; }
+    /* 天賦頁預覽模式提示：尚未擁有對應職業時顯示，說明這一頁只能預覽、不能真正花點數學習 */
+    .talent-locked-notice {
+      font-size: 10px;
+      color: #f0c98a;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid #6b4a2f;
+      border-radius: 6px;
+      padding: 5px 8px;
+      margin-bottom: 6px;
+      flex-shrink: 0;
+    }
     .talent-tree-container {
       position: relative;
       flex: 1;
@@ -3759,7 +3770,6 @@
           <div class="class-list" id="class-list"></div>
           <div class="class-actions action-bar">
             <button class="btn" onclick="cancelClassPending()">取消</button>
-            <button class="btn" onclick="onClassLevelUpClick()">升級</button>
             <button class="btn-restart" id="btn-confirm-class" onclick="confirmClassReplace()" disabled>替換</button>
             <button class="btn btn-placeholder" tabindex="-1"></button>
           </div>
@@ -3783,17 +3793,13 @@
       <div class="screen-panel" id="screen-equip-menu" style="display:none;">
         <div class="screen-title">🛡️ 裝備</div>
         <div class="equip-menu-list">
-          <div class="equip-menu-btn" onclick="openFormationScreen()">
-            <div class="equip-menu-icon equip-menu-icon-img" style="background-image:url('assets/images/img_86697d85a0b4.png')"></div>
-            <div class="equip-menu-label">佈陣</div>
+          <div class="equip-menu-btn" onclick="onClassEquipClick()">
+            <div class="equip-menu-icon equip-menu-icon-img" style="background-image:url('assets/images/img_9236b1703116.png')"></div>
+            <div class="equip-menu-label">職業裝備</div>
           </div>
           <div class="equip-menu-btn" onclick="onGemMenuClick()">
             <div class="equip-menu-icon equip-menu-icon-img" style="background-image:url('assets/images/img_a5f2a912e5f4.png')"></div>
             <div class="equip-menu-label">魔法石</div>
-          </div>
-          <div class="equip-menu-btn" onclick="onClassEquipClick()">
-            <div class="equip-menu-icon equip-menu-icon-img" style="background-image:url('assets/images/img_9236b1703116.png')"></div>
-            <div class="equip-menu-label">職業裝備</div>
           </div>
         </div>
       </div>
@@ -3893,6 +3899,7 @@
             <div class="talent-points-row">
               <span id="talent-points-remaining">剩餘天賦點數：0</span>
             </div>
+            <div class="talent-locked-notice" id="talent-locked-notice" style="display:none;"></div>
             <div class="talent-tree-container">
               <svg class="talent-tree-lines" id="talent-tree-lines" preserveAspectRatio="none"></svg>
               <div class="talent-tree-grid" id="talent-tree-grid"></div>
@@ -6673,14 +6680,15 @@ let TAGLIST_DATABASE = {
     // ##AUTO-GENERATED:TAGLIST_DATABASE:END##
 
     // ##AUTO-GENERATED:TALENTLIST_DATABASE:START##
-    // 由 xlsx talentlist 分頁產生：天賦group對應的標題字串(info)與需要擁有的職業card_id(unlockJob)才能開啟該天賦頁
+    // 由 xlsx talentlist 分頁產生：天賦group對應的標題字串(info)、需要擁有的職業card_id(unlockJob)才能開啟該天賦頁、
+    // 以及tier(1=初階6職業、2=二轉6職業)——天賦畫面目前只顯示tier=1的分類，見 getTalentGroups()
 let TALENTLIST_DATABASE = {
-      1: { info: "劍士天賦", unlockJob: 90001 },
-      2: { info: "戰士天賦", unlockJob: 90002 },
-      3: { info: "弓劍手天賦", unlockJob: 90003 },
-      4: { info: "盜賊天賦", unlockJob: 90004 },
-      5: { info: "魔法師天賦", unlockJob: 90005 },
-      6: { info: "實習祭司天賦", unlockJob: 90006 }
+      1: { info: "劍士天賦", unlockJob: 90001, tier: 1 },
+      2: { info: "戰士天賦", unlockJob: 90002, tier: 1 },
+      3: { info: "弓劍手天賦", unlockJob: 90003, tier: 1 },
+      4: { info: "盜賊天賦", unlockJob: 90004, tier: 1 },
+      5: { info: "魔法師天賦", unlockJob: 90005, tier: 1 },
+      6: { info: "實習祭司天賦", unlockJob: 90006, tier: 1 }
     };
     // ##AUTO-GENERATED:TALENTLIST_DATABASE:END##
 
@@ -6935,25 +6943,12 @@ let TALENT_CURVE = [
         if (gained > 0) gameState.godAvailablePoints = (gameState.godAvailablePoints || 0) + gained;
       }
     }
-    // 依 TALENT_CURVE(type=1) 查表計算「累計到某等級」總共可獲得的天賦點數：
-    // curve每一列的 level 代表一個級距的右端點(含)，同一級距內每一等級都依該列的 point 發放(即 level 欄位=5 代表 1~5 等，每等2點；
-    // level=10 代表 6~10 等，每等3點...以此類推)；未滿一個完整級距的部分則以該級距的 point 按等級數比例計算(例如6等 = 5*2 + 1*3 = 13點)
+    // 2026-09-10 Wei更新規則：天賦點數(item 8002)創帳號時起始為0點，之後不分職業，任一職業每升級5等
+    // 自動獲得1點(例如5等=1點、10等=2點、25等=5點...)，改成純粹的整數公式，不再依賴 TALENT_CURVE
+    // 級距曲線(該表原本是逐級距遞增的複雜設計，現在已不需要，保留在xlsx/index.html純粹是相容舊資料，
+    // 不影響天賦點數的實際計算)。
     function computeTalentPointsAtLevel(level) {
-      let total = 0;
-      let prevLevel = 0;
-      for (let row of TALENT_CURVE) {
-        if (level >= row.level) {
-          total += (row.level - prevLevel) * row.point;
-          prevLevel = row.level;
-        } else if (level > prevLevel) {
-          total += (level - prevLevel) * row.point;
-          prevLevel = level;
-          break;
-        } else {
-          break;
-        }
-      }
-      return total;
+      return Math.floor((level || 0) / 5);
     }
     // 任一職業升級時，依curve查表計算「新等級」與「舊等級」各自累計可得的天賦點數，兩者差額即為本次升級獲得的點數，累加進共用天賦點數池
     function grantTalentPointsForLevelUp(roleId, oldLevel, newLevel) {
@@ -7883,6 +7878,14 @@ let TALENT_CURVE = [
       const enemyRow = document.getElementById('mainline-enemy-row');
       const playerRow = document.getElementById('mainline-player-row');
       if (!enemyRow || !playerRow) return;
+
+      // 縮小戰鬥：有背景戰鬥正在進行(或剛結束、還沒點開查看結算)時，這個區塊改由深色遮罩全權接管顯示，
+      // 敵我雙方的卡片列直接清空不渲染——不透過z-index疊層去蓋住舊內容，從根本避免任何殘留/透出的疑慮。
+      if ((canMinimizeCurrentBattle() && !isBattleScreenVisible()) || gameState.pendingResultModal) {
+        enemyRow.innerHTML = '';
+        playerRow.innerHTML = '';
+        return;
+      }
 
       if (gameState.idle.exploring && gameState.idle.phase === 'battling' && gameState.enemyTeam.length && gameState.playerTeam.length) {
         // 真實戰鬥引擎演出中：直接讀取目前的敵我雙方即時狀態(不列入主角，與正式戰鬥畫面共用同一份資料)
@@ -8877,7 +8880,12 @@ let TALENT_CURVE = [
     }
     function getTalentGroups() {
       let groups = new Set(Object.values(TALENT_DATABASE).map(n => n.group));
-      return [...groups].sort((a, b) => a - b);
+      // 2026-09-10 Wei指示：天賦畫面目前統一僅顯示tier=1的全部職業分類(初階6職業)，其餘tier(目前是tier=2，
+      // 二轉6職業)不顯示於分類列表——沒有talentlist資料的group保守視為tier=1顯示，避免資料缺漏時整組消失不見。
+      return [...groups].filter(g => {
+        let info = TALENTLIST_DATABASE[g];
+        return !info || info.tier === 1 || info.tier == null;
+      }).sort((a, b) => a - b);
     }
     // 天賦頁鎖定：每個group對應一個需要先擁有的職業card(TALENTLIST_DATABASE[g].unlockJob)，玩家帳號建立時尚未擁有任何職業，
     // 所有天賦頁一律鎖定；直到玩家透過新手禮包/天賦解鎖等方式取得該職業card後，才能開啟並學習該天賦頁裡的節點
@@ -8975,26 +8983,28 @@ let TALENT_CURVE = [
       }).join('');
 
       const gridEl = document.getElementById('talent-tree-grid');
+      const noticeEl = document.getElementById('talent-locked-notice');
       let selectedGroupUnlocked = isTalentGroupUnlocked(gameState.talentUI.selectedGroup);
-      if (!selectedGroupUnlocked) {
-        let info = TALENTLIST_DATABASE[gameState.talentUI.selectedGroup];
-        let jobCard = info && CARD_DATABASE.find(c => c.id === info.unlockJob);
-        gridEl.innerHTML = `<div class="explore-empty-hint">🔒 尚未擁有「${jobCard ? elName(jobCard) : (info ? info.unlockJob : '')}」職業，無法開啟此天賦頁</div>`;
-        gameState.talentUI.selectedNodeId = null;
-        gridEl._talentCurrentNodes = [];
-        drawTalentTreeLines([]);
-        document.getElementById('talent-points-remaining').innerText = `剩餘天賦點數：${gameState.talentPoints}`;
-        let totalSpentLocked = [...gameState.unlockedTalents].reduce((s, id) => s + ((TALENT_DATABASE[id] || {}).cost || 0), 0);
-        document.getElementById('talent-spent-row').innerText = `消耗點數：${totalSpentLocked}/${gameState.talentPoints + totalSpentLocked}`;
-        renderTalentInfoBox();
-        return;
+      // 2026-09-10 Wei指示：尚未擁有對應職業的天賦頁仍要能「預覽內容」(看得到整棵樹的節點/連線)，
+      // 只是不能真正使用點數學習——不再直接顯示一片空白，改成正常渲染樹狀圖，只在上方多加一行提示文字，
+      // 並在 renderTalentInfoBox() 那邊擋下「使用」按鈕(見該函式的 groupUnlocked 判斷)。
+      if (noticeEl) {
+        if (!selectedGroupUnlocked) {
+          let info = TALENTLIST_DATABASE[gameState.talentUI.selectedGroup];
+          let jobCard = info && CARD_DATABASE.find(c => c.id === info.unlockJob);
+          noticeEl.innerText = `🔒 尚未擁有「${jobCard ? elName(jobCard) : (info ? info.unlockJob : '')}」職業，此頁僅供預覽，需先取得該職業才能使用點數`;
+          noticeEl.style.display = 'block';
+        } else {
+          noticeEl.style.display = 'none';
+        }
       }
       let nodes = Object.values(TALENT_DATABASE).filter(n => n.group === gameState.talentUI.selectedGroup);
       gridEl.innerHTML = nodes.map(n => {
         let pos = getTalentNodePosition(n);
         if (!pos) return ''; // 該group的排列中沒有此節點的位置資料，暫不顯示
         let unlocked = isTalentUnlocked(n.id);
-        let available = !unlocked && isTalentFrontMet(n.id);
+        // 職業本身尚未擁有時，整棵樹一律視為不可學習(即使front條件met也一樣)，只用來預覽內容
+        let available = !unlocked && selectedGroupUnlocked && isTalentFrontMet(n.id);
         let cls = unlocked ? 'unlocked' : (available ? 'available' : 'locked');
         let isSelected = gameState.talentUI.selectedNodeId === n.id;
         // 節點圖示：已解鎖/可學習皆顯示天賦buff美術圖(可學習時降低透明度、去彩表示尚未生效)，鎖定則維持🔒
@@ -9120,7 +9130,8 @@ let TALENT_CURVE = [
       }
       let buff = BUFF_DATABASE[node.buffPasiveId] || {};
       let unlocked = isTalentUnlocked(id);
-      let frontMet = isTalentFrontMet(id);
+      let groupUnlocked = isTalentGroupUnlocked(node.group); // 尚未擁有對應職業時，這棵樹只能預覽，不能真正使用點數
+      let frontMet = groupUnlocked && isTalentFrontMet(id);
       nameEl.innerText = node.name;
       descEl.innerText = formatTalentDesc(buff);
       iconEl.innerHTML = unlocked ? '★' : '🔮';
@@ -9131,8 +9142,8 @@ let TALENT_CURVE = [
         frontEl.innerHTML = `<span style="color:${frontMet ? '#4ade80' : '#ff6b6b'};">前置條件：${names}解鎖${frontMet ? ' ✓' : ''}</span>`;
       }
       frontEl.innerHTML += `<br><span style="color:#a89a80;">消耗點數：${node.cost}</span>`;
-      learnBtn.disabled = unlocked || !frontMet || gameState.talentPoints < node.cost;
-      learnBtn.innerText = unlocked ? '已學習' : '使用';
+      learnBtn.disabled = unlocked || !groupUnlocked || !frontMet || gameState.talentPoints < node.cost;
+      learnBtn.innerText = unlocked ? '已學習' : (!groupUnlocked ? '尚未擁有職業' : '使用');
     }
 
     function onTalentLearnClick() {
@@ -10435,6 +10446,9 @@ let TALENT_CURVE = [
       const overlay = document.getElementById('mainline-minibattle-overlay');
       if (!overlay) return;
       if (!isMainlineScreenVisible()) { overlay.style.display = 'none'; return; }
+      // 敵我卡片列是否要顯示，跟遮罩本身是否要顯示，判斷條件完全一樣，這裡一併同步，避免兩者狀態不一致
+      // (例如切回主線畫面那一刻，遮罩顯示了但卡片列還沒清空，殘留舊內容一瞬間透出來)。
+      renderMainlineBattleArea();
       if (gameState.pendingResultModal) {
         document.getElementById('mainline-minibattle-overlay-text').innerText = `${gameState.pendingResultModal.hint || ''}戰鬥結束，點擊下方查看結算`;
         overlay.style.display = 'flex';
@@ -10728,7 +10742,8 @@ let TALENT_CURVE = [
       enemyWeapons.forEach((unit, i) => applyUnitOverride(unit, enemyOverrides[i]));
     }
 
-    function proceedSelectQuest(quest) {
+    function proceedSelectQuest(quest, opts) {
+      const keepMinimized = !!(opts && opts.keepMinimized); // 縮小戰鬥+自動下一關：接續下一關時不強迫切回戰鬥畫面
       // 掛機演出若正在背景進行，開始正式關卡戰鬥時靜默中止(掛機沒有輸贏成本，無需確認)
       if (gameState.idle.exploring) stopMainlineIdleLoop();
       // 縮小戰鬥：若上一場戰鬥是在縮小狀態下結束、玩家還沒點開查看結算就直接開始下一場戰鬥，
@@ -10760,7 +10775,11 @@ let TALENT_CURVE = [
       } : null;
       // 自動戰鬥設定(isAuto / speedMultiplier)沿用玩家上一場戰鬥設定的值，不在此重置為OFF
       gameState.miniBattleLog = []; // 縮小戰鬥狀態列用的最近LOG，每場新戰鬥開始時清空
-      showScreen('battle');
+      if (keepMinimized) {
+        updateMiniBattleBar(); // 維持在玩家目前所在的畫面，只更新狀態列/主線遮罩反映「新戰鬥縮小中」
+      } else {
+        showScreen('battle');
+      }
       initGame(
         [...squad], [...quest.enemyIds],
         quest.level, effectiveRoleId, quest.enemyRoleId
@@ -10769,6 +10788,7 @@ let TALENT_CURVE = [
       applySpeedToCSS();
       syncAutoButtonUI();
       setBattleTitle('戰鬥中');
+      if (keepMinimized) updateMiniBattleBar(); // activeBattleType/battleTitle都設定完成後再刷新一次，確保狀態列文字正確
       // 若玩家先前已開啟自動戰鬥，新戰鬥一開始就直接接續自動演出，不需要玩家重新點一次
       if (gameState.isAuto) {
         let activeUnit = gameState.turnQueue[gameState.currentTurnIdx];
@@ -11437,16 +11457,18 @@ let TALENT_CURVE = [
         }
       }
 
-      // 縮小戰鬥：戰鬥是在縮小狀態下結束的話，不開啟原本圖示版的結算彈窗(彈窗維持關閉、蓋在裡面不顯示)，
-      // 改成直接在縮小戰鬥狀態列顯示純文字獎勵資訊 + 「下一關/返回」按鈕，讓玩家不用被強制切走目前畫面。
+      // 縮小戰鬥：戰鬥是在縮小狀態下結束的話，不開啟原本圖示版的結算彈窗(彈窗維持關閉、蓋在裡面不顯示)。
       if (wasMinimized) {
         modal.style.display = 'none';
-        gameState.pendingResultModal = {
-          hint,
-          isWin,
-          rewardText: plainRewardText,
-          hasNext: nextBtn.style.display === 'block'
-        };
+        const hasNext = nextBtn.style.display === 'block';
+        // 若「自動下一關」也是開啟狀態且找得到下一關：不用玩家手動點擊查看結算，直接在背景自動接續下一關，
+        // 且不強迫玩家切回戰鬥畫面(見 goToNextMainStageKeepMinimized())，符合「縮小戰鬥中自動下一關也要能自動接關」的需求。
+        if (isWin && hasNext && gameState.autoNextStage && quest && (quest.type === 'main' || quest.type === 'tower')) {
+          goToNextMainStageKeepMinimized();
+          return;
+        }
+        // 其餘情況：改成直接在縮小戰鬥狀態列顯示純文字獎勵資訊 + 「下一關/返回」按鈕，讓玩家自己點擊決定何時繼續。
+        gameState.pendingResultModal = { hint, isWin, rewardText: plainRewardText, hasNext };
         updateMiniBattleBar();
         return;
       }
@@ -11487,6 +11509,21 @@ let TALENT_CURVE = [
       gameState.selectedQuest = null;
       gameState.selectedRoster = [];
       proceedSelectQuest(nextQuest);
+    }
+
+    // 縮小戰鬥＋自動下一關都開啟時使用：邏輯跟 goToNextMainStage() 完全相同，唯一差異是接續下一關時
+    // 不強迫玩家切回戰鬥畫面(keepMinimized:true)，讓玩家可以繼續留在原本瀏覽的畫面上，戰鬥在背景自動接續。
+    function goToNextMainStageKeepMinimized() {
+      clearAutoNextStageCountdown();
+      let nextMapId = parseInt(document.getElementById('btn-result-next-stage').dataset.nextMapId, 10);
+      let nextQuest = QUEST_DATABASE.find(q => q.mapId === nextMapId);
+      document.getElementById('result-modal').style.display = 'none';
+      // 系統開放檢查點的引導/教學，重要性優先於「不強迫切畫面」，一律照原本邏輯(會自動導回主線首頁播放)
+      if (checkAndFireStageGuides()) return;
+      if (!nextQuest) { returnToQuestMenu(); return; }
+      gameState.selectedQuest = null;
+      gameState.selectedRoster = [];
+      proceedSelectQuest(nextQuest, { keepMinimized: true });
     }
 
     // 戰鬥結束後返回關卡選單(依剛才挑戰的關卡類型返回副本或主線畫面)
