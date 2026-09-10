@@ -2097,9 +2097,6 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .btn-minimize-battle {
-      margin-left: 6px;
-    }
     .mainline-idle-mini-btn {
       flex: none;
       width: auto;
@@ -4247,8 +4244,6 @@
             <span class="log-header-text" id="turn-info">第1回合</span>
           </div>
           <button class="btn-auto-float" id="btn-auto" onclick="toggleAuto()">自動戰鬥: OFF</button>
-          <!-- 縮小戰鬥：無限地城不支援，顯示與否見 syncMinimizeBattleBtnVisibility() -->
-          <button class="btn-auto-float btn-minimize-battle" id="btn-minimize-battle" style="display:none;" onclick="minimizeBattle()">縮小戰鬥</button>
         </div>
         <div class="log-box-wrap">
           <div class="log-box" id="log-box"></div>
@@ -10278,16 +10273,16 @@ let TALENT_CURVE = [
     // 除無限地城外，目前所有正式關卡戰鬥(主線/神格試煉/試煉之塔/殲滅任務...)都支援「縮小戰鬥」：
     // 玩家可以在戰鬥進行中切到其他分頁操作(佈陣/裝備/天賦...等)，戰鬥邏輯本身在背景繼續執行(仍是同一份
     // gameState.playerTeam/enemyTeam快照，不受玩家之後變更佈陣/裝備等影響)，直到分出勝負或玩家自行切回為止。
+    // 全程自動：不需要玩家額外點擊按鈕，只要切換底部導覽列的分頁(onNavClick)就會自動觸發，見上方 onNavClick()。
+    // 2026-09-10修正：這個功能會跟新手引導的教學戰鬥(mapId 100，發生在主線1-1之前)衝突導致引導卡住，
+    // 改成統一等玩家通關主線1-1(mapId 1000)後才開放；1-1通關前(含教學戰鬥)一律維持切換分頁需要先確認中斷的舊行為。
+    function isBackgroundBattleUnlocked() {
+      return gameState.clearedMainMapIds.has(1000);
+    }
     function canMinimizeCurrentBattle() {
-      return isRealBattleInProgress() && gameState.activeBattleType !== 'dungeon_infinite';
+      return isRealBattleInProgress() && gameState.activeBattleType !== 'dungeon_infinite' && isBackgroundBattleUnlocked();
     }
-    // 「縮小戰鬥」按鈕：僅隱藏戰鬥畫面、切回該關卡類型對應的選單畫面，戰鬥本身完全不受影響(不中止、不清除任何狀態)
-    function minimizeBattle() {
-      if (!canMinimizeCurrentBattle()) return;
-      routeBackForQuestType(gameState.selectedQuest ? gameState.selectedQuest.type : null);
-      updateMiniBattleBar();
-    }
-    // 從其他畫面點擊縮小戰鬥列，切回目前縮小中的戰鬥畫面(不影響戰鬥本身進度，畫面重新渲染成目前的即時狀態)
+    // 從其他畫面點擊縮小戰鬥狀態列，切回目前縮小中的戰鬥畫面(不影響戰鬥本身進度，畫面重新渲染成目前的即時狀態)
     function returnToMinimizedBattle() {
       if (!isRealBattleInProgress()) return;
       showScreen('battle');
@@ -10296,7 +10291,7 @@ let TALENT_CURVE = [
       syncActionDimVisual();
     }
     // 依關卡類型導向對應的選單畫面(不清除gameState.selectedQuest、不中止戰鬥)：
-    // 供「縮小戰鬥」按鈕使用；returnToQuestMenu()(戰鬥已分出勝負後)也共用同一套路由邏輯
+    // 供切換分頁時的自動縮小戰鬥使用；returnToQuestMenu()(戰鬥已分出勝負後)也共用同一套路由邏輯
     function routeBackForQuestType(type) {
       if (type === 'main') {
         showScreen('mainline');
@@ -10341,11 +10336,11 @@ let TALENT_CURVE = [
       proceedFn();
     }
     // 縮小戰鬥期間，浮動於畫面下方(蓋在底部導覽列上方)的戰鬥狀態列：顯示關卡名稱/狀態 + 最近3行戰鬥LOG，
-    // 點擊可直接切回戰鬥畫面。僅在「有正式戰鬥進行中且目前不在戰鬥畫面」時顯示，其餘情況一律隱藏。
+    // 點擊可直接切回戰鬥畫面。僅在「已開放縮小戰鬥功能(通關1-1後)、有正式戰鬥進行中、且目前不在戰鬥畫面」時顯示。
     function updateMiniBattleBar() {
       const bar = document.getElementById('mini-battle-bar');
       if (!bar) return;
-      const minimized = isRealBattleInProgress() && !isBattleScreenVisible();
+      const minimized = canMinimizeCurrentBattle() && !isBattleScreenVisible();
       if (!minimized) {
         bar.style.display = 'none';
         renderMainlineMinimizedOverlay(); // 戰鬥已結束或已切回戰鬥畫面：確保主線遮罩也一併隱藏，避免殘留
@@ -10365,7 +10360,7 @@ let TALENT_CURVE = [
       const overlay = document.getElementById('mainline-minibattle-overlay');
       if (!overlay) return;
       if (!isMainlineScreenVisible()) { overlay.style.display = 'none'; return; }
-      const minimized = isRealBattleInProgress() && !isBattleScreenVisible();
+      const minimized = canMinimizeCurrentBattle() && !isBattleScreenVisible();
       if (!minimized) { overlay.style.display = 'none'; return; }
       const quest = gameState.selectedQuest;
       document.getElementById('mainline-minibattle-overlay-text').innerText = `${quest ? (quest.hint || '') : ''}戰鬥中`;
@@ -10381,12 +10376,6 @@ let TALENT_CURVE = [
     function resetBattleTitle() {
       document.title = ORIGINAL_DOCUMENT_TITLE;
     }
-    // 「縮小戰鬥」按鈕：無限地城不支援縮小戰鬥，戰鬥開始時依關卡類型決定要不要顯示這顆按鈕
-    function syncMinimizeBattleBtnVisibility() {
-      const btn = document.getElementById('btn-minimize-battle');
-      if (!btn) return;
-      btn.style.display = canMinimizeCurrentBattle() ? 'inline-block' : 'none';
-    }
 
     function onNavClick(key) {
       // 帳號初期(或引導進行中)尚未解鎖的分頁：僅顯示鎖頭視覺是不夠的，這裡要真正擋下切換
@@ -10397,9 +10386,15 @@ let TALENT_CURVE = [
       // 批次4：天賦分頁雖然在新手引導結束時已一併解除粗略鎖定，但要等到talent_intro檢查點(關卡1-5)才真正開放
       if (key === 'talent' && !guardLockedFeature('talent_intro')) return;
       applyNavLockVisuals();
-      // 縮小戰鬥：除了無限地城外，其餘正式關卡戰鬥(main/tower/god_trial/annihilation...)切換分頁不再詢問、
-      // 也不會中斷戰鬥——戰鬥直接於背景繼續進行(screen-battle被隱藏)，直到玩家切回戰鬥畫面或戰鬥分出勝負為止。
-      // 無限地城系統設計上不支援縮小戰鬥，離開時仍需先確認，確認後才會真正中止戰鬥。
+      // 縮小戰鬥(背景繼續戰鬥)：僅在玩家已通關主線1-1(mapId 1000)後才開放，且無限地城系統本身不支援。
+      // 尚未通關1-1前(含教學戰鬥)、或無限地城進行中，切換分頁一律需要先確認，確認後才會真正中止戰鬥。
+      if (isRealBattleInProgress() && !isBackgroundBattleUnlocked()) {
+        showConfirmModal('切換將會中斷目前進行中的戰鬥，確定要離開嗎？', () => {
+          abortCurrentBattle();
+          performNav(key);
+        });
+        return;
+      }
       if (gameState.activeBattleType === 'dungeon_infinite') {
         showConfirmModal('無限地城系統不適用縮小戰鬥，是否中斷現在的戰鬥？', () => {
           abortCurrentBattle();
@@ -10684,7 +10679,6 @@ let TALENT_CURVE = [
       applySpeedToCSS();
       syncAutoButtonUI();
       setBattleTitle('戰鬥中');
-      syncMinimizeBattleBtnVisibility();
       // 若玩家先前已開啟自動戰鬥，新戰鬥一開始就直接接續自動演出，不需要玩家重新點一次
       if (gameState.isAuto) {
         let activeUnit = gameState.turnQueue[gameState.currentTurnIdx];
