@@ -612,7 +612,11 @@ function buildCardIconHtml(id, prefeb) {
   // 常駐(不需要觸發，永遠在播放)的視覺特效——遮罩流光的範圍用同一張卡圖的alpha透明通道限制(mask-image)，
   // 只有卡面圖案本身會發光/流光，不會變成一整個方塊在發光。沒有填/填的值不是這三種之一，就完全比照原本
   // 純<img>的輸出，不受影響。
-  const prefebClass = CARD_PREFEB_CLASSES.has(prefeb) ? prefeb : null;
+  // 2026-09-10修正：這裡曾經直接把xlsx填的原始值(例如"card_magic")接在"card-prefeb-"後面組成class，
+  // 變成"card-prefeb-card_magic"，但index.html的CSS選擇器寫的是".card-prefeb-magic"(沒有多一個"card_")，
+  // class名稱兜不起來，導致特效完全套用不到、畫面上什麼變化都沒有。這裡改成先把"card_"這個前綴拿掉，
+  // 只留floating/metal/magic，class才會正確變成"card-prefeb-magic"對上CSS。
+  const prefebClass = CARD_PREFEB_CLASSES.has(prefeb) ? prefeb.replace(/^card_/, '') : null;
   if (!prefebClass) return imgTag;
   return `<span class="card-icon-wrap card-prefeb-${prefebClass}" style="position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:100%;">`
     + imgTag
