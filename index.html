@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Hero</title>
+  <title>不朽之旅</title>
   <style>
     * {
       box-sizing: border-box;
@@ -42,36 +42,15 @@
       width: 540px;
       height: 940px;
       background: #181513;
-      border-radius: 0; /* 2026-09-11：改用框圖後角落是尖角造型，圓角會被overflow:hidden裁掉，先關閉 */
+      border: 4px solid #3b2d23;
+      border-radius: 12px;
       box-shadow: 0 0 30px rgba(0,0,0,0.9), inset 0 0 15px rgba(0,0,0,0.8);
       position: relative;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       padding: 10px;
-      /* 2026-09-11 Wei要求：最外層畫面框置換成同一套金框素材。這個框圖原始設計是給「短橫條」用的
-         (左右端蓋各自完整含上下角落)，第一版直接用auto 100%整張拉伸到940px高，導致端蓋被拉得極寬
-         (寬度逼近容器一半)，比例明顯跑掉；這版改成跟.bottom-nav一樣的思路，但另外從left_cap/right_cap/
-         middle_tile裡再裁出「僅上/下角落」「僅左右豎線」「僅上/下橫線」8小塊(檔名皆為原檔名加2或
-         _tile字樣)，各自用固定尺寸(角落90px高、邊線細窄)貼在四角與四邊，這樣角落裝飾維持原始比例
-         不被拉伸走樣，四邊也只是細線不會過寬，適合直式整體外框。 */
-      background-image:
-        url('assets/images/ui/corner_TL2.png'),
-        url('assets/images/ui/corner_TR2.png'),
-        url('assets/images/ui/corner_BL2.png'),
-        url('assets/images/ui/corner_BR2.png'),
-        url('assets/images/ui/top_edge_tile.png'),
-        url('assets/images/ui/bottom_edge_tile.png'),
-        url('assets/images/ui/left_edge_tile2.png'),
-        url('assets/images/ui/right_edge_tile2.png'),
-        radial-gradient(circle at 50% 50%, #2a201a 0%, #110d0b 100%);
-      background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat-x, repeat-x, repeat-y, repeat-y, no-repeat;
-      background-position: top left, top right, bottom left, bottom right, top center, bottom center, left center, right center, center center;
-      background-size:
-        69px 90px, 69px 90px, 69px 90px, 69px 90px,
-        69px 12px, 69px 12px,
-        10px 26px, 10px 26px,
-        cover;
+      background-image: radial-gradient(circle at 50% 50%, #2a201a 0%, #110d0b 100%);
       --speed: 1;
       transform-origin: center center;
       transition: transform 0.15s ease-out;
@@ -1554,40 +1533,19 @@
     }
 
     /* ============ 底部功能分頁導覽列 ============ */
-    /* 2026-09-11 Wei要求：套用金色古董框素材並大幅加高，做成明顯的裝飾性列。
-       2026-09-11(同日第二版)：改用 Wei 提供的第二張框圖，這張沒有正中央凸出裝飾、左右端蓋本身
-       就已經各自包含完整的上下邊條，所以簡化成「左端蓋PNG(固定尺寸，含左上/左下角落+一小段上下邊) +
-       中段可重複磚PNG(純直線，repeat-x水平無限延伸) + 右端蓋PNG(固定尺寸，含右上/右下角落)」三塊，
-       比第一版(4角落+2中央裝飾+4條漸層邊)更單純。三張圖都用background-size:auto 100%
-       (高度=容器100%，寬度依圖片原始比例自動算，不會變形)，容器變高/變寬時三塊都會等比例縮放、
-       不需要手動換算像素。middle_tile用repeat-x從最左側開始平鋪，會被左右兩張端蓋(排在圖層清單
-       前面=較上層)蓋住重疊的部分，所以不需要額外計算平鋪起始位置。
-       全部圖層疊加在.bottom-nav的background上，沒有新增DOM節點，.bottom-nav-item的flex版面與
-       JS邏輯(onNavClick/querySelectorAll等)不受影響。
-       高度常數(140px)同步用於：#bottom-reserved-space的保留版位高度、layoutMiniBattleBar()裡的
-       兩處計算基準值(原本都是54px)、.mini-battle-bar的bottom偏移，四處必須維持一致，未來如果要再
-       調整這個高度，四個地方都要一起改(已在各處加註解標明)。 */
     .bottom-nav {
       display: flex;
       justify-content: space-between;
       gap: 2px;
-      background-color: rgba(15,12,10,0.96);
-      background-image:
-        url('assets/images/ui/left_cap.png'),
-        url('assets/images/ui/right_cap.png'),
-        url('assets/images/ui/middle_tile.png');
-      background-repeat: no-repeat, no-repeat, repeat-x;
-      background-position: left center, right center, left center;
-      background-size: auto 100%, auto 100%, auto 100%;
-      border-radius: 4px;
-      padding: 16px 44px;
-      box-sizing: border-box;
+      background: rgba(15,12,10,0.96);
+      border: 1px solid #4a382c;
+      border-radius: 8px;
+      padding: 4px 2px;
       flex-shrink: 0;
       position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0; /* 2026-09-11 Wei要求：直接貼齊畫面最底部，不留空隙(原本是10px) */
-      height: 140px; /* 原本沒有明確設高(靠內距撐出約54px)，這次明確固定，需與下面3處常數同步 */
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
       z-index: 130;
     }
     .bottom-nav-item {
@@ -1596,20 +1554,20 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 4px;
-      padding: 6px 0;
+      gap: 2px;
+      padding: 4px 0;
       border-radius: 6px;
       cursor: pointer;
       color: #a89a80;
-      font-size: 12px;
+      font-size: 9px;
       transition: background 0.15s, color 0.15s;
       position: relative;
     }
-    .bottom-nav-item .nav-icon { font-size: 24px; }
+    .bottom-nav-item .nav-icon { font-size: 16px; }
     .bottom-nav-item .nav-icon-img {
       display: inline-block;
-      width: 34px;
-      height: 34px;
+      width: 20px;
+      height: 20px;
       background-size: contain;
       background-repeat: no-repeat;
       background-position: center;
@@ -2256,7 +2214,7 @@
       position: absolute;
       left: 10px;
       right: 10px;
-      bottom: 146px; /* 2026-09-11更新：140px(底部導覽列保留區，原54px) + 6px(統一間隔，見 MINI_BATTLE_BAR_GAP) */
+      bottom: 60px; /* 54px(底部導覽列保留區) + 6px(統一間隔，見 MINI_BATTLE_BAR_GAP) */
       z-index: 129;
       display: none;
       flex-direction: column;
@@ -3714,7 +3672,7 @@
       text-align: center;
     }
     #name-input-box .name-input-hint { color: #b8a374; font-size: 11px; margin-top: -8px; margin-bottom: 12px; }
-  
+
     #generic-info-modal { z-index: 960 !important; }
     /* 2026-09(Wei要求引導/劇情UI文字放大2倍)：只放大檢查點解鎖引導彈窗(📖新功能解鎖)的文字，
        generic-info-modal本身是全遊戲共用的通用提示彈窗(職業技能說明/強化結果/各種錯誤提示等都共用同一個DOM)，
@@ -3778,6 +3736,8 @@
     #preload-progress-text { color: #b8a374; font-size: 12px; }
     #preload-hint { color: #6b6b76; font-size: 11px; margin-top: 4px; }
 </style>
+  <link rel="stylesheet" href="assets/css/ui-theme.css">
+  <link rel="stylesheet" href="assets/css/pixel-dungeon.css">
 </head>
 <body>
 
@@ -3835,9 +3795,6 @@
       </div>
     </div>
 
-    <!-- 非戰鬥畫面共用外框：頂部角色資訊列 + 內容畫面 + 底部功能分頁 -->
-    <div id="screen-wrapper" style="display:flex; flex-direction:column; height:100%; width:100%;">
-
       <div class="top-header">
         <div class="top-header-avatar" id="header-avatar-icon">👤<span class="lv-badge" id="header-lv-badge">lv.5</span></div>
         <div class="top-header-info">
@@ -3854,6 +3811,9 @@
           </div>
         </div>
       </div>
+
+    <!-- 非戰鬥畫面共用外框：頂部角色資訊列 + 內容畫面 + 底部功能分頁 -->
+    <div id="screen-wrapper" style="display:flex; flex-direction:column; height:100%; width:100%;">
 
       <!-- 畫面1：關卡選擇(副本) -->
       <div class="screen-panel" id="screen-quest-select">
@@ -4136,7 +4096,7 @@
       </div>
 
       <!-- 底部固定導覽列為絕對定位覆蓋層(見下方 #bottom-nav)，此處僅保留等高的版位間距 -->
-      <div id="bottom-reserved-space" style="height:146px; flex-shrink:0;"></div>
+      <div id="bottom-reserved-space" style="height:60px; flex-shrink:0;"></div>
     </div>
 
     <!-- 縮小戰鬥狀態列：有正式戰鬥在背景進行、且目前不在戰鬥畫面時顯示，點擊直接切回戰鬥畫面，見 updateMiniBattleBar() -->
@@ -4428,7 +4388,17 @@
     <!-- 技能冷卻中/MP不足時，全場壓黑並在最上層顯示原因(見 syncActionDimVisual) -->
     <div class="cooldown-banner" id="cooldown-banner"></div>
     <!-- 敵方區域 -->
-    <div>
+    <div class="battle-enemy-zone">
+      <div class="battle-faction enemy-faction">敵 方</div>
+        <div class="log-header">
+          <div class="log-header-text-group">
+            <span class="log-header-quest" id="quest-hint-info"></span><span class="log-header-wave" id="wave-info" style="margin-left:5px;"></span>
+            <div class="timeline-list" id="timeline-list" aria-label="接下來五位行動順序，由左至右"></div>
+            <span class="log-header-text" id="turn-info">第1回合</span>
+          </div>
+
+        </div>
+
       <div class="role-hp-block" id="enemy-role-hp-block">
         <div class="role-icon-mini" id="enemy-role-icon"></div>
         <div class="role-bars">
@@ -4441,19 +4411,11 @@
     </div>
 
 
+    <div class="battle-scenery" aria-hidden="true"></div>
     <!-- 行動順序(左側直排) + 戰場日誌(自動/敵方回合時顯示) / 手動操作彈窗(手動玩家回合時顯示，兩者互斥、蓋在同一塊區域) -->
     <div class="battle-grid">
-      <div class="timeline-vertical-col">
-        <div class="timeline-list" id="timeline-list"></div>
-      </div>
       <div class="log-col">
-        <div class="log-header">
-          <div class="log-header-text-group">
-            <span class="log-header-quest" id="quest-hint-info"></span><span class="log-header-wave" id="wave-info" style="margin-left:5px;"></span>
-            <span class="log-header-text" id="turn-info">第1回合</span>
-          </div>
-          <button class="btn-auto-float" id="btn-auto" onclick="toggleAuto()">自動戰鬥: OFF</button>
-        </div>
+        <div class="battle-record-heading">戰鬥紀錄</div>
         <div class="log-box-wrap">
           <div class="log-box" id="log-box"></div>
           <!-- 手動回合操作彈窗：僅在手動玩家回合時顯示，完全蓋住底下的戰鬥LOG；自動戰鬥中或敵方回合時整個隱藏，
@@ -4484,7 +4446,11 @@
     </div>
 
     <!-- 我方區域 -->
-    <div>
+    <div class="battle-player-zone">
+      <div class="battle-player-heading">
+        <div class="battle-faction player-faction">我 方</div>
+        <button class="btn-auto-float" id="btn-auto" onclick="toggleAuto()">自動戰鬥: OFF</button>
+      </div>
       <div class="card-row" id="player-row"></div>
       <div class="role-hp-block" id="player-role-hp-block">
         <div class="role-icon-mini" id="player-role-icon"></div>
@@ -7643,7 +7609,8 @@ let GOD_POINT_CURVE = [
           if (!skillId) return `<div class="class-skill-slot empty"></div>`;
           let s = SKILL_DATABASE[skillId];
           if (!s) return `<div class="class-skill-slot empty"></div>`;
-          return `<div class="class-skill-slot filled" onclick="event.stopPropagation(); showClassSkillInfo(${skillId})">${skillIconGlyph(s)}</div>`;
+          const label = String(s.name || '技能').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+          return `<button type="button" class="class-skill-slot filled" title="${label}" aria-label="${label}" onclick="event.stopPropagation(); showClassSkillInfo(${skillId})"><img src="${classSkillImagePath(s)}" alt="" onerror="this.onerror=null;this.src='assets/images/skill/skill_buff.png'"></button>`;
         }
 
         // 職業加成/套裝效果摘要：顯示於裝備預覽格的左邊，顯示「職業加成」(role_addition+已裝備6件裝備算出的加成量，不含card本身數值)與目前啟動的套裝效果名稱
@@ -7742,7 +7709,16 @@ let GOD_POINT_CURVE = [
       );
     }
 
-    // 技能圖示以簡易文字符號代表(依技能主要效果類型顯示不同符號)，點擊後另外彈窗顯示完整名稱與說明
+    // Use the skill's configured effect artwork; fall back by skill type.
+    function classSkillImagePath(s) {
+      const available = new Set(['wind','throw','stab','slash2','slash','shield3','shield2','shield1','remove','night','mana_recover','mana_cost','magic_throw','magic_fire','light','heal','hammer','fire','explode','debuff','buff','beat']);
+      const candidates = [s.prefebAtk, ...(s.prefebHit1 || []), ...(s.prefebHit2 || [])];
+      const effect = candidates.find(name => available.has(name));
+      const fallback = {HEAL:'heal', SHIELD:'shield1', AP:'magic_fire', AD:'slash', BUFF:'buff'};
+      return vfxImagePath(effect || fallback[s.type] || 'buff');
+    }
+
+    // Compact glyphs retained for other views.
     function skillIconGlyph(s) {
       if (s.type === 'HEAL') return '💚';
       if (s.type === 'SHIELD') return '🛡️';
@@ -10475,7 +10451,7 @@ let GOD_POINT_CURVE = [
         el.classList.toggle('active', el.dataset.nav === navKey);
       });
 
-      if (name !== 'battle') updateTopHeader();
+      updateTopHeader();
       // 縮小戰鬥：每次切換畫面都同步狀態列/主線遮罩的顯示與否(切到battle本身時isBattleScreenVisible()會判定為未縮小，自動隱藏)
       updateMiniBattleBar();
     }
@@ -10679,10 +10655,10 @@ let GOD_POINT_CURVE = [
       // 2026-09-10 Wei指示：底部選單(bottom-nav)/縮小戰鬥狀態列(mini-battle-bar)/畫面內層選單(各screen自己的
       // action-bar)三者的上下間隔要統一，跟action-bar本身的間距(margin-top:6px)一致，這裡固定用同一個常數。
       const GAP = MINI_BATTLE_BAR_GAP;
-      const NAV_BASE_HEIGHT = 140; // 2026-09-11更新：底部導覽列加大裝飾框後的新高度(原54)
-      const targetHeight = !show ? (NAV_BASE_HEIGHT + GAP) : (() => {
+      const navHeight = document.getElementById('bottom-nav')?.offsetHeight || 70;
+      const targetHeight = !show ? (navHeight + GAP) : (() => {
         const bar = document.getElementById('mini-battle-bar');
-        return NAV_BASE_HEIGHT + GAP + (bar ? bar.offsetHeight : 0) + GAP;
+        return navHeight + GAP + (bar ? bar.offsetHeight : 0) + GAP;
       })();
       // 2026-09-10修正(Wei回報縮小戰鬥時畫面會一直亂跳)：這個函式在戰鬥進行中會透過log()被非常頻繁地呼叫
       // (幾乎每個行動/buff觸發都會呼叫一次)，過去每次都無條件重寫spacer的height，即使算出來的高度跟目前

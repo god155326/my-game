@@ -1,0 +1,57 @@
+/* Shared UI skin: retain game layout, combat states and existing artwork. */
+:root{--ui-gold:#e1bd78;--ui-text:#f0e8dc;--ui-muted:#baae9b;--ui-line:#61503a;--ui-panel:#1c1b20}
+body{font-family:"Microsoft JhengHei","PingFang TC",sans-serif;color:var(--ui-text);background:radial-gradient(ellipse at 50% 25%,#282330 0%,#101117 52%,#090a0e 100%)}
+button,input,select{font:inherit}
+.game-container{border:1px solid #8b7351;border-radius:18px;background:linear-gradient(160deg,#252127,#141419 65%);box-shadow:0 24px 80px #0009,0 0 0 5px #17161b,inset 0 0 0 3px #c5a36a12}
+.top-header{padding:12px;gap:12px;margin-bottom:10px;border-color:var(--ui-line);border-radius:12px;background:linear-gradient(115deg,#35303a,#1a191f);box-shadow:inset 0 1px #fff1}
+.top-header-avatar{width:48px;height:48px;border-color:var(--ui-gold);border-radius:12px}
+.top-header-avatar .lv-badge{font-size:12px;padding:1px 5px;color:var(--ui-gold);border-color:#8b7351}
+.top-header-name{font-size:17px;line-height:1.5;color:var(--ui-text)}
+.top-header-currency{font-size:14px;gap:8px;color:#f0d69d;font-variant-numeric:tabular-nums}
+.top-header-currency>span{padding:5px 7px;border:1px solid #ffffff14;border-radius:7px;background:#09090d66}
+.top-header-power{font-size:14px;color:var(--ui-gold)}
+.screen-title{font-size:22px;line-height:1.4;letter-spacing:2px;color:var(--ui-gold);padding:10px 2px;margin-bottom:12px;border-bottom:1px solid var(--ui-line)}
+.screen-panel{padding-bottom:8px}
+.bottom-nav{padding:5px 3px;background:linear-gradient(#29252d,#18161d);border-color:#796347;border-radius:12px;box-shadow:0 -8px 24px #0005}
+.bottom-nav-item{font-size:14px;line-height:1.3;gap:4px;padding:7px 0;color:#c3b9aa;min-width:0;border-top:2px solid transparent}
+.bottom-nav-item .nav-icon-img{width:25px;height:25px}
+.bottom-nav-item.active{color:#f3d59b;background:linear-gradient(#cba86b2e,#cba86b08);border-top-color:var(--ui-gold)}
+.bottom-nav-item.nav-locked{opacity:.6}
+/* Reserve the full navigation height in both game modes. */
+.bottom-tab-reserved{height:76px}
+#bottom-reserved-space{min-height:76px}
+.mini-battle-bar{bottom:86px}
+.btn,.btn-restart,.btn-restart-dark{border-radius:8px;min-height:42px;font-size:15px;line-height:1.3;transition:background .15s,border-color .15s,box-shadow .15s}
+.btn{color:var(--ui-text);background:linear-gradient(#39333b,#252129);border:1px solid #6b5b49}
+.btn-restart{color:#241b10;background:linear-gradient(#efd39a,#c39b57);border:1px solid #f1d6a0;text-shadow:none;box-shadow:inset 0 1px #fff5,0 3px 8px #0003;font-weight:700}
+.btn:disabled,.btn-restart:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+button:focus-visible,[tabindex]:focus-visible{outline:3px solid #f3d59b;outline-offset:3px}
+@media(hover:hover){.btn:not(:disabled):hover{border-color:var(--ui-gold);background:#443a42}.btn-restart:not(:disabled):hover{background:linear-gradient(#ffe5af,#d8ad64)}}
+.action-bar{gap:8px;padding-top:10px}
+.action-bar .btn,.action-bar .btn-restart,.action-bar .btn-restart-dark{font-size:14px;white-space:normal}
+.quest-category-list{gap:12px}
+.quest-category-btn{border:1px solid var(--ui-line);border-radius:12px;box-shadow:0 4px 12px #0004}
+.quest-category-btn .quest-category-label{font-size:23px;color:#ffe2a6;left:20px}
+.quest-category-btn.locked .quest-category-label::after{font-size:14px;color:#d1c5b4;margin-top:6px}
+.equip-menu-btn,.class-card{border-color:var(--ui-line);background:linear-gradient(135deg,#312a31,#1c1a21);box-shadow:inset 0 1px #fff1}
+.equip-menu-label{font-size:19px;color:var(--ui-text)}
+.mainline-chapter-tag{font-size:16px;letter-spacing:2px;padding:8px 14px;background:linear-gradient(90deg,#665033,#2b2527);border-color:#8b7351;color:#ffe2a6;border-radius:8px;margin-bottom:8px}
+.mainline-map-banner{border-color:var(--ui-line);border-radius:10px}
+.mainline-battle-area{border-color:var(--ui-line);border-radius:10px}
+.mainline-battle-side-label{font-size:14px;color:#dbc9af}
+.mainline-idle-mini-btn{font-size:13px;min-height:32px}
+.mainline-node-label{font-size:12px}
+.card{background:linear-gradient(155deg,#2c262c,#17151c);border-radius:10px;box-shadow:inset 0 1px #fff1}
+.card-name{font-size:12px;line-height:1.4;color:#eee4d5}
+.card-lv{font-size:12px;color:#e8c78e}
+.log-header-text,.log-header-quest,.log-header-wave{font-size:14px}
+.log-box{font-size:15px;line-height:1.65;background:#101015;border-color:#4e4338}
+.btn-auto-float{font-size:13px;min-height:32px;border-color:#78644b}
+.result-modal-box,.cheat-modal-box,.event-select-box,.event-announce-box{border-color:#ad8c56;border-radius:14px;background:linear-gradient(145deg,#322a31,#18161d);box-shadow:0 20px 60px #000a}
+#preload-overlay{background:radial-gradient(ellipse at center,#302735,#0c0d12 70%)}
+#preload-title{font-size:24px;letter-spacing:3px;color:var(--ui-gold)}
+#preload-bar-track{border:1px solid #78644b;border-radius:20px;overflow:hidden}
+#preload-bar-fill{background:linear-gradient(90deg,#8d6a38,#f2d498)}
+#preload-progress-text,#preload-hint{font-size:14px;color:#c9bfae}
+*{scrollbar-width:thin;scrollbar-color:#806c50 #17151b}
+@media(prefers-reduced-motion:reduce){.bottom-nav-item,.btn,.btn-restart{transition:none}.mainline-node-arrow{animation:none}}
