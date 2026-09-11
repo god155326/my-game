@@ -42,15 +42,36 @@
       width: 540px;
       height: 940px;
       background: #181513;
-      border: 4px solid #3b2d23;
-      border-radius: 12px;
+      border-radius: 0; /* 2026-09-11：改用框圖後角落是尖角造型，圓角會被overflow:hidden裁掉，先關閉 */
       box-shadow: 0 0 30px rgba(0,0,0,0.9), inset 0 0 15px rgba(0,0,0,0.8);
       position: relative;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       padding: 10px;
-      background-image: radial-gradient(circle at 50% 50%, #2a201a 0%, #110d0b 100%);
+      /* 2026-09-11 Wei要求：最外層畫面框置換成同一套金框素材。這個框圖原始設計是給「短橫條」用的
+         (左右端蓋各自完整含上下角落)，第一版直接用auto 100%整張拉伸到940px高，導致端蓋被拉得極寬
+         (寬度逼近容器一半)，比例明顯跑掉；這版改成跟.bottom-nav一樣的思路，但另外從left_cap/right_cap/
+         middle_tile裡再裁出「僅上/下角落」「僅左右豎線」「僅上/下橫線」8小塊(檔名皆為原檔名加2或
+         _tile字樣)，各自用固定尺寸(角落90px高、邊線細窄)貼在四角與四邊，這樣角落裝飾維持原始比例
+         不被拉伸走樣，四邊也只是細線不會過寬，適合直式整體外框。 */
+      background-image:
+        url('assets/images/ui/corner_TL2.png'),
+        url('assets/images/ui/corner_TR2.png'),
+        url('assets/images/ui/corner_BL2.png'),
+        url('assets/images/ui/corner_BR2.png'),
+        url('assets/images/ui/top_edge_tile.png'),
+        url('assets/images/ui/bottom_edge_tile.png'),
+        url('assets/images/ui/left_edge_tile2.png'),
+        url('assets/images/ui/right_edge_tile2.png'),
+        radial-gradient(circle at 50% 50%, #2a201a 0%, #110d0b 100%);
+      background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat-x, repeat-x, repeat-y, repeat-y, no-repeat;
+      background-position: top left, top right, bottom left, bottom right, top center, bottom center, left center, right center, center center;
+      background-size:
+        69px 90px, 69px 90px, 69px 90px, 69px 90px,
+        69px 12px, 69px 12px,
+        10px 26px, 10px 26px,
+        cover;
       --speed: 1;
       transform-origin: center center;
       transition: transform 0.15s ease-out;
@@ -1533,12 +1554,16 @@
     }
 
     /* ============ 底部功能分頁導覽列 ============ */
-    /* 2026-09-11 Wei要求：套用金色古董框素材(見 assets/images/ui/)並大幅加高，做成明顯的裝飾性列。
-       框素材本身是「不規則角落+素面直邊+正中央菱形凸出裝飾」的設計，無法直接整張拉伸(見設計討論)，
-       改用「4個角落PNG(固定尺寸，不縮放走樣) + 2個正中央菱形PNG(固定尺寸，永遠置中) + 4條用CSS
-       漸層模擬金屬直邊反光的裝飾bar(可無限拉伸不會有拼接縫)」組合而成，圖層由background-image
-       多層疊加達成(清單越前面越上層)，完全不需要新增額外DOM節點，不影響既有.bottom-nav-item的
-       flex版面與JS邏輯(onNavClick/querySelectorAll('.bottom-nav-item')等皆不受影響)。
+    /* 2026-09-11 Wei要求：套用金色古董框素材並大幅加高，做成明顯的裝飾性列。
+       2026-09-11(同日第二版)：改用 Wei 提供的第二張框圖，這張沒有正中央凸出裝飾、左右端蓋本身
+       就已經各自包含完整的上下邊條，所以簡化成「左端蓋PNG(固定尺寸，含左上/左下角落+一小段上下邊) +
+       中段可重複磚PNG(純直線，repeat-x水平無限延伸) + 右端蓋PNG(固定尺寸，含右上/右下角落)」三塊，
+       比第一版(4角落+2中央裝飾+4條漸層邊)更單純。三張圖都用background-size:auto 100%
+       (高度=容器100%，寬度依圖片原始比例自動算，不會變形)，容器變高/變寬時三塊都會等比例縮放、
+       不需要手動換算像素。middle_tile用repeat-x從最左側開始平鋪，會被左右兩張端蓋(排在圖層清單
+       前面=較上層)蓋住重疊的部分，所以不需要額外計算平鋪起始位置。
+       全部圖層疊加在.bottom-nav的background上，沒有新增DOM節點，.bottom-nav-item的flex版面與
+       JS邏輯(onNavClick/querySelectorAll等)不受影響。
        高度常數(140px)同步用於：#bottom-reserved-space的保留版位高度、layoutMiniBattleBar()裡的
        兩處計算基準值(原本都是54px)、.mini-battle-bar的bottom偏移，四處必須維持一致，未來如果要再
        調整這個高度，四個地方都要一起改(已在各處加註解標明)。 */
@@ -1548,31 +1573,20 @@
       gap: 2px;
       background-color: rgba(15,12,10,0.96);
       background-image:
-        url('assets/images/ui/corner_TL.png'),
-        url('assets/images/ui/corner_TR.png'),
-        url('assets/images/ui/corner_BL.png'),
-        url('assets/images/ui/corner_BR.png'),
-        url('assets/images/ui/ornament_top_center.png'),
-        url('assets/images/ui/ornament_bottom_center.png'),
-        linear-gradient(to bottom, #000 0%, #6b4a2f 18%, #f6e9a7 32%, #6b4a2f 46%, #000 58%, #000 66%, #905c2a 78%, #000 92%, #000 100%),
-        linear-gradient(to bottom, #000 0%, #6b4a2f 18%, #f6e9a7 32%, #6b4a2f 46%, #000 58%, #000 66%, #905c2a 78%, #000 92%, #000 100%),
-        linear-gradient(to right, #000 0%, #6b4a2f 18%, #f6e9a7 32%, #6b4a2f 46%, #000 58%, #000 66%, #905c2a 78%, #000 92%, #000 100%),
-        linear-gradient(to right, #000 0%, #6b4a2f 18%, #f6e9a7 32%, #6b4a2f 46%, #000 58%, #000 66%, #905c2a 78%, #000 92%, #000 100%);
-      background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
-      background-position: top left, top right, bottom left, bottom right, top center, bottom center, top center, bottom center, left center, right center;
-      background-size:
-        46px 40px, 46px 40px, 46px 40px, 46px 40px,
-        40px 29px, 40px 29px,
-        calc(100% - 92px) 10px, calc(100% - 92px) 10px,
-        8px calc(100% - 80px), 8px calc(100% - 80px);
+        url('assets/images/ui/left_cap.png'),
+        url('assets/images/ui/right_cap.png'),
+        url('assets/images/ui/middle_tile.png');
+      background-repeat: no-repeat, no-repeat, repeat-x;
+      background-position: left center, right center, left center;
+      background-size: auto 100%, auto 100%, auto 100%;
       border-radius: 4px;
-      padding: 16px 50px;
+      padding: 16px 44px;
       box-sizing: border-box;
       flex-shrink: 0;
       position: absolute;
-      left: 10px;
-      right: 10px;
-      bottom: 10px;
+      left: 0;
+      right: 0;
+      bottom: 0; /* 2026-09-11 Wei要求：直接貼齊畫面最底部，不留空隙(原本是10px) */
       height: 140px; /* 原本沒有明確設高(靠內距撐出約54px)，這次明確固定，需與下面3處常數同步 */
       z-index: 130;
     }
