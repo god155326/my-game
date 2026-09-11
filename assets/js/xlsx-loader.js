@@ -609,16 +609,25 @@ function buildCardIconHtml(id, prefeb) {
   const src = `assets/images/card/card_${id}.png?v=${ASSET_VERSION}`;
   const imgTag = `<img src='${src}' style='max-width:${pct}%;max-height:${pct}%;width:auto;height:auto;object-fit:contain;pointer-events:none;' onerror="this.style.display='none'">`;
   // 2026-09-10新增：card分頁的card_prefeb欄位(card_floating/card_metal/card_magic)，讓卡面本身疊加一層
-  // 常駐(不需要觸發，永遠在播放)的視覺特效——遮罩流光的範圍用同一張卡圖的alpha透明通道限制(mask-image)，
-  // 只有卡面圖案本身會發光/流光，不會變成一整個方塊在發光。沒有填/填的值不是這三種之一，就完全比照原本
-  // 純<img>的輸出，不受影響。
-  // 2026-09-10修正：這裡曾經直接把xlsx填的原始值(例如"card_magic")接在"card-prefeb-"後面組成class，
+  // 常駐(不需要觸發，永遠在播放)的視覺特效(流光劃過/呼吸輝光/變色)。沒有填/填的值不是這三種之一，
+  // 就完全比照原本純<img>的輸出，不受影響。
+  // 2026-09-10修正1：曾經直接把xlsx填的原始值(例如"card_magic")接在"card-prefeb-"後面組成class，
   // 變成"card-prefeb-card_magic"，但index.html的CSS選擇器寫的是".card-prefeb-magic"(沒有多一個"card_")，
-  // class名稱兜不起來，導致特效完全套用不到、畫面上什麼變化都沒有。這裡改成先把"card_"這個前綴拿掉，
-  // 只留floating/metal/magic，class才會正確變成"card-prefeb-magic"對上CSS。
+  // class名稱兜不起來，導致特效完全套用不到。已改成先把"card_"這個前綴拿掉，只留floating/metal/magic。
+  // 2026-09-10修正2：原本用mask-image(讀取卡圖本身的alpha透明通道)限制流光範圍，但實測(用真實瀏覽器
+  // 渲染驗證)後發現mask-image搭配url()在這裡完全不會顯示，整層特效直接消失。已改成不依賴mask、
+  // 用index.html那邊的mix-blend-mode疊加流光，因此這裡不再需要傳入卡圖網址當mask來源。
   const prefebClass = CARD_PREFEB_CLASSES.has(prefeb) ? prefeb.replace(/^card_/, '') : null;
   if (!prefebClass) return imgTag;
-  return `<span class="card-icon-wrap card-prefeb-${prefebClass}" style="position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:100%;">`
+  // 2026-09-10修正3：卡圖在不同畫面被包在不同的父層結構裡(例如武器頁面的.weapon-slot-badge，用
+  // padding-top:100%做正方形，本身高度是0、完全靠既有CSS規則「.weapon-slot-badge img」把<img>直接
+  // position:absolute置中撐開視覺範圍；戰鬥畫面的.card則是正常高度的flex排版)。原本用一個有實際寬高
+  // (width:100%;height:100%)的<span>包住<img>，在武器頁面這種父層高度是0的情況下，span也會跟著變成
+  // 0高度，導致特效(甚至卡圖本身的定位邏輯)跑掉。改成<span>用display:contents(讓瀏覽器完全忽略這層
+  // 包裝、當作<img>還是父層的直接子元素在排版，不佔用任何版位、不影響既有的「.weapon-slot-badge img」
+  // 這類CSS規則)，流光疊層改成直接依附在「真正的父層容器」(例如.weapon-slot-badge或.card，這兩者都已經
+  // 是position:relative)身上，不再需要span本身提供定位基準。
+  return `<span class="card-icon-wrap card-prefeb-${prefebClass}" style="display:contents;">`
     + imgTag
     + `<div class="card-prefeb-shine"></div>`
     + `</span>`;
