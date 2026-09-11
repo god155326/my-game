@@ -11669,17 +11669,24 @@ let GOD_POINT_CURVE = [
         }
       }
 
-      // 2026-09-10 Wei指示：只要「自動下一關」是開啟狀態、且確實找得到下一關(main/tower)，一律不彈出
-      // 結算彈窗——不論玩家目前是否正在看著戰鬥畫面，統一直接無縫接續下一關(用keepMinimized版本，不強迫
-      // 切換畫面)，讓戰鬥維持在玩家目前正在看的畫面(戰鬥LOG或主線首頁)上繼續進行，不再彈出任何UI打斷。
+      // 2026-09-10 Wei指示調整：自動下一關開啟時，「結算畫面」還是要顯示，只是顯示方式依玩家目前狀態而不同——
+      // 正在看著戰鬥畫面：維持原本圖示版結算彈窗，一樣有3秒倒數、倒數完自動點下一關(不因為自動下一關開著就完全不顯示)。
+      // 縮小戰鬥中(沒有在看戰鬥畫面)：改用縮小戰鬥狀態列的純文字結算(獎勵文字+下一關按鈕)顯示，不彈出全螢幕
+      // 圖示彈窗打斷玩家目前的操作；同樣排程3秒後自動接續下一關(玩家也可以在等待期間自己提前點按鈕)。
       const hasNextForAutoChain = nextBtn.style.display === 'block';
-      // 除錯用途：Wei回報縮小戰鬥仍會被強制切回戰鬥畫面，但目前程式邏輯逐行檢查都正確，暫時無法在無法
-      // 實際重現的情況下抓到根因。先加這行console.debug，下次再發生時，麻煩到瀏覽器開發者工具的Console
-      // 分頁截圖給我看這行印出的內容，就能知道是「這個分支沒有被觸發」還是「其他更後面的路徑覆蓋掉了」。
-      console.debug('[縮小戰鬥除錯]', { isWin, hasNextForAutoChain, autoNextStage: gameState.autoNextStage, questType: quest && quest.type, wasMinimized });
       if (isWin && hasNextForAutoChain && gameState.autoNextStage && quest && (quest.type === 'main' || quest.type === 'tower')) {
-        modal.style.display = 'none';
-        goToNextMainStageKeepMinimized();
+        if (wasMinimized) {
+          modal.style.display = 'none';
+          gameState.pendingResultModal = { hint, isWin, rewardText: plainRewardText, hasNext: true };
+          updateMiniBattleBar();
+          setTimeout(() => {
+            // 玩家若已經自己手動點過狀態列上的按鈕(pendingResultModal已被清空)，這裡就不再重複觸發一次
+            if (gameState.pendingResultModal) goToNextMainStageKeepMinimized();
+          }, 3000);
+          return;
+        }
+        modal.style.display = 'flex';
+        startAutoNextStageCountdown();
         return;
       }
 
