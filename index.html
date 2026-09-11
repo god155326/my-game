@@ -494,20 +494,27 @@
 
     /* ============ 2026-09-10新增：card分頁card_prefeb欄位驅動的常駐卡面特效(不需要觸發，永遠在播放) ============
        card_floating(漂浮)/card_metal(金屬流光)/card_magic(變色霓虹)，皆由 buildCardIconHtml() 依card_prefeb
-       欄位值自動包上 .card-icon-wrap，內含原本的<img>本體 + 一個流光疊層(.card-prefeb-shine)。
-       2026-09-10修正：原本用 mask-image 讓流光範圍貼合卡圖的alpha透明通道，但實測後發現 mask-image 搭配
-       url()在這個環境下完全不會顯示(不是「範圍不準」而是整層直接消失、連遮罩本身都套用失敗)，用真實瀏覽器
-       實際渲染測試過(包含拿掉CSS變數、改用寫死的url()都一樣完全不顯示)，確認是mask-image這個技術本身在
-       這裡不可靠，不是card_prefeb資料或class名稱的問題。改成不依賴mask，改用mix-blend-mode(screen)疊加
-       流光，一樣能在卡面上呈現流光劃過的效果，只是流光範圍會涵蓋整張卡面的方形範圍(不會完全貼合卡圖的
-       透明邊緣)，但同樣經過真實瀏覽器渲染驗證可以正常顯示。 */
+       欄位值自動包上 .card-icon-wrap，內含原本的<img>本體 + 一個用同一張卡圖alpha透明通道做mask的流光疊層
+       (.card-prefeb-shine)，讓流光/發光只出現在「去背後的武器本身」範圍內，不會變成一整個方塊在發光。
+       2026-09-10修正：先前一度因為本機無頭瀏覽器測試mask-image完全不顯示，改用mix-blend-mode(screen)
+       疊加流光繞開問題，但那樣流光會涵蓋整張方形圖(不服貼武器去背後的形狀)，不符合Wei要的效果。
+       後來手機實機測試mix-blend-mode版本正常顯示，兩相對照研判先前的不顯示比較可能是「本機用file://
+       直接開啟網頁」這種測試方式本身的限制，正式環境(伺服器/手機)理論上mask-image可以正常運作，
+       所以改回mask-image，恢復成只有武器本身的形狀會發光/流光。 */
     .card-icon-wrap { overflow: visible; }
     .card-prefeb-shine {
       position: absolute;
       inset: 0;
       pointer-events: none;
       overflow: hidden;
-      mix-blend-mode: screen;
+      -webkit-mask-image: var(--card-mask-url);
+      mask-image: var(--card-mask-url);
+      -webkit-mask-size: contain;
+      mask-size: contain;
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: center;
+      mask-position: center;
     }
 
     /* --- card_floating：漂浮(上下浮動+呼吸輝光+較柔和的流光劃過) --- */
@@ -2128,11 +2135,15 @@
       background: transparent;
     }
     /* 圖示置中規則只作用在武器卡面(.weapon-slot-badge)內，避免影響戰鬥主角頭像、小地圖敵人頭像等其他共用同一張 card.icon 圖片的地方 */
+    /* 2026-09-10修正：原本用top:50%;left:50%;transform:translate(-50%,-50%)做置中，但card_prefeb的
+       漂浮動畫(card-prefeb-float)也是用transform(translateY+rotate)做動畫——CSS animation會整個蓋掉
+       元素原本的transform值(不會疊加)，導致漂浮動畫一播放，這裡的置中transform直接被蓋掉、圖示偏移到
+       左上角去。改成用inset:0+margin:auto做置中(不需要用到transform這個屬性)，跟漂浮動畫的transform
+       完全不衝突，兩者可以同時生效。 */
     .weapon-slot-badge img:not(.card-rank-badge) {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+      inset: 0;
+      margin: auto;
     }
     .weapon-slot-check {
       position: absolute;
