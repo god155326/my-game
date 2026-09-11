@@ -10637,10 +10637,18 @@ let GOD_POINT_CURVE = [
       // 2026-09-10 Wei指示：底部選單(bottom-nav)/縮小戰鬥狀態列(mini-battle-bar)/畫面內層選單(各screen自己的
       // action-bar)三者的上下間隔要統一，跟action-bar本身的間距(margin-top:6px)一致，這裡固定用同一個常數。
       const GAP = MINI_BATTLE_BAR_GAP;
-      if (!show) { spacer.style.height = (54 + GAP) + 'px'; return; }
-      const bar = document.getElementById('mini-battle-bar');
-      const barHeight = bar ? bar.offsetHeight : 0;
-      spacer.style.height = (54 + GAP + barHeight + GAP) + 'px';
+      const targetHeight = !show ? (54 + GAP) : (() => {
+        const bar = document.getElementById('mini-battle-bar');
+        return 54 + GAP + (bar ? bar.offsetHeight : 0) + GAP;
+      })();
+      // 2026-09-10修正(Wei回報縮小戰鬥時畫面會一直亂跳)：這個函式在戰鬥進行中會透過log()被非常頻繁地呼叫
+      // (幾乎每個行動/buff觸發都會呼叫一次)，過去每次都無條件重寫spacer的height，即使算出來的高度跟目前
+      // 完全一樣也照樣寫入——瀏覽器仍會因此觸發一次reflow，高頻率疊加起來就會讓整個畫面持續微幅抖動/跳動，
+      // 玩家會感覺像是「畫面一直在跳」。這裡先比對這次算出來的高度是否跟目前套用的值相同，相同就完全不寫入，
+      // 避免不必要的reflow；只有高度真的變化(例如狀態列從無到有、或內容行數改變)時才實際更新。
+      const targetHeightPx = targetHeight + 'px';
+      if (spacer.style.height === targetHeightPx) return;
+      spacer.style.height = targetHeightPx;
     }
     // 縮小戰鬥狀態列點擊行為：一般情況下是切回目前進行中的戰鬥；若戰鬥已經在縮小狀態下結束(pendingResultModal)，
     // 這個狀態改由狀態列內嵌的「下一關/返回」按鈕處理(見上方渲染邏輯)，點擊列的其他地方不做任何事。
@@ -11000,11 +11008,10 @@ let GOD_POINT_CURVE = [
       syncAutoButtonUI();
       setBattleTitle('戰鬥中');
       if (keepMinimized) updateMiniBattleBar(); // activeBattleType/battleTitle都設定完成後再刷新一次，確保狀態列文字正確
-      // 若玩家先前已開啟自動戰鬥，新戰鬥一開始就直接接續自動演出，不需要玩家重新點一次
-      if (gameState.isAuto) {
-        let activeUnit = gameState.turnQueue[gameState.currentTurnIdx];
-        if (activeUnit && !gameState.isAnimating) autoExecuteTurn(activeUnit);
-      }
+      // 2026-09-10修正：這裡原本在自動戰鬥開啟時，會額外直接呼叫autoExecuteTurn()搶跑第一回合——
+      // 但initGame()自己在最後已經會呼叫advanceToNextActor()正確地(且會先等「戰鬥開始」蓋板播完，見
+      // 該函式的monkeypatch)開始第一回合，這裡多這段等於「同一場戰鬥的第一回合被搶跑了兩次」，
+      // 造成蓋板都還沒消失、畫面上就已經有人在攻擊的問題。直接拿掉，交給initGame()自己的流程處理即可。
     }
 
     // ============ 佈陣系統(持久設定，於「裝備→佈陣」進入) ============
@@ -13854,6 +13861,15 @@ let GOD_POINT_CURVE = [
       // 若有 prefeb_hit2，該目標的動畫序列會多花約220ms；統一抓寬鬆一點的收尾時間，避免動畫被提前截斷
       let hasHit2 = targets.some(() => skillObj.prefebHit2 && skillObj.prefebHit2.length > 0);
       let delayTime = hasDamageEffect ? (900 + targets.length * 100 + (hasHit2 ? 300 : 0)) : (300 + targets.length * 50);
+      // 2026-09-10修正：純上BUFF效果(無傷害)的收尾等待時間原本只有300~350ms左右，但atk_motion裡有些動作
+      // (例如蓄力刺atk_chargestab、魔法atk_magic)光是攻擊者自己的動作演出就要0.8~0.9秒——如果收尾等待比
+      // 動作本身還短，會在攻擊者的動作都還沒播完時就提早判定下一位行動者，導致AGI條計算時「模擬時間」
+      // 累積得太少，同一位攻擊者又被選中，變成連續動作沒播完就疊播、看起來像連續行動好幾次。
+      // 這裡統一確保收尾等待時間至少要涵蓋攻擊者本身atk_motion的命中時機(+200ms緩衝)，不論這次是否有造成傷害。
+      let attackerMotion = getUnitAtkMotion(attacker);
+      if (attackerMotion) {
+        delayTime = Math.max(delayTime, ATK_MOTION_HIT_DELAY_MS[attackerMotion] + 200);
+      }
 
       setTimeout(() => {
         gameState.isAnimating = false;
