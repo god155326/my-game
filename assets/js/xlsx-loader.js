@@ -570,7 +570,7 @@ function buildBuffDatabaseAndSetTiers(wb) {
       const o = plainRows[0];
       const rawName = o['buff名稱'] === null || o['buff名稱'] === undefined ? '' : o['buff名稱'];
       const name = rawName.startsWith('#') ? rawName.slice(1) : rawName;
-      const entry = { id, name, icon: iconInfo.icon, isUp: iconInfo.isUp, info: o.buff_info,
+      const entry = { id, name, icon: iconInfo.icon, isUp: iconInfo.isUp,
         reflashAble: !!o.reflashAble, maxStack: o.max_stack === null || o.max_stack === undefined ? 1 : o.max_stack,
         duration: o['持續回合數'] === null || o['持續回合數'] === undefined ? 1 : o['持續回合數'], ...buffStatFields(o) };
       if (o.invisible) entry.invisible = true;
@@ -579,7 +579,7 @@ function buildBuffDatabaseAndSetTiers(wb) {
     } else {
       const tierRows = [...rs].sort((a, b) => a.set_effective_count - b.set_effective_count);
       const base = tierRows[0];
-      genBuff[id] = { id, name: base['buff名稱'], icon: iconInfo.icon, isSetBase: true, setInfo: base.set_info, info: base.buff_info,
+      genBuff[id] = { id, name: base['buff名稱'], icon: iconInfo.icon, isSetBase: true, setInfo: base.set_info,
         ...buffStatFields(base), invisible: true, reflashAble: !!base.reflashAble, maxStack: base.max_stack, duration: base['持續回合數'] };
       genSetTiers[id] = {
         setInfo: base.set_info,
@@ -602,39 +602,9 @@ function buildBuffDatabaseAndSetTiers(wb) {
 // 找不到對應 id 時預設用 80%。圖片路徑一律由 id 直接組成，不需要另外維護路徑對照表：
 // 只要把圖放到 assets/images/card/card_<角色id>.png，遊戲就會自動讀到。
 const CARD_ICON_STYLE_MAP = {"10001":80.5,"10002":80.5,"10003":80.5,"10004":80.5,"10005":80.5,"10006":80.5,"10007":80.5,"10008":80.5,"10009":80.5,"10010":80.5,"10011":80.5,"10012":80.5,"10013":63,"10014":63,"10015":63,"10016":63,"10017":63,"10018":63,"10019":63,"10020":63,"10021":63,"10022":70,"10023":70,"10024":70,"10025":70,"10026":70,"10027":70,"10028":70,"10029":70,"10030":70,"10031":70,"40001":80,"40002":80,"40003":80,"40004":80,"40005":80,"40006":80,"40007":80,"40008":80,"40009":80,"40010":80,"40011":80,"40012":80,"40013":80,"40014":80,"40015":80,"50000":80,"50001":72,"50002":72,"50003":72,"90001":80,"90002":80,"90003":80,"90004":80,"90005":80,"90006":80,"90007":80,"90008":80,"90009":80,"90010":80,"90011":80,"90012":80,"90013":80};
-// 目前支援的三種常駐卡面特效(card分頁card_prefeb欄位可填的值)：漂浮/金屬流光/變色霓虹，樣式定義見index.html
-const CARD_PREFEB_CLASSES = new Set(['card_floating', 'card_metal', 'card_magic']);
-function buildCardIconHtml(id, prefeb) {
+function buildCardIconHtml(id) {
   const pct = CARD_ICON_STYLE_MAP[id] !== undefined ? CARD_ICON_STYLE_MAP[id] : 80;
-  const src = `assets/images/card/card_${id}.png?v=${ASSET_VERSION}`;
-  const imgTag = `<img src='${src}' style='max-width:${pct}%;max-height:${pct}%;width:auto;height:auto;object-fit:contain;pointer-events:none;' onerror="this.style.display='none'">`;
-  // 2026-09-10新增：card分頁的card_prefeb欄位(card_floating/card_metal/card_magic)，讓卡面本身疊加一層
-  // 常駐(不需要觸發，永遠在播放)的視覺特效(流光劃過/呼吸輝光/變色)。沒有填/填的值不是這三種之一，
-  // 就完全比照原本純<img>的輸出，不受影響。
-  // 2026-09-10修正1：曾經直接把xlsx填的原始值(例如"card_magic")接在"card-prefeb-"後面組成class，
-  // 變成"card-prefeb-card_magic"，但index.html的CSS選擇器寫的是".card-prefeb-magic"(沒有多一個"card_")，
-  // class名稱兜不起來，導致特效完全套用不到。已改成先把"card_"這個前綴拿掉，只留floating/metal/magic。
-  // 2026-09-10修正2/4：mask-image限制流光範圍(只讓去背武器本身的透明通道範圍發光，不是整張方形圖都亮)是
-  // Wei明確要的效果；曾經一度改用mix-blend-mode避開mask-image，但那個做法會讓流光整個方框都在發光，
-  // 不符合「只讓去背後的武器本身發光」的需求，這裡改回mask-image。(先前用本機無頭瀏覽器測試mask-image
-  // 完全不顯示，但實機手機測試mix-blend-mode版本正常顯示，兩相對照研判先前的不顯示比較可能是本機測試
-  // 環境(file://本地開啟、非透過伺服器)的限制，不是mask-image本身在正式環境下不能用；改回mask-image
-  // 後如果桌機本機用file://直接開啟還是看不到，麻煩改用本機的網頁伺服器方式開啟測試，或以手機/正式
-  // 部署環境為準。)
-  const prefebClass = CARD_PREFEB_CLASSES.has(String(prefeb || '').trim()) ? String(prefeb).trim().replace(/^card_/, '') : null;
-  if (!prefebClass) return imgTag;
-  // 2026-09-10修正3：卡圖在不同畫面被包在不同的父層結構裡(例如武器頁面的.weapon-slot-badge，用
-  // padding-top:100%做正方形，本身高度是0、完全靠既有CSS規則「.weapon-slot-badge img」把<img>直接
-  // position:absolute置中撐開視覺範圍；戰鬥畫面的.card則是正常高度的flex排版)。原本用一個有實際寬高
-  // (width:100%;height:100%)的<span>包住<img>，在武器頁面這種父層高度是0的情況下，span也會跟著變成
-  // 0高度，導致特效(甚至卡圖本身的定位邏輯)跑掉。改成<span>用display:contents(讓瀏覽器完全忽略這層
-  // 包裝、當作<img>還是父層的直接子元素在排版，不佔用任何版位、不影響既有的「.weapon-slot-badge img」
-  // 這類CSS規則)，流光疊層改成直接依附在「真正的父層容器」(例如.weapon-slot-badge或.card，這兩者都已經
-  // 是position:relative)身上，不再需要span本身提供定位基準。
-  return `<span class="card-icon-wrap card-prefeb-${prefebClass}" style="display:contents;">`
-    + imgTag
-    + `<div class="card-prefeb-shine" style="--card-mask-url:url('${src}')"></div>`
-    + `</span>`;
+  return `<img src='assets/images/card/card_${id}.png?v=${ASSET_VERSION}' style='max-width:${pct}%;max-height:${pct}%;width:auto;height:auto;object-fit:contain;pointer-events:none;' onerror="this.style.display='none'">`;
 }
 const CARD_ICONBG_MAP = {"10001":"#000000","10002":"#000000","10003":"#000000","10004":"#000000","10005":"#000000","10006":"#000000","10007":"#000000","10008":"#000000","10009":"#000000","10010":"#000000","10011":"#000000","10012":"#000000","10013":"#000000","10014":"#000000","10015":"#000000","10016":"#000000","10017":"#000000","10018":"#000000","10019":"#000000","10020":"#000000","10021":"#000000","10022":"#000000","10023":"#000000","10024":"#000000","10025":"#000000","10026":"#000000","10027":"#000000","10028":"#000000","10029":"#000000","10030":"#000000","10031":"#000000","40001":"#3a2a1a","40002":"#3a3a3a","40003":"#4a4436","40004":"#4a3a3a","40005":"#1a3a1a","40006":"#3a3a2a","40007":"#1a3a3a","40008":"#3a2a3a","40009":"#4a2010","40010":"#1a3a1a","40011":"#1a4a2a","40012":"#4a1a1a","40013":"#1a3a4a","40014":"#3a3020","40015":"#3a3a3a","40016":"#000000","40017":"#000000","40018":"#000000","40019":"#000000","40020":"#000000","40021":"#000000","40022":"#000000","40023":"#000000","40024":"#000000","40025":"#000000","40026":"#000000","40027":"#000000","40028":"#000000","40029":"#000000","40030":"#000000","40031":"#000000","40032":"#000000","40033":"#000000","40034":"#000000","40035":"#000000","40036":"#000000","40037":"#000000","40038":"#000000","40039":"#000000","40040":"#000000","40041":"#000000","40042":"#000000","40043":"#000000","40044":"#000000","40045":"#000000","40046":"#000000","40047":"#000000","40048":"#000000","40049":"#000000","40050":"#000000","40051":"#000000","40052":"#000000","40053":"#000000","40054":"#000000","40055":"#000000","40056":"#000000","40057":"#000000","40058":"#000000","40059":"#000000","40060":"#000000","40061":"#000000","40062":"#000000","40063":"#000000","40064":"#000000","40065":"#000000","40066":"#000000","40067":"#000000","40068":"#000000","40069":"#000000","40070":"#000000","40071":"#000000","40072":"#000000","40073":"#000000","40074":"#000000","40075":"#000000","40076":"#000000","40077":"#000000","40078":"#000000","40079":"#000000","40080":"#000000","50000":"#2a1020","50001":"#2a2a2a","50002":"#4a3a10","50003":"#4a1a10","50004":"#000000","50005":"#000000","50006":"#000000","50007":"#000000","50008":"#000000","50009":"#000000","50010":"#000000","50011":"#000000","50012":"#000000","50013":"#000000","50014":"#000000","50015":"#000000","60001":"#000000","60002":"#000000","60003":"#000000","60004":"#000000","60005":"#000000","60006":"#000000","60007":"#000000","60008":"#000000","60009":"#000000","60010":"#000000","60011":"#000000","60012":"#000000","90001":"#000000","90002":"#000000","90003":"#000000","90004":"#000000","90005":"#000000","90006":"#000000","90007":"#1a1a2a","90008":"#000000","90009":"#000000","90010":"#000000","90011":"#000000","90012":"#000000","90013":"#000000"};
 const CARD_POSITION_MAP = {"90001":"打","90002":"坦","90003":"打","90004":"坦","90005":"打","90006":"補","90007":"打","90008":"打","90009":"坦","90010":"打","90011":"坦","90012":"打","90013":"補"};
@@ -676,7 +646,7 @@ function buildCardDatabase(wb) {
       id,
       rare: s.rare === null ? "" : s.rare,
       name: (s["角色名稱"] === null ? "" : s["角色名稱"]).trim(),
-      icon: buildCardIconHtml(id, s.card_prefeb),
+      icon: buildCardIconHtml(id),
       iconBg: CARD_ICONBG_MAP[id] !== undefined ? CARD_ICONBG_MAP[id] : "#000000",
     };
     if (s.tag !== null) o.tag = parseNumList(s.tag);
@@ -710,11 +680,6 @@ function buildCardDatabase(wb) {
     if (s["role_ addition"] !== null) o.roleAddition = parseBraceList(s["role_ addition"]);
     // 捕捉機率(card表 capture_rate 欄位)：只有魔物(monster)才會填此欄位，有填才能被捕捉，沒填(null)則不可捕捉
     if (s.capture_rate !== null && s.capture_rate !== undefined) o.captureRate = s.capture_rate;
-    // 2026-09-10新增：atk_motion(近戰動作類型，跟著武器/卡片走，不是跟著技能走)。採用overwrite規則：
-    // 沒填就是原本的動作(刺/atk_stab)，有填才套用對應的新動作，見index.html的ATK_MOTION_CLASS對照表。
-    if (s.atk_motion !== null && s.atk_motion !== undefined && String(s.atk_motion).trim() !== '') {
-      o.atkMotion = String(s.atk_motion).trim();
-    }
     return o;
   });
   // 二階職業(90008~90013)這6張卡雖然透過上面的名稱比對補回了id，但card分頁本身完全沒有填hp/atk/matk/
@@ -1025,12 +990,6 @@ function buildStoryLines(wb) {
   if (map100Before[0]) out.before100 = map100Before[0].info.split("\n");
   if (map100After[0]) out.after100a = map100After[0].info.split("\n");
   if (map100After[1]) out.after100b = map100After[1].info.split("\n");
-  // 2026-09-10新增：mapid=100這幾列的background欄位過去完全沒有被讀取，教學劇情的背景圖一直是寫死的
-  // bg:'castle'/'central'(對照BG_ASSETS)，即使Wei在text分頁這幾列填了background欄位也不會生效。
-  // 這裡比照MAINLINE_STORY_XLSX的bgFile做法一併讀出，index.html會優先採用這裡的值，找不到才退回寫死的bg key。
-  if (map100Before[0] && map100Before[0].background) out.before100Bg = String(map100Before[0].background).trim();
-  if (map100After[0] && map100After[0].background) out.after100aBg = String(map100After[0].background).trim();
-  if (map100After[1] && map100After[1].background) out.after100bBg = String(map100After[1].background).trim();
   // 2026-09-10修正(Wei要求把引導文字統一接回text表)：這裡過去把map100After[2]（永遠不存在，
   // mapid=100/after的story列實際上只有2筆有文字）指派給classIntro，導致classIntro從未真正讀到xlsx內容、
   // 永遠退回index.html內建預設值；同時guideDialogue[0]（教官/職業介紹對話）被誤接到gachaIntro，
