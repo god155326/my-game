@@ -494,22 +494,20 @@
 
     /* ============ 2026-09-10新增：card分頁card_prefeb欄位驅動的常駐卡面特效(不需要觸發，永遠在播放) ============
        card_floating(漂浮)/card_metal(金屬流光)/card_magic(變色霓虹)，皆由 buildCardIconHtml() 依card_prefeb
-       欄位值自動包上 .card-icon-wrap，內含原本的<img>本體 + 一個用同一張卡圖alpha透明通道做mask的流光疊層
-       (.card-prefeb-shine)，讓流光/發光只出現在卡面圖案本身的範圍內，不會變成一整個方塊發光。 */
+       欄位值自動包上 .card-icon-wrap，內含原本的<img>本體 + 一個流光疊層(.card-prefeb-shine)。
+       2026-09-10修正：原本用 mask-image 讓流光範圍貼合卡圖的alpha透明通道，但實測後發現 mask-image 搭配
+       url()在這個環境下完全不會顯示(不是「範圍不準」而是整層直接消失、連遮罩本身都套用失敗)，用真實瀏覽器
+       實際渲染測試過(包含拿掉CSS變數、改用寫死的url()都一樣完全不顯示)，確認是mask-image這個技術本身在
+       這裡不可靠，不是card_prefeb資料或class名稱的問題。改成不依賴mask，改用mix-blend-mode(screen)疊加
+       流光，一樣能在卡面上呈現流光劃過的效果，只是流光範圍會涵蓋整張卡面的方形範圍(不會完全貼合卡圖的
+       透明邊緣)，但同樣經過真實瀏覽器渲染驗證可以正常顯示。 */
     .card-icon-wrap { overflow: visible; }
     .card-prefeb-shine {
       position: absolute;
       inset: 0;
       pointer-events: none;
-      -webkit-mask-image: var(--card-mask-url);
-      mask-image: var(--card-mask-url);
-      -webkit-mask-size: contain;
-      mask-size: contain;
-      -webkit-mask-repeat: no-repeat;
-      mask-repeat: no-repeat;
-      -webkit-mask-position: center;
-      mask-position: center;
       overflow: hidden;
+      mix-blend-mode: screen;
     }
 
     /* --- card_floating：漂浮(上下浮動+呼吸輝光+較柔和的流光劃過) --- */
@@ -524,7 +522,6 @@
       background: linear-gradient(120deg,
         rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 40%, rgba(255,255,255,0.95) 50%,
         rgba(255,255,255,0.2) 60%, rgba(255,255,255,0) 100%);
-      filter: drop-shadow(0 0 10px rgba(255,255,255,0.8));
       animation: card-prefeb-slash 3.5s infinite cubic-bezier(0.25, 1, 0.5, 1);
     }
     @keyframes card-prefeb-float {
@@ -545,7 +542,6 @@
       background: linear-gradient(115deg,
         rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 42%, rgba(255,255,255,1) 50%,
         rgba(255,255,255,0.2) 58%, rgba(255,255,255,0) 100%);
-      filter: drop-shadow(0 0 6px rgba(255,255,255,0.9));
       animation: card-prefeb-draw-slash 2.5s infinite cubic-bezier(0.25, 1, 0.5, 1);
     }
 
@@ -561,7 +557,6 @@
       background: linear-gradient(115deg,
         rgba(255,0,128,0) 0%, rgba(0,229,255,0.4) 30%, rgba(255,255,255,0.95) 50%,
         rgba(157,0,255,0.4) 70%, rgba(255,0,128,0) 100%);
-      filter: drop-shadow(0 0 8px #00e5ff);
       animation: card-prefeb-slash 3s infinite cubic-bezier(0.25, 1, 0.5, 1), card-prefeb-hue-rotate 4s infinite linear;
     }
     @keyframes card-prefeb-rgb-glow-cycle {
@@ -571,8 +566,8 @@
       100% { filter: drop-shadow(0 0 5px #ff0055) drop-shadow(0 0 9px #00e5ff); }
     }
     @keyframes card-prefeb-hue-rotate {
-      0% { filter: drop-shadow(0 0 6px #00e5ff) hue-rotate(0deg); }
-      100% { filter: drop-shadow(0 0 6px #00e5ff) hue-rotate(360deg); }
+      0% { filter: hue-rotate(0deg); }
+      100% { filter: hue-rotate(360deg); }
     }
 
     /* --- 共用的流光劃過位移(漂浮/變色霓虹共用同一條軌跡；金屬流光另用更銳利急促的draw-slash) --- */
