@@ -492,6 +492,103 @@
       100% { transform: translateY(0) rotate(-360deg); }
     }
 
+    /* ============ 2026-09-10新增：card分頁card_prefeb欄位驅動的常駐卡面特效(不需要觸發，永遠在播放) ============
+       card_floating(漂浮)/card_metal(金屬流光)/card_magic(變色霓虹)，皆由 buildCardIconHtml() 依card_prefeb
+       欄位值自動包上 .card-icon-wrap，內含原本的<img>本體 + 一個用同一張卡圖alpha透明通道做mask的流光疊層
+       (.card-prefeb-shine)，讓流光/發光只出現在卡面圖案本身的範圍內，不會變成一整個方塊發光。 */
+    .card-icon-wrap { overflow: visible; }
+    .card-prefeb-shine {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      -webkit-mask-image: var(--card-mask-url);
+      mask-image: var(--card-mask-url);
+      -webkit-mask-size: contain;
+      mask-size: contain;
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: center;
+      mask-position: center;
+      overflow: hidden;
+    }
+
+    /* --- card_floating：漂浮(上下浮動+呼吸輝光+較柔和的流光劃過) --- */
+    .card-prefeb-floating > img {
+      animation: card-prefeb-float 4s infinite ease-in-out, card-prefeb-relic-glow 3s infinite ease-in-out alternate;
+    }
+    .card-prefeb-floating .card-prefeb-shine::after {
+      content: "";
+      position: absolute;
+      top: -100%; left: -100%;
+      width: 35%; height: 300%;
+      background: linear-gradient(120deg,
+        rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 40%, rgba(255,255,255,0.95) 50%,
+        rgba(255,255,255,0.2) 60%, rgba(255,255,255,0) 100%);
+      filter: drop-shadow(0 0 10px rgba(255,255,255,0.8));
+      animation: card-prefeb-slash 3.5s infinite cubic-bezier(0.25, 1, 0.5, 1);
+    }
+    @keyframes card-prefeb-float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-6px) rotate(1deg); }
+    }
+    @keyframes card-prefeb-relic-glow {
+      0% { filter: drop-shadow(0 0 4px rgba(100,200,255,0.3)); }
+      100% { filter: drop-shadow(0 0 9px rgba(100,200,255,0.7)); }
+    }
+
+    /* --- card_metal：金屬流光(銳利刀光劃過，不浮動) --- */
+    .card-prefeb-metal .card-prefeb-shine::after {
+      content: "";
+      position: absolute;
+      top: -100%; left: -100%;
+      width: 30%; height: 300%;
+      background: linear-gradient(115deg,
+        rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 42%, rgba(255,255,255,1) 50%,
+        rgba(255,255,255,0.2) 58%, rgba(255,255,255,0) 100%);
+      filter: drop-shadow(0 0 6px rgba(255,255,255,0.9));
+      animation: card-prefeb-draw-slash 2.5s infinite cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    /* --- card_magic：變色霓虹(輪廓色彩循環+RGB流光劃過) --- */
+    .card-prefeb-magic > img {
+      animation: card-prefeb-rgb-glow-cycle 4s infinite linear;
+    }
+    .card-prefeb-magic .card-prefeb-shine::after {
+      content: "";
+      position: absolute;
+      top: -100%; left: -100%;
+      width: 40%; height: 300%;
+      background: linear-gradient(115deg,
+        rgba(255,0,128,0) 0%, rgba(0,229,255,0.4) 30%, rgba(255,255,255,0.95) 50%,
+        rgba(157,0,255,0.4) 70%, rgba(255,0,128,0) 100%);
+      filter: drop-shadow(0 0 8px #00e5ff);
+      animation: card-prefeb-slash 3s infinite cubic-bezier(0.25, 1, 0.5, 1), card-prefeb-hue-rotate 4s infinite linear;
+    }
+    @keyframes card-prefeb-rgb-glow-cycle {
+      0% { filter: drop-shadow(0 0 5px #ff0055) drop-shadow(0 0 9px #00e5ff); }
+      33% { filter: drop-shadow(0 0 5px #00ff66) drop-shadow(0 0 9px #ff00e5); }
+      66% { filter: drop-shadow(0 0 5px #00e5ff) drop-shadow(0 0 9px #ffea00); }
+      100% { filter: drop-shadow(0 0 5px #ff0055) drop-shadow(0 0 9px #00e5ff); }
+    }
+    @keyframes card-prefeb-hue-rotate {
+      0% { filter: drop-shadow(0 0 6px #00e5ff) hue-rotate(0deg); }
+      100% { filter: drop-shadow(0 0 6px #00e5ff) hue-rotate(360deg); }
+    }
+
+    /* --- 共用的流光劃過位移(漂浮/變色霓虹共用同一條軌跡；金屬流光另用更銳利急促的draw-slash) --- */
+    @keyframes card-prefeb-slash {
+      0% { left: -120%; top: -120%; opacity: 0; }
+      15% { opacity: 1; }
+      40% { left: 150%; top: 60%; opacity: 1; }
+      45%, 100% { left: 150%; top: 60%; opacity: 0; }
+    }
+    @keyframes card-prefeb-draw-slash {
+      0% { left: -100%; top: -100%; opacity: 0; }
+      10% { opacity: 1; }
+      35% { left: 150%; top: 50%; opacity: 1; }
+      40%, 100% { left: 150%; top: 50%; opacity: 0; }
+    }
+
     /* 受擊動作：受擊者卡牌往後晃動 */
     .card.hit-recoil, .role-hp-block.hit-recoil { animation: cardHitRecoil calc(0.4s / var(--speed, 1)) ease-out; }
 
