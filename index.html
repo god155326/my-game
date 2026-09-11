@@ -15270,15 +15270,21 @@ let GOD_POINT_CURVE = [
     // 主線關卡「戰前」劇情：只要 MAINLINE_STORY 中該 mapId 設有 before，且尚未播放過，開戰前先播放
     gameState.playedStoryKeys = gameState.playedStoryKeys || new Set();
     const __origProceedSelectQuest = proceedSelectQuest;
-    proceedSelectQuest = function(quest) {
+    // 2026-09-10修正(抓到「縮小戰鬥一直被強制跳回戰鬥畫面」的真正原因)：這個monkeypatch本來只接收quest
+    // 一個參數，呼叫__origProceedSelectQuest時也只傳了quest，把「縮小戰鬥」機制真正依賴的第二個參數opts
+    // (內含keepMinimized:true)整個弄丟了——導致goToNextMainStageKeepMinimized()呼叫這裡時，即使明明有
+    // 傳keepMinimized:true，最終真正執行的proceedSelectQuest本體收到的opts永遠是undefined，keepMinimized
+    // 永遠被判定成false，每次接續下一關都變成呼叫showScreen('battle')，玩家不管在哪個畫面都會被強制切回
+    // 戰鬥畫面。這裡改成完整轉發opts參數，戰前劇情的判斷邏輯完全不變。
+    proceedSelectQuest = function(quest, opts) {
       const beforeLines = getMainlineStoryFor(quest.mapId) && getMainlineStoryFor(quest.mapId).before;
       const key = 'before_' + quest.mapId;
       if (beforeLines && !gameState.playedStoryKeys.has(key)) {
         gameState.playedStoryKeys.add(key);
-        Story.playAsync(beforeLines).then(() => __origProceedSelectQuest(quest));
+        Story.playAsync(beforeLines).then(() => __origProceedSelectQuest(quest, opts));
         return;
       }
-      __origProceedSelectQuest(quest);
+      __origProceedSelectQuest(quest, opts);
     };
 
     // 佈陣「開始戰鬥」：若正處於引導中，結束引導(真正的戰鬥啟動交由上面 proceedSelectQuest 鉤子接手播放戰前劇情)
