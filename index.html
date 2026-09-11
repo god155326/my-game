@@ -10997,6 +10997,7 @@ let GOD_POINT_CURVE = [
       if (keepMinimized) {
         updateMiniBattleBar(); // 維持在玩家目前所在的畫面，只更新狀態列/主線遮罩反映「新戰鬥縮小中」
       } else {
+        console.debug('[縮小戰鬥除錯] proceedSelectQuest呼叫了showScreen(battle)', { mapId: quest.mapId, keepMinimized });
         showScreen('battle');
       }
       initGame(
@@ -11672,6 +11673,10 @@ let GOD_POINT_CURVE = [
       // 結算彈窗——不論玩家目前是否正在看著戰鬥畫面，統一直接無縫接續下一關(用keepMinimized版本，不強迫
       // 切換畫面)，讓戰鬥維持在玩家目前正在看的畫面(戰鬥LOG或主線首頁)上繼續進行，不再彈出任何UI打斷。
       const hasNextForAutoChain = nextBtn.style.display === 'block';
+      // 除錯用途：Wei回報縮小戰鬥仍會被強制切回戰鬥畫面，但目前程式邏輯逐行檢查都正確，暫時無法在無法
+      // 實際重現的情況下抓到根因。先加這行console.debug，下次再發生時，麻煩到瀏覽器開發者工具的Console
+      // 分頁截圖給我看這行印出的內容，就能知道是「這個分支沒有被觸發」還是「其他更後面的路徑覆蓋掉了」。
+      console.debug('[縮小戰鬥除錯]', { isWin, hasNextForAutoChain, autoNextStage: gameState.autoNextStage, questType: quest && quest.type, wasMinimized });
       if (isWin && hasNextForAutoChain && gameState.autoNextStage && quest && (quest.type === 'main' || quest.type === 'tower')) {
         modal.style.display = 'none';
         goToNextMainStageKeepMinimized();
@@ -11761,7 +11766,9 @@ let GOD_POINT_CURVE = [
       document.getElementById('result-modal').style.display = 'none';
       function proceed() {
         // 系統開放檢查點的引導/教學，重要性優先於「不強迫切畫面」，一律照原本邏輯(會自動導回主線首頁播放)
-        if (checkAndFireStageGuides()) return;
+        const firedGuide = checkAndFireStageGuides();
+        console.debug('[縮小戰鬥除錯] goToNextMainStageKeepMinimized.proceed', { nextMapId, firedGuide, hasNextQuest: !!nextQuest });
+        if (firedGuide) return;
         if (!nextQuest) { returnToQuestMenu(); return; }
         gameState.selectedQuest = null;
         gameState.selectedRoster = [];
@@ -13549,6 +13556,18 @@ let GOD_POINT_CURVE = [
       if (gameState.battleAborted) return; // 戰鬥已被玩家中途離開：即使先前排程的setTimeout之後才觸發，也不再執行任何行動/特效
       if (gameState.isAnimating) return;
       if (!activeUnit) return;
+      // 2026-09-10 Wei指示：保險起見，實際執行任何行動前，額外直接檢查「戰鬥開始/NEXT WAVE」這兩個蓋板
+      // 目前是不是還顯示在畫面上——不論上游(showBattleStartOverlay/showNextWaveOverlay)的流程理論上是否已經
+      // 正確等待完畢，這裡都再把關一次；只要蓋板還在，就固定2秒後重新檢查，徹底避免蓋板字都還沒消失、
+      // 行動就已經搶跑的狀況。
+      const startOverlayEl = document.getElementById('battle-start-overlay');
+      const waveOverlayEl = document.getElementById('next-wave-overlay');
+      const overlayStillShowing = (startOverlayEl && startOverlayEl.style.display !== 'none' && startOverlayEl.style.display !== '')
+        || (waveOverlayEl && waveOverlayEl.style.display !== 'none' && waveOverlayEl.style.display !== '');
+      if (overlayStillShowing) {
+        setTimeout(() => autoExecuteTurn(activeUnit), 2000);
+        return;
+      }
 
       let s0 = activeUnit.s0 ? SKILL_DATABASE[activeUnit.s0] : null;
       let s1 = SKILL_DATABASE[activeUnit.s1];
@@ -15324,38 +15343,58 @@ let GOD_POINT_CURVE = [
     // ================================================================
     // ============ 戰鬥開始蓋板：統一套用於所有戰鬥(30%遮罩+圖案，淡出1秒後才開始第一個行動) ============
     // ================================================================
+    // 2026-09-10 Wei指示：這個蓋板常常在字都還沒消失時，戰鬥就已經開始攻擊了。改成規格更明確、更保守的版本：
+    // 固定等待2秒(不受戰鬥速度倍率影響，同一份規格不論幾倍速都一樣)，開始淡出後，「正式開始戰鬥」前一定會
+    // 再檢查一次蓋板是否真的已經完全消失(display是不是none)；如果因為任何原因還沒消失，就再等一輪固定2秒、
+    // 重新檢查，直到確認蓋板真的不見了才會真正呼叫callback()讓戰鬥繼續，杜絕「字都還沒消失就開始攻擊」的狀況。
     function showBattleStartOverlay(callback) {
       const el = document.getElementById('battle-start-overlay');
       el.style.transition = '';
       el.style.opacity = '1';
       el.style.display = 'flex';
+      function verifyGoneThenProceed() {
+        if (el.style.display !== 'none') {
+          // 保險檢查：理論上不會發生，但萬一蓋板還沒真的消失，再等一輪固定2秒後重新檢查，不會提前開始戰鬥
+          setTimeout(verifyGoneThenProceed, 2000);
+          return;
+        }
+        if (callback) callback();
+      }
       setTimeout(() => {
-        el.style.transition = 'opacity 1s ease';
+        el.style.transition = 'opacity 0.3s ease';
         el.style.opacity = '0';
         setTimeout(() => {
           el.style.display = 'none';
           el.style.transition = '';
-          if (callback) callback();
-        }, 1000);
-      }, 700);
+          verifyGoneThenProceed();
+        }, 300);
+      }, 2000);
     }
 
     // ============ 多波次(NEXT WAVE)蓋板：位置/規格與戰鬥開始蓋板完全相同，只是圖片不同 ============
     // 播放結束後才呼叫callback；callback內會等1秒才真正把我方行動值歸零並生成下一波怪物(見 advanceToNextWave)
+    // 同樣改成固定2秒+消失後再次確認的規格，理由同上方showBattleStartOverlay()。
     function showNextWaveOverlay(callback) {
       const el = document.getElementById('next-wave-overlay');
       el.style.transition = '';
       el.style.opacity = '1';
       el.style.display = 'flex';
+      function verifyGoneThenProceed() {
+        if (el.style.display !== 'none') {
+          setTimeout(verifyGoneThenProceed, 2000);
+          return;
+        }
+        if (callback) callback();
+      }
       setTimeout(() => {
-        el.style.transition = 'opacity 1s ease';
+        el.style.transition = 'opacity 0.3s ease';
         el.style.opacity = '0';
         setTimeout(() => {
           el.style.display = 'none';
           el.style.transition = '';
-          if (callback) callback();
-        }, 1000);
-      }, 700);
+          verifyGoneThenProceed();
+        }, 300);
+      }, 2000);
     }
 
     let __battleReadyResolve = null;
