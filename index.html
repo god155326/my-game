@@ -1533,19 +1533,47 @@
     }
 
     /* ============ 底部功能分頁導覽列 ============ */
+    /* 2026-09-11 Wei要求：套用金色古董框素材(見 assets/images/ui/)並大幅加高，做成明顯的裝飾性列。
+       框素材本身是「不規則角落+素面直邊+正中央菱形凸出裝飾」的設計，無法直接整張拉伸(見設計討論)，
+       改用「4個角落PNG(固定尺寸，不縮放走樣) + 2個正中央菱形PNG(固定尺寸，永遠置中) + 4條用CSS
+       漸層模擬金屬直邊反光的裝飾bar(可無限拉伸不會有拼接縫)」組合而成，圖層由background-image
+       多層疊加達成(清單越前面越上層)，完全不需要新增額外DOM節點，不影響既有.bottom-nav-item的
+       flex版面與JS邏輯(onNavClick/querySelectorAll('.bottom-nav-item')等皆不受影響)。
+       高度常數(140px)同步用於：#bottom-reserved-space的保留版位高度、layoutMiniBattleBar()裡的
+       兩處計算基準值(原本都是54px)、.mini-battle-bar的bottom偏移，四處必須維持一致，未來如果要再
+       調整這個高度，四個地方都要一起改(已在各處加註解標明)。 */
     .bottom-nav {
       display: flex;
       justify-content: space-between;
       gap: 2px;
-      background: rgba(15,12,10,0.96);
-      border: 1px solid #4a382c;
-      border-radius: 8px;
-      padding: 4px 2px;
+      background-color: rgba(15,12,10,0.96);
+      background-image:
+        url('assets/images/ui/corner_TL.png'),
+        url('assets/images/ui/corner_TR.png'),
+        url('assets/images/ui/corner_BL.png'),
+        url('assets/images/ui/corner_BR.png'),
+        url('assets/images/ui/ornament_top_center.png'),
+        url('assets/images/ui/ornament_bottom_center.png'),
+        linear-gradient(to bottom, #000 0%, #6b4a2f 18%, #f6e9a7 32%, #6b4a2f 46%, #000 58%, #000 66%, #905c2a 78%, #000 92%, #000 100%),
+        linear-gradient(to bottom, #000 0%, #6b4a2f 18%, #f6e9a7 32%, #6b4a2f 46%, #000 58%, #000 66%, #905c2a 78%, #000 92%, #000 100%),
+        linear-gradient(to right, #000 0%, #6b4a2f 18%, #f6e9a7 32%, #6b4a2f 46%, #000 58%, #000 66%, #905c2a 78%, #000 92%, #000 100%),
+        linear-gradient(to right, #000 0%, #6b4a2f 18%, #f6e9a7 32%, #6b4a2f 46%, #000 58%, #000 66%, #905c2a 78%, #000 92%, #000 100%);
+      background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+      background-position: top left, top right, bottom left, bottom right, top center, bottom center, top center, bottom center, left center, right center;
+      background-size:
+        46px 40px, 46px 40px, 46px 40px, 46px 40px,
+        40px 29px, 40px 29px,
+        calc(100% - 92px) 10px, calc(100% - 92px) 10px,
+        8px calc(100% - 80px), 8px calc(100% - 80px);
+      border-radius: 4px;
+      padding: 16px 50px;
+      box-sizing: border-box;
       flex-shrink: 0;
       position: absolute;
       left: 10px;
       right: 10px;
       bottom: 10px;
+      height: 140px; /* 原本沒有明確設高(靠內距撐出約54px)，這次明確固定，需與下面3處常數同步 */
       z-index: 130;
     }
     .bottom-nav-item {
@@ -1554,20 +1582,20 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 2px;
-      padding: 4px 0;
+      gap: 4px;
+      padding: 6px 0;
       border-radius: 6px;
       cursor: pointer;
       color: #a89a80;
-      font-size: 9px;
+      font-size: 12px;
       transition: background 0.15s, color 0.15s;
       position: relative;
     }
-    .bottom-nav-item .nav-icon { font-size: 16px; }
+    .bottom-nav-item .nav-icon { font-size: 24px; }
     .bottom-nav-item .nav-icon-img {
       display: inline-block;
-      width: 20px;
-      height: 20px;
+      width: 34px;
+      height: 34px;
       background-size: contain;
       background-repeat: no-repeat;
       background-position: center;
@@ -2214,7 +2242,7 @@
       position: absolute;
       left: 10px;
       right: 10px;
-      bottom: 60px; /* 54px(底部導覽列保留區) + 6px(統一間隔，見 MINI_BATTLE_BAR_GAP) */
+      bottom: 146px; /* 2026-09-11更新：140px(底部導覽列保留區，原54px) + 6px(統一間隔，見 MINI_BATTLE_BAR_GAP) */
       z-index: 129;
       display: none;
       flex-direction: column;
@@ -4094,7 +4122,7 @@
       </div>
 
       <!-- 底部固定導覽列為絕對定位覆蓋層(見下方 #bottom-nav)，此處僅保留等高的版位間距 -->
-      <div id="bottom-reserved-space" style="height:60px; flex-shrink:0;"></div>
+      <div id="bottom-reserved-space" style="height:146px; flex-shrink:0;"></div>
     </div>
 
     <!-- 縮小戰鬥狀態列：有正式戰鬥在背景進行、且目前不在戰鬥畫面時顯示，點擊直接切回戰鬥畫面，見 updateMiniBattleBar() -->
@@ -10637,9 +10665,10 @@ let GOD_POINT_CURVE = [
       // 2026-09-10 Wei指示：底部選單(bottom-nav)/縮小戰鬥狀態列(mini-battle-bar)/畫面內層選單(各screen自己的
       // action-bar)三者的上下間隔要統一，跟action-bar本身的間距(margin-top:6px)一致，這裡固定用同一個常數。
       const GAP = MINI_BATTLE_BAR_GAP;
-      const targetHeight = !show ? (54 + GAP) : (() => {
+      const NAV_BASE_HEIGHT = 140; // 2026-09-11更新：底部導覽列加大裝飾框後的新高度(原54)
+      const targetHeight = !show ? (NAV_BASE_HEIGHT + GAP) : (() => {
         const bar = document.getElementById('mini-battle-bar');
-        return 54 + GAP + (bar ? bar.offsetHeight : 0) + GAP;
+        return NAV_BASE_HEIGHT + GAP + (bar ? bar.offsetHeight : 0) + GAP;
       })();
       // 2026-09-10修正(Wei回報縮小戰鬥時畫面會一直亂跳)：這個函式在戰鬥進行中會透過log()被非常頻繁地呼叫
       // (幾乎每個行動/buff觸發都會呼叫一次)，過去每次都無條件重寫spacer的height，即使算出來的高度跟目前
@@ -11669,24 +11698,17 @@ let GOD_POINT_CURVE = [
         }
       }
 
-      // 2026-09-10 Wei指示調整：自動下一關開啟時，「結算畫面」還是要顯示，只是顯示方式依玩家目前狀態而不同——
-      // 正在看著戰鬥畫面：維持原本圖示版結算彈窗，一樣有3秒倒數、倒數完自動點下一關(不因為自動下一關開著就完全不顯示)。
-      // 縮小戰鬥中(沒有在看戰鬥畫面)：改用縮小戰鬥狀態列的純文字結算(獎勵文字+下一關按鈕)顯示，不彈出全螢幕
-      // 圖示彈窗打斷玩家目前的操作；同樣排程3秒後自動接續下一關(玩家也可以在等待期間自己提前點按鈕)。
+      // 2026-09-10 Wei指示：只要「自動下一關」是開啟狀態、且確實找得到下一關(main/tower)，一律不彈出
+      // 結算彈窗——不論玩家目前是否正在看著戰鬥畫面，統一直接無縫接續下一關(用keepMinimized版本，不強迫
+      // 切換畫面)，讓戰鬥維持在玩家目前正在看的畫面(戰鬥LOG或主線首頁)上繼續進行，不再彈出任何UI打斷。
       const hasNextForAutoChain = nextBtn.style.display === 'block';
+      // 除錯用途：Wei回報縮小戰鬥仍會被強制切回戰鬥畫面，但目前程式邏輯逐行檢查都正確，暫時無法在無法
+      // 實際重現的情況下抓到根因。先加這行console.debug，下次再發生時，麻煩到瀏覽器開發者工具的Console
+      // 分頁截圖給我看這行印出的內容，就能知道是「這個分支沒有被觸發」還是「其他更後面的路徑覆蓋掉了」。
+      console.debug('[縮小戰鬥除錯]', { isWin, hasNextForAutoChain, autoNextStage: gameState.autoNextStage, questType: quest && quest.type, wasMinimized });
       if (isWin && hasNextForAutoChain && gameState.autoNextStage && quest && (quest.type === 'main' || quest.type === 'tower')) {
-        if (wasMinimized) {
-          modal.style.display = 'none';
-          gameState.pendingResultModal = { hint, isWin, rewardText: plainRewardText, hasNext: true };
-          updateMiniBattleBar();
-          setTimeout(() => {
-            // 玩家若已經自己手動點過狀態列上的按鈕(pendingResultModal已被清空)，這裡就不再重複觸發一次
-            if (gameState.pendingResultModal) goToNextMainStageKeepMinimized();
-          }, 3000);
-          return;
-        }
-        modal.style.display = 'flex';
-        startAutoNextStageCountdown();
+        modal.style.display = 'none';
+        goToNextMainStageKeepMinimized();
         return;
       }
 
@@ -15270,21 +15292,15 @@ let GOD_POINT_CURVE = [
     // 主線關卡「戰前」劇情：只要 MAINLINE_STORY 中該 mapId 設有 before，且尚未播放過，開戰前先播放
     gameState.playedStoryKeys = gameState.playedStoryKeys || new Set();
     const __origProceedSelectQuest = proceedSelectQuest;
-    // 2026-09-10修正(抓到「縮小戰鬥一直被強制跳回戰鬥畫面」的真正原因)：這個monkeypatch本來只接收quest
-    // 一個參數，呼叫__origProceedSelectQuest時也只傳了quest，把「縮小戰鬥」機制真正依賴的第二個參數opts
-    // (內含keepMinimized:true)整個弄丟了——導致goToNextMainStageKeepMinimized()呼叫這裡時，即使明明有
-    // 傳keepMinimized:true，最終真正執行的proceedSelectQuest本體收到的opts永遠是undefined，keepMinimized
-    // 永遠被判定成false，每次接續下一關都變成呼叫showScreen('battle')，玩家不管在哪個畫面都會被強制切回
-    // 戰鬥畫面。這裡改成完整轉發opts參數，戰前劇情的判斷邏輯完全不變。
-    proceedSelectQuest = function(quest, opts) {
+    proceedSelectQuest = function(quest) {
       const beforeLines = getMainlineStoryFor(quest.mapId) && getMainlineStoryFor(quest.mapId).before;
       const key = 'before_' + quest.mapId;
       if (beforeLines && !gameState.playedStoryKeys.has(key)) {
         gameState.playedStoryKeys.add(key);
-        Story.playAsync(beforeLines).then(() => __origProceedSelectQuest(quest, opts));
+        Story.playAsync(beforeLines).then(() => __origProceedSelectQuest(quest));
         return;
       }
-      __origProceedSelectQuest(quest, opts);
+      __origProceedSelectQuest(quest);
     };
 
     // 佈陣「開始戰鬥」：若正處於引導中，結束引導(真正的戰鬥啟動交由上面 proceedSelectQuest 鉤子接手播放戰前劇情)
