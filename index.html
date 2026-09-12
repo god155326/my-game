@@ -9150,6 +9150,11 @@ let GOD_POINT_CURVE = [
       closeRewardPreviewModal();
       let text = gainedNames.join('、') || '（本次未獲得任何獎勵）';
       showGenericInfoModal('探索獎勵領取', `累積 ${intervals} 次 (每5分鐘一次)：\n${text}`);
+      const rewards = Object.entries(totals).map(([id, amount]) => ({id:Number(id),amount,name:EQUIPMENT_DATABASE[id]?.name || itemName(Number(id))}));
+      const desc = document.getElementById('generic-info-desc');
+      desc.innerHTML = '<div class="idle-result-icons">' + renderResultLoot(rewards) + '</div>';
+      const summary = document.createElement('div');summary.className='idle-result-summary';summary.textContent=rewards.map(g=>g.name+'x'+g.amount).join('、') || '本次未獲得獎勵';desc.append(summary);
+
       renderMainlineIdleWidget();
     }
 
@@ -9834,7 +9839,7 @@ let GOD_POINT_CURVE = [
       let frontMet = groupUnlocked && isTalentFrontMet(id);
       nameEl.innerText = node.name;
       descEl.innerText = formatTalentDesc(buff);
-      iconEl.innerHTML = unlocked ? '★' : '🔮';
+      iconEl.innerHTML = getTalentNodeIconHtml(node);
       if (node.front.length === 0) {
         frontEl.innerHTML = `<span style="color:#a89a80;">無前置條件</span>`;
       } else {
@@ -16435,6 +16440,39 @@ let GOD_POINT_CURVE = [
  strip(document.querySelector('#idle-reward-list-modal .cheat-modal-header'),'📋');
  const shop=document.getElementById('shop-content');if(shop){const clean=()=>shop.querySelectorAll('.shop-refresh-btn').forEach(btn=>{for(const n of btn.childNodes)if(n.nodeType===3&&n.textContent.includes('🔄'))n.textContent=n.textContent.replace('🔄','').trimStart();});clean();new MutationObserver(clean).observe(shop,{childList:true,subtree:true,characterData:true});}
  const list=document.querySelector('#screen-equip-menu .equip-menu-list');if(list){const order=['裝備背包','道具背包','裝備道具','魔法石'];const paths=['M10 8L24 3 38 8V26L24 42 10 26Z M17 12V25L24 33 31 25V12','M13 13V9Q13 3 24 3T35 9V13M8 13H40V42H8ZM8 24H40M20 21H28V29H20','M12 37L35 5 40 10 17 42ZM9 28L24 40','M7 15L17 5H31L41 15 24 42ZM7 15H41M17 5L15 15 24 42 33 15 31 5'];const entries=[...list.querySelectorAll('.equip-menu-btn')];entries.sort((a,b)=>order.indexOf(a.textContent.trim())-order.indexOf(b.textContent.trim())).forEach(el=>{const i=order.indexOf(el.textContent.trim());const icon=el.querySelector('.equip-menu-icon');if(icon&&i>=0)icon.innerHTML='<svg viewBox="0 0 48 48" aria-hidden="true"><path d="'+paths[i]+'" fill="#34291c" stroke="#c4a06b" stroke-width="2.5" stroke-linejoin="miter"/></svg>';list.append(el);});}
+}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();})();
+</script>
+
+<style id="ui-polish-v6">
+#class-list .class-card.pending {filter:brightness(1.2)!important;}
+#screen-equip-menu .equip-menu-btn {border:9px solid transparent!important;border-image:var(--ui-frame-v2) 14% / 11px / 1px stretch!important;border-radius:0!important;background:linear-gradient(110deg,#1b1714,#0b0c0e)!important;box-shadow:none!important;}
+#talent-info-icon {display:flex!important;align-items:center;justify-content:center;overflow:hidden;}
+#talent-info-icon > div,#talent-info-icon > span {display:flex;align-items:center;justify-content:center;max-width:100%;max-height:100%;}
+#talent-info-icon img {width:100%!important;height:100%!important;object-fit:contain;}
+#stage-event-modal .cheat-modal-box,#stage-event-modal .quest-enemy-mini {border:8px solid transparent!important;border-image:var(--ui-frame-v2) 14% / 10px / 1px stretch!important;border-radius:0!important;background:linear-gradient(110deg,#191613,#090a0c)!important;}
+#stage-event-modal .btn-confirm-skill {display:block;margin:15px auto 0;min-width:130px;border:6px solid transparent!important;border-image:var(--ui-frame-v2) 14% / 8px / 1px stretch!important;border-radius:0;background:#241c12;padding:7px 20px;color:#e5cfa5;}
+#stage-event-modal-body > .unit-status-buff-row,#stage-event-modal-body > .reward-bar-label,#stage-event-modal-body > .explore-empty-hint {display:none!important;}
+#stage-event-modal .quest-enemy-row {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;}
+#stage-event-modal .quest-enemy-mini {width:auto;min-width:0;min-height:158px;padding:5px;display:flex;flex-direction:column;align-items:center;}
+#stage-event-modal .quest-enemy-mini.placeholder {visibility:hidden;}
+#stage-event-modal .mini-avatar {width:54px;height:60px;border:0!important;border-radius:0!important;background:transparent!important;}
+#stage-event-modal .mini-avatar img {object-fit:contain;}
+#stage-event-modal .mini-name {font-size:12px;}
+#stage-event-modal .mini-lv {font-size:12px;color:#e3c16b;}
+#stage-event-modal .mini-hp-mp-bars {width:100%;margin-top:auto;}
+#stage-event-modal .mini-stat-text {font-size:10px;}
+.idle-result-icons {display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:12px 0;}
+.idle-result-icons .result-loot-item {display:flex;align-items:center;gap:5px;padding:8px;border:1px solid #66503a;background:#0b0a09;}
+.idle-result-icons .result-loot-item strong {font-size:12px;}
+.idle-result-summary {font-size:14px;line-height:1.65;text-align:center;}
+</style>
+<script id="ui-polish-v6-layout">
+(function(){function setup(){
+ const list=document.querySelector('#screen-equip-menu .equip-menu-list');if(list){const item=[...list.children].find(el=>el.textContent.trim()==='道具背包');if(item)list.prepend(item);}
+ const gacha=document.getElementById('gacha-banner-list');if(gacha){const clean=()=>gacha.querySelectorAll('.gacha-banner-title').forEach(el=>{const t=el.textContent.replace('🔮','').trim();if(t!==el.textContent)el.textContent=t;});clean();new MutationObserver(clean).observe(gacha,{childList:true,subtree:true,characterData:true});}
+ const stage=document.getElementById('mainline-stage-detail');if(stage){const label=()=>stage.querySelectorAll('.quest-event-btn').forEach(el=>{if(el.textContent!=='怪物資訊')el.textContent='怪物資訊';});label();new MutationObserver(label).observe(stage,{childList:true,subtree:true});}
+ const title=document.querySelector('#stage-event-modal .cheat-modal-header > span');if(title)title.textContent='怪物資訊';
+ const logo=document.getElementById('result-logo');const modal=document.getElementById('result-modal');if(logo&&modal){const align=()=>{const sub=modal.querySelector('.result-subtitle'),box=modal.querySelector('.result-modal-box');if(!sub||!box||!box.offsetHeight)return;const r=box.getBoundingClientRect(),sr=sub.getBoundingClientRect();const scale=r.height/box.offsetHeight;logo.style.setProperty('top',((sr.top-r.top)/scale-logo.offsetHeight-5)+'px','important');};logo.addEventListener('load',align);new MutationObserver(()=>requestAnimationFrame(align)).observe(modal,{attributes:true,attributeFilter:['style','class']});window.addEventListener('resize',()=>requestAnimationFrame(align));align();}
 }if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();})();
 </script>
 </body>
