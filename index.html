@@ -16954,5 +16954,42 @@ let GOD_POINT_CURVE = [
 }
 </style>
 
+
+
+<!-- Codex UI polish v11: one continuous mask behind the whole player zone -->
+<style id="codex-ui-polish-v11">
+/* Remove the three separate player-area masks. */
+#screen-battle .battle-player-zone > .battle-player-heading::after,
+#screen-battle #player-row::before,
+#screen-battle #player-row::after,
+#screen-battle #player-role-hp-block::before {
+  display: none !important;
+}
+
+/* One continuous layer covers the full player zone. */
+#screen-battle .battle-player-zone {
+  position: relative !important;
+  isolation: isolate;
+  overflow: hidden;
+}
+#screen-battle .battle-player-zone::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, .80) !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+/* Labels, frames, cards, role icon and action bars remain above the mask. */
+#screen-battle .battle-player-zone > * {
+  position: relative;
+  z-index: 1 !important;
+}
+</style>
+
 </body>
 </html>
