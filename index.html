@@ -16729,5 +16729,87 @@ let GOD_POINT_CURVE = [
 })();
 </script>
 
+
+
+<!-- Codex UI polish v8: align battle header row and tune transparent black battle shade -->
+<style id="codex-ui-polish-v8">
+#screen-battle .battle-enemy-zone {
+  position: relative;
+}
+#screen-battle .battle-enemy-zone > .battle-faction.enemy-faction {
+  position: relative !important;
+  z-index: 4 !important;
+  margin: 0 !important;
+}
+#screen-battle .battle-enemy-zone > .log-header {
+  position: absolute !important;
+  top: 0 !important;
+  left: 75px !important;
+  right: 4px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  margin: 0 !important;
+  padding: 0 0 0 5px !important;
+  display: flex !important;
+  align-items: center !important;
+  z-index: 3 !important;
+  overflow: hidden !important;
+}
+#screen-battle .battle-enemy-zone > .log-header .log-header-text-group {
+  height: 100% !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 4px !important;
+  min-width: 0 !important;
+  background: transparent !important;
+}
+#screen-battle .battle-enemy-zone #quest-hint-info {
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 100% !important;
+  max-width: 42% !important;
+  flex: 0 1 auto !important;
+}
+#screen-battle .battle-enemy-zone #wave-info {
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 100% !important;
+  flex: 0 0 auto !important;
+}
+#screen-battle .battle-enemy-zone #timeline-list {
+  margin-left: auto !important;
+  flex: 0 1 auto !important;
+}
+#screen-battle .battle-enemy-zone #turn-info {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  height: 100% !important;
+  flex: 0 0 auto !important;
+  margin-left: 5px !important;
+  white-space: nowrap !important;
+}
+#screen-battle .battle-enemy-zone::before,
+#screen-battle .battle-player-zone::before {
+  background: rgba(0,0,0,.20) !important;
+  box-shadow: inset 0 0 24px rgba(0,0,0,.28) !important;
+}
+#screen-battle .log-header::after {
+  background: rgba(0,0,0,.20) !important;
+}
+#screen-battle #enemy-row,
+#screen-battle #player-row {
+  background: rgba(0,0,0,.20) !important;
+  box-shadow: inset 0 0 22px rgba(0,0,0,.25) !important;
+}
+#screen-battle #enemy-row::before,
+#screen-battle #player-row::before {
+  display: none !important;
+}
+</style>
+
 </body>
 </html>
