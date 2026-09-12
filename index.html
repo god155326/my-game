@@ -3985,6 +3985,26 @@
     <div id="preload-hint">首次載入圖片較多，請耐心等候</div>
   </div>
 
+  <!-- 2026-09-13新增：資源載入完成後，讓玩家選擇「從頭開始」新遊戲、或「選擇存檔繼續」既有進度。
+       選擇存檔繼續時，點按鈕觸發隱藏的檔案選擇器；手機上這個原生檔案選擇器本身就能切換到雲端硬碟分頁
+       挑選之前匯出的存檔json，不需要另外串接任何雲端硬碟API或申請授權。 -->
+  <div id="save-choice-overlay" style="display:none; position:fixed; inset:0; z-index:500; background:rgba(10,8,6,0.96); flex-direction:column; align-items:center; justify-content:center; gap:18px; text-align:center; padding:20px;">
+    <div style="color:#e5d4c0; font-size:22px; font-weight:bold; letter-spacing:2px;">不朽之旅</div>
+    <div style="color:#a89a80; font-size:13px; margin-bottom:8px;">選擇要從頭開始，還是匯入先前匯出的存檔繼續</div>
+    <button class="btn-restart" style="min-width:200px;" onclick="chooseStartFresh()">從頭開始</button>
+    <button class="btn-restart" style="min-width:200px;" onclick="triggerImportSaveFile()">選擇存檔繼續</button>
+    <input type="file" id="save-import-input" accept="application/json,.json" style="display:none;" onchange="onSaveFileSelected(this)">
+  </div>
+
+  <!-- 2026-09-13新增：點選左上角頭像跳出的小選單，目前只有「匯出存檔」一個功能，之後若有其他帳號/
+       設定相關功能可以陸續加進這個選單 -->
+  <div id="avatar-menu-overlay" style="display:none; position:fixed; inset:0; z-index:510;" onclick="closeAvatarMenu()">
+    <div class="cheat-modal-box" style="position:absolute; top:70px; left:14px; width:180px; padding:10px;" onclick="event.stopPropagation();">
+      <button class="btn-restart" style="width:100%; margin-bottom:8px;" onclick="exportSaveFile(); closeAvatarMenu();">📤 匯出存檔</button>
+      <button class="btn-restart" style="width:100%;" onclick="triggerImportSaveFile(); closeAvatarMenu();">📥 匯入存檔</button>
+    </div>
+  </div>
+
   <div class="game-container">
     <div class="anim-overlay" id="anim-overlay"></div>
 
@@ -4032,7 +4052,7 @@
     </div>
 
       <div class="top-header">
-        <div class="top-header-avatar" id="header-avatar-icon">👤<span class="lv-badge" id="header-lv-badge">lv.5</span></div>
+        <div class="top-header-avatar" id="header-avatar-icon" onclick="openAvatarMenu()" style="cursor:pointer;">👤<span class="lv-badge" id="header-lv-badge">lv.5</span></div>
         <div class="top-header-info">
           <div class="top-header-name-row">
             <div class="top-header-name" id="header-player-name">匿名的勇者</div>
@@ -16234,6 +16254,87 @@ let GOD_POINT_CURVE = [
       setTimeout(() => el.remove(), 400);
     }
 
+    // ============ 存檔匯出/匯入(2026-09-13新增，透過雲端硬碟手動同步進度) ============
+    // gameState裡有幾個欄位是Set(ownedCards/ownedClasses/firedGuideKeys/clearedMainMapIds/playedStoryKeys/
+    // lockedNavTabs)，JSON.stringify預設不認識Set(會變成空物件{})，所以用replacer/reviver把Set轉成
+    // 一個有特殊標記的陣列，匯入時再還原成真正的Set，不管以後gameState裡新增了哪個欄位是Set，這裡都不用
+    // 額外維護一份欄位清單，自動偵測、自動處理。
+    function gameStateReplacer(key, value) {
+      if (value instanceof Set) return { __type: 'Set', values: [...value] };
+      return value;
+    }
+    function gameStateReviver(key, value) {
+      if (value && typeof value === 'object' && value.__type === 'Set') return new Set(value.values);
+      return value;
+    }
+    // 匯出：把目前的gameState整個序列化成一個json檔案，觸發瀏覽器下載。手機上下載時，系統的「儲存到...」
+    // 選單通常可以直接選雲端硬碟；電腦上瀏覽器下載後再自己拖去雲端硬碟資料夾即可。
+    function exportSaveFile() {
+      try {
+        const json = JSON.stringify(gameState, gameStateReplacer, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+        a.href = url;
+        a.download = `不朽之旅_存檔_${stamp}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        Guide.toast('存檔已匯出，請選擇儲存到雲端硬碟或裝置');
+      } catch (e) {
+        console.error('[存檔匯出失敗]', e);
+        Guide.toast('匯出失敗，請稍後再試');
+      }
+    }
+    // 觸發隱藏的<input type="file">：手機/電腦的原生檔案選擇器本身就能切換到雲端硬碟分頁挑檔案，
+    // 不需要另外串接Google Drive API或申請任何授權。
+    function triggerImportSaveFile() {
+      const input = document.getElementById('save-import-input');
+      input.value = ''; // 清空，確保選擇同一個檔案也會觸發change事件
+      input.click();
+    }
+    function onSaveFileSelected(fileInput) {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result, gameStateReviver);
+          applyImportedGameState(data);
+        } catch (e) {
+          console.error('[存檔匯入失敗]', e);
+          Guide.toast('存檔檔案格式錯誤，匯入失敗');
+        }
+      };
+      reader.onerror = () => Guide.toast('讀取檔案失敗');
+      reader.readAsText(file);
+    }
+    // 用匯入的資料「整個覆蓋」目前的gameState內容(保留原本的物件參照，只是清空重填，避免其他函式
+    // 手上拿著的舊gameState參照失效)，接著直接跳回主線畫面並刷新所有UI，視同接續之前的進度。
+    function applyImportedGameState(data) {
+      Object.keys(gameState).forEach(k => delete gameState[k]);
+      Object.assign(gameState, data);
+      document.getElementById('save-choice-overlay').style.display = 'none';
+      hidePreloadOverlay();
+      showScreen('mainline');
+      renderMainStage();
+      updateTopHeader();
+      refreshCurrentScreenData();
+      Guide.toast('存檔已成功匯入，歡迎回來！');
+    }
+    // 「從頭開始」：跟原本沒有存檔選擇機制時的行為完全一樣，跑新手引導
+    function chooseStartFresh() {
+      document.getElementById('save-choice-overlay').style.display = 'none';
+      renderQuestList();
+      showScreen('gacha');
+      renderGachaScreen();
+      runIntroSequence();
+    }
+    function openAvatarMenu() { document.getElementById('avatar-menu-overlay').style.display = 'block'; }
+    function closeAvatarMenu() { document.getElementById('avatar-menu-overlay').style.display = 'none'; }
+
     // 先讀取 data/不朽之旅.xlsx 覆寫資料表常數(需以 start.bat 啟動的本機伺服器開啟；
     // 若是直接雙擊 index.html 開啟，fetch 會失敗，改用內建預設資料，遊戲仍可正常執行)，
     // 確定資料表就緒後才知道「這次真正會用到哪些圖片id」，接著預先載入所有圖片，
@@ -16241,11 +16342,9 @@ let GOD_POINT_CURVE = [
     loadGameDataFromXlsx().finally(() => {
       preloadAllGameImages().finally(() => {
         hidePreloadOverlay();
-        renderQuestList();
-        showScreen('gacha');
-        renderGachaScreen();
-        // 新玩家一開始一無所有(無職業/無武器/無道具)，需先領取新手禮包才能開始遊戲
-        runIntroSequence();
+        // 2026-09-13新增：不再自動直接跑新手引導，改成先讓玩家選擇「從頭開始」或「選擇存檔繼續」，
+        // 兩個選項各自的後續動作見 chooseStartFresh() / triggerImportSaveFile()。
+        document.getElementById('save-choice-overlay').style.display = 'flex';
       });
     });
   </script>
