@@ -16318,5 +16318,56 @@ let GOD_POINT_CURVE = [
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
 })();
 </script>
+
+<!-- UI polish v3 additions -->
+<style id="ui-polish-v3">
+#shop-content .shop-section,#shop-content .shop-item-slot,#generic-info-modal .cheat-modal-box,#screen-mainline .mainline-map-banner,#talent-tree-grid {
+ border:8px solid transparent!important;border-image:var(--ui-frame-v2) 14% / 11px / 1px stretch!important;border-radius:0!important;
+}
+#shop-content .shop-section,#shop-content .shop-item-slot,#generic-info-modal .cheat-modal-box {background:linear-gradient(110deg,#1c1814,#0c0c0e)!important;}
+#shop-content .shop-buy-btn,#generic-info-confirm-btn,#class-list .class-avatar,.talent-node-inner {
+ border:5px solid transparent!important;border-image:var(--ui-frame-v2) 14% / 7px / 0 stretch!important;border-radius:0!important;background:#14120f!important;
+}
+#shop-content .shop-buy-btn {padding:5px 3px;color:#e5cd9b;}
+#shop-content .shop-item-slot {padding:8px 5px;}
+#generic-info-confirm-btn {display:block;margin:16px auto 0;padding:8px 25px;color:#ead4a9;}
+#generic-info-modal #generic-info-title {font-size:18px!important;color:#e4cd9a;}
+#generic-info-modal #generic-info-desc {font-size:18px!important;line-height:1.65;color:#d5c8b5;}
+#generic-info-modal .cheat-modal-box {max-height:80%;overflow-y:auto;}
+#screen-mainline .mainline-node-circle {border:4px solid transparent;border-image:var(--ui-frame-v2) 14% / 5px / 0 stretch;border-radius:0;background:#17130f;color:#b5a285;box-sizing:border-box;}
+#screen-mainline .mainline-node.current .mainline-node-circle {background:#5a421d;box-shadow:0 0 8px #dcad5555;color:#ffe0a1;}
+#screen-mainline .mainline-node.cleared .mainline-node-circle {background:#253226;color:#b2c695;}
+#screen-mainline .mainline-node-arrow {color:#e4bd73;}
+#screen-mainline .mainline-node-line {background:#776040;}
+#quest-category-list .quest-category-btn {height:var(--category-ui-height,110px)!important;flex-shrink:0;}
+#quest-category-list .quest-category-btn img {height:100%;object-fit:cover;}
+.top-header-currency .currency-ui-icon {width:20px;height:20px;object-fit:contain;vertical-align:middle;}
+#result-loot .result-loot-item {position:relative;padding:8px;margin-bottom:25px;}
+#result-loot .result-loot-item::after {position:absolute;left:50%;top:calc(100% + 7px);transform:translateX(-50%);white-space:nowrap;content:attr(data-reward-caption);font-size:12px;}
+#enemy-row .card {background-color:#08090b!important;background-size:100% 100%!important;align-self:stretch;}
+#enemy-row .card.card-empty-slot {opacity:1;background:#08090b!important;}
+.talent-node.available .talent-node-inner {box-shadow:0 0 7px #b58c4a88;color:#d8b271;}
+.talent-node.unlocked .talent-node-inner {background:#392b16!important;box-shadow:0 0 8px #c2985266;}
+.talent-node.selected .talent-node-inner {outline:1px solid #e3bc78;outline-offset:2px;}
+.talent-node.locked .talent-node-inner {font-size:0;background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2232%22%20height%3D%2236%22%20viewBox%3D%220%200%2032%2036%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22b%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20stop-color%3D%22%23d4b477%22%2F%3E%3Cstop%20offset%3D%22.5%22%20stop-color%3D%22%23715035%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%2334271d%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Cpath%20d%3D%22M9%2016V10a7%207%200%200%201%2014%200v6%22%20fill%3D%22none%22%20stroke%3D%22%23211b16%22%20stroke-width%3D%227%22%2F%3E%3Cpath%20d%3D%22M9%2016V10a7%207%200%200%201%2014%200v6%22%20fill%3D%22none%22%20stroke%3D%22%23a68b60%22%20stroke-width%3D%223%22%2F%3E%3Cpath%20d%3D%22M4%2015h24v17H4z%22%20fill%3D%22url(%23b)%22%20stroke%3D%22%23ba9560%22%2F%3E%3Cpath%20d%3D%22M16%2020a3%203%200%200%200-1%206v3h2v-3a3%203%200%200%200-1-6%22%20fill%3D%22%23171514%22%2F%3E%3Cpath%20d%3D%22M6%2017h2v2H6zm18%200h2v2h-2zM6%2028h2v2H6zm18%200h2v2h-2z%22%20fill%3D%22%23e1c691%22%2F%3E%3C%2Fsvg%3E")!important;background-repeat:no-repeat!important;background-position:center!important;background-size:24px 27px!important;}
+.talent-tree-lines line,.talent-tree-lines path {stroke:#866b43!important;}
+</style>
+<script id="ui-polish-v3-layout">
+(function(){
+ function setup(){
+  for(const [id,item] of [['header-gold',1000],['header-diamond',1001]]){
+   const value=document.getElementById(id),parent=value&&value.parentElement;
+   if(parent&&!parent.querySelector('.currency-ui-icon')){
+    for(const node of [...parent.childNodes])if(node.nodeType===3)node.textContent=node.textContent.replace(/[🪙💎]/gu,'');
+    const img=document.createElement('img');img.className='currency-ui-icon';img.src='assets/images/item/item_'+item+'.png';img.alt=item===1000?'金幣':'鑽石';parent.prepend(img);
+   }
+  }
+  const title=document.getElementById('generic-info-title');if(title){const clean=()=>{const t=title.textContent.replace(/📖s*/gu,'');if(t!==title.textContent)title.textContent=t;};clean();new MutationObserver(clean).observe(title,{childList:true,characterData:true,subtree:true});}
+  const loot=document.getElementById('result-loot');if(loot){const captions=()=>loot.querySelectorAll('.result-loot-item').forEach(el=>{el.dataset.rewardCaption=(el.title||'')+' '+(el.querySelector('strong')?.textContent||'');});captions();new MutationObserver(captions).observe(loot,{childList:true,subtree:true,characterData:true});}
+  const list=document.getElementById('quest-category-list');if(list){const size=()=>{const ref=[...list.querySelectorAll('.quest-category-btn')].find(el=>el.textContent.includes('無限地城'));const img=ref&&ref.querySelector('img');if(img&&img.naturalWidth){list.style.setProperty('--category-ui-height',(list.clientWidth*img.naturalHeight/img.naturalWidth)+'px');}};list.addEventListener('load',size,true);new MutationObserver(size).observe(list,{childList:true});new ResizeObserver(size).observe(list);size();}
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
+})();
+</script>
 </body>
 </html>
