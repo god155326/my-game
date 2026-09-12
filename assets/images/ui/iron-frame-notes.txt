@@ -1,0 +1,7 @@
+Forged-iron frame created with the built-in image_gen tool.
+Asset: assets/images/ui/iron-frame.png
+Applied by assets/css/ornate-ui.css using nine-slice border images.
+Source preserved; no pixel edits.
+
+Prompt:
+Single production game UI nine-slice border asset, square 1024x1024 PNG with genuinely transparent interior and transparent exterior. A dark gothic pixel-art RPG panel FRAME ONLY. Large empty completely transparent central rectangle occupying central 82 percent width and height. Frame is confined to outer 9 percent on all four sides. Heavy black iron rails with aged copper and dark bronze trim, stacked narrow bevels, tiny hand-forged irregularities, restrained warm edge highlights, riveted square corner brackets with prominent dark round bolts, small symmetrical diamond metal joinery at midpoint of each edge. Closely evoke classic dark dungeon RPG ornate mechanical copper UI. Crisp pixel clusters, dark and weathered, NOT bright gold, NOT shiny smooth vector, NOT a photograph. Perfectly frontal orthographic, edges straight and symmetrical, corners substantial. Designed for CSS border-image nine-slice: central stretches on rails must be uniform and plain; ornate corner details entirely within outer 12 percent corner blocks. No text, no icons, no characters, no background scene, no interior fill, no mockup. Do not put a checkerboard pattern in the image; use true alpha transparency.

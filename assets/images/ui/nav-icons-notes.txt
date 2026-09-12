@@ -1,0 +1,6 @@
+Navigation icons generated with the built-in image_gen tool.
+Asset: assets/images/ui/nav-icons.png
+The game displays each icon through CSS sprite positioning; source image preserved.
+
+Prompt:
+Create one horizontal sprite strip containing EXACTLY SEVEN square equal-width cells in one row, aspect ratio 7:1. Transparent background. Each cell contains one centered large readable dark fantasy RPG pixel-art menu icon. Left to right: 1 knight helmet, 2 closed talent spellbook, 3 two crossed swords, 4 rolled parchment quest scroll, 5 leather equipment backpack, 6 stone dungeon doorway, 7 circular summoning pentagram rune. Consistent aged bronze and muted pale gold metal, black iron and brown leather, precise chunky pixel clusters, tasteful ivory edge highlights, no colorful glow. Every icon identical apparent size, 75 percent cell height, generous transparent padding so icons do not touch cell edges. No words, no letters, no labels, no numbers, no UI panels, no outer frames, no shadows outside icons. Functional readable game navigation icon asset, not a screenshot.

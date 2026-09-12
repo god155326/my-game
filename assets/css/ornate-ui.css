@@ -1,0 +1,55 @@
+/* Shared nine-slice forged-iron frame, matching the supplied RPG reference. */
+:root{--iron-frame:url('../images/ui/iron-frame.png');--iron-fill:linear-gradient(105deg,#191616,#090a0d 58%,#171313)}
+.game-container{border:0;padding:12px;background-color:#0b0a0c;box-shadow:0 15px 60px #000;isolation:isolate}
+.game-container::before{content:"";position:absolute;inset:0;z-index:200;pointer-events:none;border:18px solid transparent;border-image:var(--iron-frame) 14% / 18px / 0 stretch}
+.top-header{border:10px solid transparent;border-image:var(--iron-frame) 14% / 12px / 2px stretch;background:var(--iron-fill);padding:2px 5px;min-height:66px;box-shadow:none}
+.top-header-avatar{border:2px solid #5f4731;box-shadow:inset 0 0 0 1px #bd9860;background:#080b11;width:46px;height:46px}
+.top-header-name{font-size:18px;letter-spacing:1px}
+.top-header-currency{border-left:2px groove #5c422b;padding-left:12px;align-self:stretch}
+.top-header-currency>span{font-size:17px}
+.screen-panel>.screen-title,.mainline-chapter-tag{position:relative;display:flex;align-items:center;justify-content:center;min-height:48px;flex-shrink:0;margin:0 0 10px;padding:2px 18px;border:10px solid transparent;border-image:var(--iron-frame) 14% / 12px / 0 stretch;background:var(--iron-fill);font-size:21px;font-weight:700;letter-spacing:5px;color:#eee0bb;text-shadow:0 2px 2px #000;line-height:1.2}
+.screen-panel>.screen-title::before,.screen-panel>.screen-title::after{content:"◆";font-size:10px;color:#ad7c44;margin:0 14px;letter-spacing:0}
+#bottom-nav{left:10px;right:10px;bottom:10px;height:81px;border:0;background:#08090c;box-shadow:none;padding:4px}
+#bottom-nav::before{content:"";position:absolute;inset:-3px;pointer-events:none;z-index:3;border:12px solid transparent;border-image:var(--iron-frame) 14% / 12px / 0 stretch}
+#bottom-nav .bottom-nav-item{border:0;border-radius:0;background:linear-gradient(110deg,#1c1713,#09090c 65%);box-shadow:inset 1px 0 #694a2e,inset -1px 0 #241b14;font-size:17px;color:#e2d5b5}
+#bottom-nav .bottom-nav-item.active{background:radial-gradient(ellipse at bottom,#664016,#25180b 70%);box-shadow:inset 2px 0 #e3b15c,inset -2px 0 #e3b15c,inset 0 -2px #ffdc83;color:#ffe1a0}
+#bottom-nav .bottom-nav-item.active::before{top:-2px;left:10%;right:10%;height:2px;background:#ffd789;box-shadow:0 0 9px 2px #d99235}
+#bottom-nav .nav-icon-img{height:46px;background-position-y:-28px}
+.weapon-menu-preview,#mainline-stage-detail,.equip-menu-btn,.class-equip-summary-box,.battle-grid,.mini-battle-bar{border:9px solid transparent;border-image:var(--iron-frame) 14% / 11px / 1px stretch;border-radius:0;background:var(--iron-fill);box-shadow:none;padding:7px}
+.weapon-menu-preview{margin-bottom:12px}
+.weapon-menu-main{gap:12px}
+.weapon-menu-name{font-size:16px;color:#eee0bd}
+.weapon-menu-skills{font-family:"Microsoft JhengHei",sans-serif;font-size:13px;line-height:1.65;color:#d6cebe}
+.weapon-menu-skill-name{color:#dcc086}
+.weapon-menu-tags-line{font-size:12px;line-height:1.4;border-top:1px solid #57422d;color:#afa28d}
+.weapon-menu-tag,.weapon-menu-lv-tag{border-radius:0;border:2px groove #86653d;background:#241a11;color:#e7c991}
+.weapon-menu-grid .weapon-slot-card,.weapon-slot-row.mini .weapon-slot-card{border:2px solid #57402c;border-radius:0;background:linear-gradient(110deg,#221c17,#0a0a0d 70%);box-shadow:inset 0 0 0 1px #08090a;position:relative}
+.weapon-slot-card::before,.card::before{content:"";position:absolute;inset:-3px;width:auto;height:auto;pointer-events:none;border:9px solid transparent;border-image:var(--iron-frame) 14% / 9px / 0 stretch;background:none;box-shadow:none;z-index:5}
+.card::after{display:none}
+.card{border:2px solid #5d4430;border-radius:0;background:var(--iron-fill)}
+.card.player,.card.enemy{border-top:2px solid #5d4430}
+.weapon-slot-card.selected{border-color:#edbf6f!important;box-shadow:0 0 8px #d9a34599!important;background:linear-gradient(#3c2b14,#151009)!important}
+.weapon-slot-card.selected::before,.card.active::before,.card.selected::before{filter:brightness(1.7) sepia(.5)}
+.weapon-menu-grid .weapon-slot-name{font-size:11px}
+.mainline-battle-area{border:8px solid transparent;border-image:var(--iron-frame) 14% / 10px / 0 stretch;border-radius:0;padding:6px;background-color:#0c0b0e}
+.weapon-slot-row.mini{gap:6px;justify-content:center}
+.weapon-slot-row.mini .weapon-slot-card{width:62px;min-height:100px;padding:5px 4px 4px;gap:2px;flex-shrink:0}
+.weapon-slot-row.mini .weapon-slot-card.compact-hp{min-height:100px}
+.weapon-slot-row.mini .weapon-slot-badge{border-radius:0}
+.weapon-slot-row.mini .weapon-slot-name{font-size:10px;color:#e9ddc6;line-height:1.3}
+.weapon-slot-row.mini .weapon-slot-lv{font-size:11px;color:#ecd077}
+.weapon-slot-row.mini .weapon-slot-bar-track{height:6px;border:1px solid #512223;background:#180b0d}
+.weapon-slot-row.mini .weapon-slot-bar-fill.hp{background:linear-gradient(#f44449,#a90717)}
+.weapon-slot-row.mini .weapon-slot-bars>div:last-child{font-size:10px!important;color:#edc7bd!important;text-align:center}
+.mainline-battle-side-label{font-size:14px;letter-spacing:2px;color:#dac39a}
+#mainline-stage-detail{padding:8px 10px;margin-top:4px;min-height:0;background:linear-gradient(#171416f5,#0b0b0ef5)}
+#mainline-stage-detail .quest-card{background:none;border:0;border-radius:0;padding:0;box-shadow:none}
+#mainline-stage-detail .reward-bar-label{font-size:14px;color:#d9bd88;padding:8px 0 4px;border-top:1px solid #51402d;margin-top:8px}
+#mainline-stage-detail .btn{font-size:14px!important;border:5px solid transparent;border-image:var(--iron-frame) 14% / 7px / 0 stretch;border-radius:0;background:#20170e;color:#ecd3a2}
+.action-bar .btn,.action-bar .btn-restart,.action-bar .btn-restart-dark{border:6px solid transparent;border-image:var(--iron-frame) 14% / 8px / 0 stretch;border-radius:0;box-shadow:none;background:linear-gradient(#292017,#100e0e);color:#eddbb3}
+.action-bar .btn-restart:not(:disabled){background:linear-gradient(#56391a,#24180b);color:#ffe1a3}
+.mini-battle-bar{bottom:97px}
+#mainline-stage-detail .quest-card-summary-block{font-size:14px;line-height:1.55;color:#cec4b1}
+#mainline-stage-detail .quest-card-title{font-size:14px;color:#bda783}
+#mainline-stage-detail .quest-card-hint-big{font-size:21px;color:#eed39b}
+#mainline-stage-detail .quest-event-btn{border-radius:0;border:5px solid transparent;border-image:var(--iron-frame) 14% / 7px / 0 stretch;background:#3b2713;color:#ebd09b}
