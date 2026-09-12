@@ -14916,52 +14916,66 @@ let GOD_POINT_CURVE = [
 
     // ============ 傷害/爆擊/恢復數字圖片素材(取代原本的純文字樣式，改用美術數字圖) ============
     // gold=一般傷害(黃)　fire=爆擊傷害(紅火焰)　green=恢復(綠)；每個數字皆為裁切好的透明背景PNG，ratio=寬高比，顯示時依目標高度換算寬度
+    // 2026-09-13更新：傷害數字圖片素材整批替換成Wei新提供的圖(黃/紅/綠)，並新增藍色(MP)類型。
     const DIGIT_SPRITES = {
       gold: [
-        { w:66, h:118, ratio:0.5593, src:'assets/images/img_410d6ec91e65.png' },
-        { w:56, h:118, ratio:0.4746, src:'assets/images/img_4e211a3dc73e.png' },
-        { w:66, h:118, ratio:0.5593, src:'assets/images/img_94a2d744cb60.png' },
-        { w:61, h:118, ratio:0.5169, src:'assets/images/img_9c8221f87813.png' },
-        { w:68, h:118, ratio:0.5763, src:'assets/images/img_5aca8ee4afc0.png' },
-        { w:68, h:118, ratio:0.5763, src:'assets/images/img_fcd06d4faceb.png' },
-        { w:65, h:118, ratio:0.5508, src:'assets/images/img_ac3e705e9554.png' },
-        { w:64, h:118, ratio:0.5424, src:'assets/images/img_5202b805b2e7.png' },
-        { w:66, h:118, ratio:0.5593, src:'assets/images/img_da1c647e19c4.png' },
-        { w:67, h:118, ratio:0.5678, src:'assets/images/img_a3a8580682a4.png' }
+        { w:151, h:186, ratio:0.8118, src:'assets/images/digit/gold_0.png' },
+        { w:110, h:186, ratio:0.5914, src:'assets/images/digit/gold_1.png' },
+        { w:145, h:186, ratio:0.7796, src:'assets/images/digit/gold_2.png' },
+        { w:145, h:186, ratio:0.7796, src:'assets/images/digit/gold_3.png' },
+        { w:154, h:186, ratio:0.828, src:'assets/images/digit/gold_4.png' },
+        { w:136, h:186, ratio:0.7312, src:'assets/images/digit/gold_5.png' },
+        { w:152, h:186, ratio:0.8172, src:'assets/images/digit/gold_6.png' },
+        { w:147, h:186, ratio:0.7903, src:'assets/images/digit/gold_7.png' },
+        { w:150, h:186, ratio:0.8065, src:'assets/images/digit/gold_8.png' },
+        { w:152, h:186, ratio:0.8172, src:'assets/images/digit/gold_9.png' }
       ],
       fire: [
-        { w:67, h:133, ratio:0.5038, src:'assets/images/img_97b5e0a73ec0.png' },
-        { w:65, h:133, ratio:0.4887, src:'assets/images/img_1be1e08f9854.png' },
-        { w:67, h:133, ratio:0.5038, src:'assets/images/img_01abf2a880d0.png' },
-        { w:65, h:133, ratio:0.4887, src:'assets/images/img_b403661032ba.png' },
-        { w:70, h:133, ratio:0.5263, src:'assets/images/img_3b41cfb97fd1.png' },
-        { w:68, h:133, ratio:0.5113, src:'assets/images/img_645f61b53375.png' },
-        { w:69, h:133, ratio:0.5188, src:'assets/images/img_58f08a17fda3.png' },
-        { w:68, h:133, ratio:0.5113, src:'assets/images/img_9db82a506fa6.png' },
-        { w:70, h:133, ratio:0.5263, src:'assets/images/img_43ea32877aa2.png' },
-        { w:71, h:133, ratio:0.5338, src:'assets/images/img_eebb8163b2d4.png' }
+        { w:151, h:189, ratio:0.7989, src:'assets/images/digit/red_0.png' },
+        { w:112, h:189, ratio:0.5926, src:'assets/images/digit/red_1.png' },
+        { w:145, h:189, ratio:0.7672, src:'assets/images/digit/red_2.png' },
+        { w:145, h:189, ratio:0.7672, src:'assets/images/digit/red_3.png' },
+        { w:150, h:189, ratio:0.7937, src:'assets/images/digit/red_4.png' },
+        { w:138, h:189, ratio:0.7302, src:'assets/images/digit/red_5.png' },
+        { w:150, h:189, ratio:0.7937, src:'assets/images/digit/red_6.png' },
+        { w:148, h:189, ratio:0.7831, src:'assets/images/digit/red_7.png' },
+        { w:151, h:189, ratio:0.7989, src:'assets/images/digit/red_8.png' },
+        { w:150, h:189, ratio:0.7937, src:'assets/images/digit/red_9.png' }
       ],
       green: [
-        { w:68, h:131, ratio:0.5191, src:'assets/images/img_666fd7c575f0.png' },
-        { w:65, h:131, ratio:0.4962, src:'assets/images/img_05117ad09fb3.png' },
-        { w:67, h:131, ratio:0.5115, src:'assets/images/img_68e379f77c2a.png' },
-        { w:68, h:131, ratio:0.5191, src:'assets/images/img_51e2499f7ba3.png' },
-        { w:70, h:131, ratio:0.5344, src:'assets/images/img_00326d0c7361.png' },
-        { w:68, h:131, ratio:0.5191, src:'assets/images/img_b20b67861338.png' },
-        { w:69, h:131, ratio:0.5267, src:'assets/images/img_cb5157d5dd26.png' },
-        { w:68, h:131, ratio:0.5191, src:'assets/images/img_b92ee28ca05b.png' },
-        { w:70, h:131, ratio:0.5344, src:'assets/images/img_10ba2c2492a0.png' },
-        { w:70, h:131, ratio:0.5344, src:'assets/images/img_80de356ad0c4.png' }
+        { w:149, h:192, ratio:0.776, src:'assets/images/digit/green_0.png' },
+        { w:110, h:192, ratio:0.5729, src:'assets/images/digit/green_1.png' },
+        { w:145, h:192, ratio:0.7552, src:'assets/images/digit/green_2.png' },
+        { w:145, h:192, ratio:0.7552, src:'assets/images/digit/green_3.png' },
+        { w:152, h:192, ratio:0.7917, src:'assets/images/digit/green_4.png' },
+        { w:138, h:192, ratio:0.7188, src:'assets/images/digit/green_5.png' },
+        { w:150, h:192, ratio:0.7812, src:'assets/images/digit/green_6.png' },
+        { w:148, h:192, ratio:0.7708, src:'assets/images/digit/green_7.png' },
+        { w:151, h:192, ratio:0.7865, src:'assets/images/digit/green_8.png' },
+        { w:152, h:192, ratio:0.7917, src:'assets/images/digit/green_9.png' }
+      ],
+      // 2026-09-13新增：MP類型(藍)，不論是MP傷害還是MP恢復，一律使用同一組藍色數字
+      mp: [
+        { w:150, h:188, ratio:0.7979, src:'assets/images/digit/blue_0.png' },
+        { w:111, h:188, ratio:0.5904, src:'assets/images/digit/blue_1.png' },
+        { w:144, h:188, ratio:0.766, src:'assets/images/digit/blue_2.png' },
+        { w:146, h:188, ratio:0.7766, src:'assets/images/digit/blue_3.png' },
+        { w:145, h:188, ratio:0.7713, src:'assets/images/digit/blue_4.png' },
+        { w:138, h:188, ratio:0.734, src:'assets/images/digit/blue_5.png' },
+        { w:149, h:188, ratio:0.7926, src:'assets/images/digit/blue_6.png' },
+        { w:147, h:188, ratio:0.7819, src:'assets/images/digit/blue_7.png' },
+        { w:151, h:188, ratio:0.8032, src:'assets/images/digit/blue_8.png' },
+        { w:150, h:188, ratio:0.7979, src:'assets/images/digit/blue_9.png' }
       ]
     };
 
-    // 傷害(黃)/爆擊(紅火焰)/恢復(綠)三種數字改用上面的美術數字圖拼接顯示；
-    // 其餘類型(MP/護盾/buff提示等)維持原本純文字樣式，不受影響
-    // spriteType: 'dmg'=一般傷害(gold)　'cri'=爆擊傷害(fire)　'heal'=恢復(green)
+    // 傷害(黃)/爆擊(紅火焰)/恢復(綠)/MP(藍)四種數字改用上面的美術數字圖拼接顯示；
+    // 其餘類型(護盾/buff提示等)維持原本純文字樣式，不受影響
+    // spriteType: 'dmg'=一般傷害(gold)　'cri'=爆擊傷害(fire)　'heal'=恢復(green)　'mp'=MP傷害或MP恢復(blue，兩者共用同一組數字)
     function showPopNumberSprite(overlay, x, y, text, spriteType, className) {
       let digitsOnly = String(text).replace(/[^0-9]/g, ''); // 正負號/單位不再顯示文字，改由顏色與造型直接傳達意義
       if (!digitsOnly) digitsOnly = '0';
-      let rowKey = spriteType === 'cri' ? 'fire' : (spriteType === 'heal' ? 'green' : 'gold');
+      let rowKey = spriteType === 'cri' ? 'fire' : (spriteType === 'heal' ? 'green' : (spriteType === 'mp' ? 'mp' : 'gold'));
       let sprites = DIGIT_SPRITES[rowKey];
       if (!sprites) return;
       // 顯示高度：在上一版(一般/恢復38px、爆擊60px)基礎上，整體再縮小約30%
@@ -14994,8 +15008,8 @@ let GOD_POINT_CURVE = [
     function showPopText(x, y, text, className) {
       if (!shouldShowBattleEffects()) return; // 掛機演出且目前不在主線首頁(沒有畫面可看)才略過
       const overlay = document.getElementById('anim-overlay');
-      // 傷害/爆擊/恢復三種數字改用美術數字圖顯示(見上方 showPopNumberSprite)
-      let spriteType = className === 'dmg-num' ? 'dmg' : (className === 'cri-num' ? 'cri' : (className === 'heal-num' ? 'heal' : null));
+      // 傷害/爆擊/恢復/MP四種數字改用美術數字圖顯示(見上方 showPopNumberSprite)
+      let spriteType = className === 'dmg-num' ? 'dmg' : (className === 'cri-num' ? 'cri' : (className === 'heal-num' ? 'heal' : (className === 'mp-num' ? 'mp' : null)));
       if (spriteType) { showPopNumberSprite(overlay, x, y, text, spriteType, className); return; }
       let el = document.createElement('div');
       el.className = className;
