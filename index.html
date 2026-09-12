@@ -3738,6 +3738,7 @@
 </style>
   <link rel="stylesheet" href="assets/css/ui-theme.css">
   <link rel="stylesheet" href="assets/css/pixel-dungeon.css">
+  <link rel="stylesheet" href="assets/css/ornate-ui.css">
 </head>
 <body>
 
@@ -3817,7 +3818,7 @@
 
       <!-- 畫面1：關卡選擇(副本) -->
       <div class="screen-panel" id="screen-quest-select">
-        <div class="screen-title">⚔️ 選擇關卡</div>
+        <div class="screen-title">選擇關卡</div>
         <div class="quest-list" id="quest-list"></div>
         <div class="quest-pagination">
           <button class="btn" id="btn-quest-prev" onclick="questPrevPage()">◀ 上一頁</button>
@@ -3828,7 +3829,7 @@
 
       <!-- 畫面：副本分類選單(神格試煉/試煉之塔/無限地城/殲滅任務) -->
       <div class="screen-panel" id="screen-quest-category" style="display:none;">
-        <div class="screen-title">📕 選擇區域</div>
+        <div class="screen-title">選擇區域</div>
         <div class="quest-category-list" id="quest-category-list"></div>
       </div>
 
@@ -3880,7 +3881,7 @@
 
       <!-- 畫面：神格試煉 - 選擇難度(4種難度，各自從8個等機率變體中隨機骰一個組成敵陣) -->
       <div class="screen-panel" id="screen-god-trial" style="display:none;">
-        <div class="screen-title">⚜️ 神格試煉</div>
+        <div class="screen-title">神格試煉</div>
         <img id="god-trial-banner" src="" style="width:100%;border-radius:6px;margin-bottom:6px;display:block;">
         <div class="god-trial-ticket-hint explore-empty-hint" id="god-trial-ticket-hint"></div>
         <div class="quest-list" id="god-trial-list"></div>
@@ -3891,7 +3892,7 @@
 
       <!-- 畫面：佈陣系統(持久設定，於「裝備」選單進入；不再綁定單一副本關卡) -->
       <div class="screen-panel" id="screen-team-formation" style="display:none;">
-        <div class="screen-title">🛡️ 佈陣 (選擇5名武器上陣)</div>
+        <div class="screen-title">佈陣 (選擇5名武器上陣)</div>
         <div class="weapon-slot-row" id="formation-preview"></div>
         <div class="formation-roster" id="formation-roster"></div>
         <div class="action-bar">
@@ -3905,7 +3906,7 @@
 
       <!-- 畫面：職業系統 -->
       <div class="screen-panel" id="screen-class-select" style="display:none;">
-        <div class="screen-title">👑 職業</div>
+        <div class="screen-title">職業</div>
         <div class="class-sub-tab-row">
           <button class="class-sub-tab-btn" id="class-sub-tab-class" onclick="switchClassSubTab('class')">職業</button>
           <button class="class-sub-tab-btn" id="class-sub-tab-god" onclick="switchClassSubTab('god')">神格</button>
@@ -3935,7 +3936,7 @@
 
       <!-- 畫面：裝備系統主選單 -->
       <div class="screen-panel" id="screen-equip-menu" style="display:none;">
-        <div class="screen-title">🛡️ 裝備</div>
+        <div class="screen-title">裝備</div>
         <div class="equip-menu-list">
           <div class="equip-menu-btn" onclick="onClassEquipClick()">
             <div class="equip-menu-icon equip-menu-icon-img" style="background-image:url('assets/images/img_9236b1703116.png')"></div>
@@ -3950,7 +3951,7 @@
 
       <!-- 畫面：職業裝備系統 -->
       <div class="screen-panel" id="screen-class-equip" style="display:none;">
-        <div class="screen-title">🎽 職業裝備</div>
+        <div class="screen-title">職業裝備</div>
         <div class="class-equip-header-row">
           <span class="class-equip-arrow" onclick="cycleClassEquipRole(-1)">◀</span>
           <div class="class-equip-summary-box">
@@ -3980,7 +3981,7 @@
 
       <!-- 畫面：魔法石系統 -->
       <div class="screen-panel" id="screen-gem-screen" style="display:none;">
-        <div class="screen-title">💎 魔法石</div>
+        <div class="screen-title">魔法石</div>
         <div class="weapon-slot-row" id="gem-weapon-row"></div>
         <div class="gem-detail-panel" id="gem-detail-panel"></div>
         <div class="gem-owned-list" id="gem-owned-list"></div>
@@ -3994,7 +3995,7 @@
 
       <!-- 畫面：武器選單 -->
       <div class="screen-panel" id="screen-weapon" style="display:none;">
-        <div class="screen-title">🗡️ 武器選單</div>
+        <div class="screen-title">武器選單</div>
         <div class="weapon-menu-preview">
           <div class="weapon-menu-main">
             <div class="weapon-menu-left">
@@ -4028,7 +4029,7 @@
 
       <!-- 畫面：天賦 -->
       <div class="screen-panel" id="screen-talent" style="display:none;">
-        <div class="screen-title">📖 天賦</div>
+        <div class="screen-title">天賦</div>
         <div class="talent-info-box">
           <div class="talent-info-icon" id="talent-info-icon">🔮</div>
           <div class="talent-info-text">
@@ -4061,7 +4062,7 @@
 
       <!-- 畫面：召喚(轉蛋) -->
       <div class="screen-panel" id="screen-gacha" style="display:none;">
-        <div class="screen-title">🔮 召喚</div>
+        <div class="screen-title">召喚</div>
         <div id="gacha-banner-list"></div>
       </div>
 
