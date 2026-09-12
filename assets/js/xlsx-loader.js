@@ -243,7 +243,7 @@ function buildInlineIconWithFallback(category, id, fallbackHtml, sizeEm) {
 function buildItemDatabase(wb) {
   const gen = {};
   xlsxSheetToObjects(wb, 'item').forEach(o => {
-    gen[o.id] = { id: o.id, name: o['名稱'], usage: o.usage, icon: buildIconWithFallback('item', o.id, ITEM_ICON_MAP[o.id] || '📦') };
+    gen[o.id] = { id: o.id, name: o['名稱'], usage: o.usage, info: o.item_info, icon: buildIconWithFallback('item', o.id, ITEM_ICON_MAP[o.id] || '📦') };
   });
   return gen;
 }
@@ -658,7 +658,7 @@ const CARD_PREFEB_CLASSES = new Set(['card_floating', 'card_metal', 'card_magic'
 function buildCardIconHtml(id, prefeb) {
   const pct = CARD_ICON_STYLE_MAP[id] !== undefined ? CARD_ICON_STYLE_MAP[id] : 80;
   const src = `assets/images/card/card_${id}.png?v=${ASSET_VERSION}`;
-  const imgTag = `<img src='${src}' style='max-width:${pct}%;max-height:${pct}%;width:auto;height:auto;object-fit:contain;pointer-events:none;' onerror="this.style.display='none'">`;
+  const imgTag = `<img src='${src}' style='max-width:${pct}%;max-height:${pct}%;width:auto;height:auto;min-width:0;min-height:0;object-fit:contain;pointer-events:none;' onerror="this.style.display='none'">`;
   // 2026-09-10新增：card分頁的card_prefeb欄位(card_floating/card_metal/card_magic)，讓卡面本身疊加一層
   // 常駐(不需要觸發，永遠在播放)的視覺特效(流光劃過/呼吸輝光/變色)。沒有填/填的值不是這三種之一，
   // 就完全比照原本純<img>的輸出，不受影響。這裡統一忽略前後空白，避免xlsx儲存格不小心多打空格導致比對失敗。

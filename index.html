@@ -2096,7 +2096,7 @@
     .talent-info-icon {
       width: 44px;
       height: 44px;
-      border-radius: 50%;
+      border-radius: 6px;
       background: #241d18;
       border: 2px solid #7a6350;
       display: flex;
@@ -2263,11 +2263,15 @@
       background: transparent;
     }
     /* 圖示置中規則只作用在武器卡面(.weapon-slot-badge)內，避免影響戰鬥主角頭像、小地圖敵人頭像等其他共用同一張 card.icon 圖片的地方 */
+    /* 2026-09-10修正：原本用top:50%;left:50%;transform:translate(-50%,-50%)做置中，但card_prefeb的
+       漂浮動畫(card-prefeb-float)也是用transform(translateY+rotate)做動畫——CSS animation會整個蓋掉
+       元素原本的transform值(不會疊加)，導致漂浮動畫一播放，這裡的置中transform直接被蓋掉、圖示偏移到
+       左上角去。改成用inset:0+margin:auto做置中(不需要用到transform這個屬性)，跟漂浮動畫的transform
+       完全不衝突，兩者可以同時生效。 */
     .weapon-slot-badge img:not(.card-rank-badge) {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+      inset: 0;
+      margin: auto;
     }
     .weapon-slot-check {
       position: absolute;
@@ -4291,7 +4295,7 @@
       <div class="screen-panel" id="screen-talent" style="display:none;">
         <div class="screen-title">天賦</div>
         <div class="talent-info-box">
-          <div class="talent-info-icon" id="talent-info-icon">🔮</div>
+          <div class="talent-info-icon" id="talent-info-icon"></div>
           <div class="talent-info-text">
             <div class="talent-info-name" id="talent-info-name">請選擇一個天賦節點</div>
             <div class="talent-info-desc" id="talent-info-desc"></div>
@@ -8026,6 +8030,23 @@ let GOD_POINT_CURVE = [
       return '⚔️';
     }
 
+    // 2026-09-12新增：技能圖示改用「跟技能id相同編號」讀取(assets/images/skill/skill_{技能id}.png)。
+    // 目前只有這3個id區間實際有上傳圖檔：110000~119999、890000~899999、990001~999999，其餘id範圍
+    // 完全沒有圖檔——這裡先判斷id是否落在這幾個已知有圖的區間內，只有落在區間內才會真的去發送圖片請求，
+    // 落在區間外的一律直接顯示emoji替代圖示，不會發出任何一定會404的圖片請求，主控台也就不會一直跳錯誤。
+    // 之後Wei陸續把其餘id的圖也補齊時，只要把對應的區間加進SKILL_ICON_ID_RANGES就會自動生效。
+    const SKILL_ICON_ID_RANGES = [[110000, 119999], [890000, 899999], [990001, 999999]];
+    function skillIdHasIconRange(skillId) {
+      return SKILL_ICON_ID_RANGES.some(([lo, hi]) => skillId >= lo && skillId <= hi);
+    }
+    function skillIconHtml(s) {
+      if (!s) return '⚔️';
+      const glyph = skillIconGlyph(s);
+      if (!skillIdHasIconRange(s.id)) return glyph; // 已知這個id範圍還沒有圖，直接用emoji，不嘗試發送圖片請求
+      // onerror防呆：就算id落在「應該有圖」的區間內，但這個特定id剛好還沒補上圖檔時，仍然靜默退回emoji，不會破圖
+      return `<img src="assets/images/skill/skill_${s.id}.png?v=${ASSET_VERSION}" style="width:100%;height:100%;object-fit:contain;min-width:0;min-height:0;pointer-events:none;" onerror="this.outerHTML='${glyph}'">`;
+    }
+
     function showClassSkillInfo(skillId) {
       let s = SKILL_DATABASE[skillId];
       if (!s) return;
@@ -8166,6 +8187,16 @@ let GOD_POINT_CURVE = [
       renderShopScreen();
     }
 
+    // 2026-09-12新增：點選商店裡的商品圖示/名稱，用現有的一般提示彈窗(generic-info-modal)顯示這個道具
+    // 的item_info說明文字，並在下方額外附上「目前身上擁有的數量」，方便玩家購買前參考。
+    function showShopItemInfo(itemId) {
+      const data = ITEM_DATABASE[itemId];
+      const name = itemName(itemId);
+      const desc = (data && data.info) ? data.info : '（尚無說明）';
+      const owned = getItemAmount(itemId);
+      showGenericInfoModal(name, `${desc}\n\n目前擁有：${owned.toLocaleString()}`);
+    }
+
     function renderShopScreen() {
       const container = document.getElementById('shop-content');
       if (!container) return;
@@ -8182,8 +8213,8 @@ let GOD_POINT_CURVE = [
           const priceText = `${itemIcon(it.priceId, 'inline')} ${it.priceAmount.toLocaleString()}`;
           return `
             <div class="shop-item-slot">
-              <span class="icon-box shop-item-icon">${itemIcon(it.id1, 'box')}</span>
-              <div class="shop-item-name">${itemName(it.id1)}</div>
+              <span class="icon-box shop-item-icon" onclick="showShopItemInfo(${it.id1})" style="cursor:pointer;">${itemIcon(it.id1, 'box')}</span>
+              <div class="shop-item-name" onclick="showShopItemInfo(${it.id1})" style="cursor:pointer;">${itemName(it.id1)}</div>
               <div class="shop-item-qty">x${it.id1Amount}</div>
               <button class="shop-buy-btn" ${soldOut ? 'disabled' : ''} onclick="buyShopItem(${shopEntry.shopId}, ${it.id1})">
                 ${soldOut ? '已售完' : priceText}
@@ -8265,7 +8296,7 @@ let GOD_POINT_CURVE = [
         const el = document.createElement('div');
         el.className = 'gacha-banner';
         el.innerHTML = `
-          <div class="gacha-banner-title">🔮 ${gl.info}</div>
+          <div class="gacha-banner-title">${gl.info}</div>
           <div class="gacha-banner-time">${statusText || `開放時間：${gl.beginTime.slice(0,16)} ~ ${gl.endTime.slice(0,16)}`}</div>
           <div class="gacha-btn-row">
             <button class="gacha-pull-btn" ${can1 ? '' : 'disabled'} onclick="pullGacha(${gl.id}, 1)">單抽<small>${itemIcon(gl.cost1Id)} x${gl.cost1Amount} (現有${have1})</small></button>
@@ -9828,7 +9859,7 @@ let GOD_POINT_CURVE = [
         nameEl.innerText = '請選擇一個天賦節點';
         descEl.innerText = '';
         frontEl.innerHTML = '';
-        iconEl.innerHTML = '🔮';
+        iconEl.innerHTML = '';
         learnBtn.disabled = true;
         learnBtn.innerText = '使用';
         return;
@@ -10575,7 +10606,7 @@ let GOD_POINT_CURVE = [
       let skillsHtml = [card.s0, getCardCurrentSkillId(card, 1, starLevel), getCardCurrentSkillId(card, 2, starLevel)].filter(sid => sid).map(sid => {
         let s = SKILL_DATABASE[sid];
         if (!s) return '';
-        return `<div style="margin-bottom:6px;"><span class="weapon-menu-skill-name">${s.name}：</span>${formatSkillDesc(s)}</div>`;
+        return `<div style="margin-bottom:6px;"><span class="weapon-menu-skill-icon" style="display:inline-flex;width:1.3em;height:1.3em;vertical-align:middle;align-items:center;justify-content:center;margin-right:4px;">${skillIconHtml(s)}</span><span class="weapon-menu-skill-name">${s.name}：</span>${formatSkillDesc(s)}</div>`;
       }).join('');
       document.getElementById('weapon-menu-skills').innerHTML = skillsHtml || '（無額外技能資訊）';
 
@@ -11821,7 +11852,7 @@ let GOD_POINT_CURVE = [
       let skillsHtml = skillIds.map(sid => {
         let s = SKILL_DATABASE[sid];
         if (!s) return '';
-        return `<div style="margin-bottom:8px; font-size:12px;"><span class="weapon-menu-skill-name">${s.name}${s.cooldown ? `（冷卻${s.cooldown}回合）` : ''}：</span>${formatSkillDesc(s)}</div>`;
+        return `<div style="margin-bottom:8px; font-size:12px;"><span class="weapon-menu-skill-icon" style="display:inline-flex;width:1.2em;height:1.2em;vertical-align:middle;align-items:center;justify-content:center;margin-right:3px;">${skillIconHtml(s)}</span><span class="weapon-menu-skill-name">${s.name}${s.cooldown ? `（冷卻${s.cooldown}回合）` : ''}：</span>${formatSkillDesc(s)}</div>`;
       }).join('') || '（無額外技能資訊）';
 
       document.getElementById('star-preview-body').innerHTML = statsHtml + skillsHtml;
