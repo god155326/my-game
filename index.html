@@ -16855,5 +16855,104 @@ let GOD_POINT_CURVE = [
 }
 </style>
 
+
+
+<!-- Codex UI polish v10: put battle masks between scenery and UI content -->
+<style id="codex-ui-polish-v10">
+/* Restore the enemy label and battle metadata to one 32px row. */
+#screen-battle .battle-enemy-zone > .battle-faction.enemy-faction {
+  position: relative !important;
+  z-index: 4 !important;
+  margin: 0 !important;
+}
+#screen-battle .battle-enemy-zone > .log-header {
+  position: absolute !important;
+  top: 0 !important;
+  left: 75px !important;
+  right: 4px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  margin: 0 !important;
+  padding: 0 0 0 5px !important;
+  display: flex !important;
+  align-items: center !important;
+  overflow: hidden !important;
+  isolation: isolate;
+  z-index: 3 !important;
+}
+
+/* Disable v9's top-layer masks on the two card rows. */
+#screen-battle #enemy-row::after,
+#screen-battle #player-row::after {
+  display: none !important;
+}
+
+/* The black layer is above the scenery but below every card. */
+#screen-battle #enemy-row,
+#screen-battle #player-row {
+  position: relative !important;
+  isolation: isolate;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+#screen-battle #enemy-row::before,
+#screen-battle #player-row::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, .80) !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+#screen-battle #enemy-row > *,
+#screen-battle #player-row > * {
+  position: relative;
+  z-index: 1 !important;
+}
+
+/* Header masks stay behind their labels, frames and buttons. */
+#screen-battle .battle-enemy-zone > .log-header::after,
+#screen-battle .battle-player-zone > .battle-player-heading::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  background: rgba(0, 0, 0, .80) !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+#screen-battle .battle-enemy-zone > .log-header > *,
+#screen-battle .battle-player-zone > .battle-player-heading > * {
+  position: relative;
+  z-index: 1 !important;
+}
+
+/* Apply the same layer order to the role icon/name/action bar strip. */
+#screen-battle #player-role-hp-block {
+  position: relative !important;
+  isolation: isolate;
+}
+#screen-battle #player-role-hp-block::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, .80) !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+#screen-battle #player-role-hp-block > * {
+  position: relative;
+  z-index: 1 !important;
+}
+</style>
+
 </body>
 </html>
