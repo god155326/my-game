@@ -16991,5 +16991,96 @@ let GOD_POINT_CURVE = [
 }
 </style>
 
+
+
+<!-- Codex UI polish v12: unified battle masks, full-size action panel and solid timeline circles -->
+<style id="codex-ui-polish-v12">
+/* Retire all earlier sectional pseudo-element masks. */
+#screen-battle .battle-enemy-zone::before,
+#screen-battle .battle-player-zone::before,
+#screen-battle .battle-enemy-zone > .log-header::after,
+#screen-battle .battle-player-zone > .battle-player-heading::after,
+#screen-battle #enemy-row::before,
+#screen-battle #enemy-row::after,
+#screen-battle #player-row::before,
+#screen-battle #player-row::after,
+#screen-battle #enemy-role-hp-block::before,
+#screen-battle #player-role-hp-block::before,
+#screen-battle .battle-grid::before,
+#screen-battle .battle-grid::after {
+  display: none !important;
+}
+
+/* All three battle sections use the same 90% black / 10% scenery treatment. */
+#screen-battle .battle-enemy-zone,
+#screen-battle .battle-player-zone,
+#screen-battle .battle-grid {
+  background: rgba(0, 0, 0, .90) !important;
+  box-shadow: none !important;
+}
+
+/* Preserve the established UI/content layer above the unified backgrounds. */
+#screen-battle .battle-enemy-zone > *,
+#screen-battle .battle-player-zone > * {
+  position: relative;
+  z-index: 1 !important;
+}
+#screen-battle .battle-enemy-zone > .log-header {
+  position: absolute !important;
+  z-index: 3 !important;
+}
+#screen-battle .battle-enemy-zone > .battle-faction.enemy-faction {
+  z-index: 4 !important;
+}
+
+/* The manual action panel now covers the full battle-record area. */
+#screen-battle .battle-grid {
+  position: relative !important;
+  overflow: hidden !important;
+}
+#screen-battle .battle-grid .log-box-wrap {
+  position: static !important;
+}
+#screen-battle #action-popup {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 8px !important;
+  box-sizing: border-box !important;
+  border-radius: 8px !important;
+  z-index: 20 !important;
+}
+#screen-battle #action-popup .action-popup-preview {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+#screen-battle #action-popup .action-popup-tabs {
+  display: flex !important;
+  align-items: stretch !important;
+  gap: 6px !important;
+  padding: 0 !important;
+  flex: 0 0 auto !important;
+}
+#screen-battle #action-popup .action-popup-tabs > .btn {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  min-height: 38px !important;
+  height: auto !important;
+  padding: 6px 4px !important;
+  line-height: 1.2 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  text-align: center !important;
+}
+
+/* Timeline weapons remain visible above a fully opaque circular black base. */
+#screen-battle #timeline-list > .timeline-item {
+  background: #000 !important;
+  background-color: #000 !important;
+}
+</style>
+
 </body>
 </html>
