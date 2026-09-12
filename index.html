@@ -16403,5 +16403,39 @@ let GOD_POINT_CURVE = [
 <script id="ui-polish-v4-layout">
 (function(){function setup(){const header=document.querySelector('#reward-preview-modal .cheat-modal-header');if(!header)return;const clean=()=>{const walk=document.createTreeWalker(header,NodeFilter.SHOW_TEXT);let node;while(node=walk.nextNode()){if(node.textContent.includes('🎁'))node.textContent=node.textContent.replace(/🎁\s*/gu,'');}};clean();new MutationObserver(clean).observe(header,{childList:true,subtree:true,characterData:true});}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();})();
 </script>
+
+<!-- UI polish v5: loot summary, inventory and fragment composition -->
+<style id="ui-polish-v5">
+#idle-reward-list-modal .cheat-modal-box,.equip-menu-btn,.item-backpack-slot-icon {
+ border:8px solid transparent!important;border-image:var(--ui-frame-v2) 14% / 10px / 1px stretch!important;border-radius:0!important;background-color:#101012;
+}
+#idle-reward-list-modal .cheat-modal-box {display:flex;flex-direction:column;max-height:76%;min-height:0;overflow:hidden;background:linear-gradient(110deg,#1b1714,#0b0c0e)!important;}
+#idle-reward-list-modal .cheat-modal-header,#idle-reward-list-modal .gem-actions {flex-shrink:0;}
+#idle-reward-list-body {overflow-y:auto!important;min-height:0;max-height:48vh;overscroll-behavior:contain;padding:8px 4px;}
+#idle-reward-list-body .idle-reward-mini,#idle-reward-list-body .idle-reward-mini * {font-size:15px!important;line-height:1.6;}
+#idle-reward-list-body .idle-reward-mini {margin-bottom:7px;}
+#idle-reward-list-modal button,.shop-refresh-btn,.item-backpack-tab,.equip-menu-icon {
+ border:6px solid transparent!important;border-image:var(--ui-frame-v2) 14% / 8px / 1px stretch!important;border-radius:0!important;background-color:#1b1712!important;color:#e1cda5;
+}
+.item-backpack-tab.active {background-color:#44321a!important;color:#ffe0a0!important;}
+.shop-refresh-btn {padding:5px 9px;}
+#result-loot .result-loot-item {margin-bottom:0!important;}
+#result-loot .result-loot-item::after {content:none!important;}
+#result-loot .loot-summary-v5 {flex:0 0 100%;font-size:14px;line-height:1.65;text-align:center;color:#dfcba6;margin:6px 0 0;}
+.icon-box div:has(> img[src*="fragment-overlay.png"]) {isolation:isolate;}
+.icon-box div > img[src*="fragment-overlay.png"] {inset:auto!important;right:0!important;bottom:0!important;width:32%!important;height:32%!important;z-index:2;}
+.icon-box div:has(> img[src*="fragment-overlay.png"]) > img[src*="/card/"] {inset:0!important;transform:none!important;width:100%!important;height:100%!important;z-index:1;}
+.equip-menu-icon svg {width:100%;height:100%;}
+.equip-menu-icon {background-image:none!important;padding:5px;}
+</style>
+<script id="ui-polish-v5-layout">
+(function(){function setup(){
+ const loot=document.getElementById('result-loot');if(loot){const update=()=>{const items=[...loot.querySelectorAll('.result-loot-item')];let summary=loot.querySelector('.loot-summary-v5');if(!items.length){if(summary)summary.remove();return;}if(!summary){summary=document.createElement('div');summary.className='loot-summary-v5';loot.append(summary);}const text=items.map(el=>(el.title||'')+(el.querySelector('strong')?.textContent||'').replace('×','x')).join('、');if(summary.textContent!==text)summary.textContent=text;};update();new MutationObserver(update).observe(loot,{childList:true,subtree:true,characterData:true});}
+ const strip=(root,symbol)=>{if(!root)return;const clean=()=>{const walk=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;while(n=walk.nextNode())if(n.textContent.includes(symbol))n.textContent=n.textContent.replaceAll(symbol,'').trimStart();};clean();new MutationObserver(clean).observe(root,{childList:true,subtree:true,characterData:true});};
+ strip(document.querySelector('#idle-reward-list-modal .cheat-modal-header'),'📋');
+ const shop=document.getElementById('shop-content');if(shop){const clean=()=>shop.querySelectorAll('.shop-refresh-btn').forEach(btn=>{for(const n of btn.childNodes)if(n.nodeType===3&&n.textContent.includes('🔄'))n.textContent=n.textContent.replace('🔄','').trimStart();});clean();new MutationObserver(clean).observe(shop,{childList:true,subtree:true,characterData:true});}
+ const list=document.querySelector('#screen-equip-menu .equip-menu-list');if(list){const order=['裝備背包','道具背包','裝備道具','魔法石'];const paths=['M10 8L24 3 38 8V26L24 42 10 26Z M17 12V25L24 33 31 25V12','M13 13V9Q13 3 24 3T35 9V13M8 13H40V42H8ZM8 24H40M20 21H28V29H20','M12 37L35 5 40 10 17 42ZM9 28L24 40','M7 15L17 5H31L41 15 24 42ZM7 15H41M17 5L15 15 24 42 33 15 31 5'];const entries=[...list.querySelectorAll('.equip-menu-btn')];entries.sort((a,b)=>order.indexOf(a.textContent.trim())-order.indexOf(b.textContent.trim())).forEach(el=>{const i=order.indexOf(el.textContent.trim());const icon=el.querySelector('.equip-menu-icon');if(icon&&i>=0)icon.innerHTML='<svg viewBox="0 0 48 48" aria-hidden="true"><path d="'+paths[i]+'" fill="#34291c" stroke="#c4a06b" stroke-width="2.5" stroke-linejoin="miter"/></svg>';list.append(el);});}
+}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();})();
+</script>
 </body>
 </html>
