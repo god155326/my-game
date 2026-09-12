@@ -10,7 +10,12 @@ body{background:#08090b;font-family:Georgia,"Noto Serif TC","PMingLiU",serif}
 .top-header-currency>span{border:0;background:none;padding:0;border-radius:0}
 .top-header-currency>span:last-child{color:#82b9ff}
 #screen-wrapper{flex:1;min-height:0;height:auto!important}
-#screen-battle{flex:1;min-height:0;height:auto;gap:5px;justify-content:flex-start;background:url('../images/ui/dungeon-hall.png') center 37%/100% auto no-repeat}
+/* 2026-09-12修正：#screen-battle原本把dungeon-hall.png寫死在background簡寫屬性裡，主線戰鬥的背景圖現在
+   要依照玩家目前的故事進度動態切換(見index.html的applyBattleScreenBackground())。拆成background-image
+   單獨用一個CSS變數(--battle-bg-image)控制，其餘position/size/repeat維持完全相同的設定值不變；
+   JS沒有設定這個變數時(例如無限地城/試煉之塔/神格試煉/殲滅任務，這幾種關卡類型目前仍沿用寫死的圖，
+   之後才會有專屬的背景規則)，就會自動退回原本的dungeon-hall.png，行為完全不變。 */
+#screen-battle{flex:1;min-height:0;height:auto;gap:5px;justify-content:flex-start;background-image:var(--battle-bg-image,url('../images/ui/dungeon-hall.png'));background-position:center 37%;background-size:100% auto;background-repeat:no-repeat}
 .battle-enemy-zone{order:0;position:relative;flex-shrink:0}
 .battle-enemy-zone>.log-header{height:30px;padding:0 4px 0 67px;margin-bottom:6px}
 .battle-enemy-zone .log-header-text-group{justify-content:flex-start;overflow:visible}

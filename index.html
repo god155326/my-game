@@ -7016,6 +7016,10 @@ let GOD_POINT_CURVE = [
       playerLevel: 0,
       // 玩家個人資料(顯示用；金幣/鑽石一律從 items 實際持有量讀取，非固定數值)
       profile: { name: "匿名的勇者", level: 5, exp: 16549879 },
+      // 2026-09-12新增：玩家目前故事進度對應的背景圖檔名(text分頁background欄位的值，例如"ch3.jpg")，
+      // 用於主線戰鬥背景依故事進度動態顯示(見saveStoryProgressBg()/loadStoryProgressBg()/
+      // applyBattleScreenBackground())。預設ch0.jpg(對應教學戰鬥前、故事最初始的狀態)。
+      storyProgressBg: 'ch0.jpg',
       // 玩家實際持有的道具(含金幣1000/鑽石1001)：{ itemId: amount }，起始一律為0(空)
       items: {},
       // 玩家擁有的武器(card)id集合，起始為空，需透過召喚(gacha)取得
@@ -7767,11 +7771,16 @@ let GOD_POINT_CURVE = [
 
     // 從「職業」列表點選裝備預覽格：直接跳轉到「職業裝備」畫面，並記住是點了哪一個職業(而非目前使用中的職業)
     // 新手引導期間「裝備」分頁(職業裝備也包含在內)尚未解鎖，這個捷徑入口也要一併擋下，等引導結束(解鎖裝備分頁)後才開放
+    // 2026-09-12新增：職業裝備「系統」本身有自己的解鎖檢查點(class_equip)，比裝備分頁本身更晚才開放——
+    // 過去這裡只檔了「裝備分頁還沒解鎖」這個較早的情況，沒有另外檔「裝備分頁已解鎖，但職業裝備系統checkpoint
+    // 還沒達到」這個中間狀態，導致玩家在職業裝備系統正式解鎖前，就能透過這個捷徑點進去。比照裝備選單裡
+    // 「職業裝備」按鈕既有的guardLockedFeature('class_equip')寫法，這裡也補上同一個檢查。
     function openClassEquipScreenFor(roleId) {
       if (gameState.lockedNavTabs && gameState.lockedNavTabs.has('equip')) {
         Guide.toast('尚未解鎖，請先完成新手引導！');
         return;
       }
+      if (!guardLockedFeature('class_equip')) return;
       gameState.classEquipUI.viewingRoleId = roleId;
       openClassEquipScreen();
     }
@@ -11483,6 +11492,7 @@ let GOD_POINT_CURVE = [
 
     function initGame(playerIds, enemyIds, enemyLevel, playerRoleId, enemyRoleId) {
       document.getElementById('result-modal').style.display = 'none';
+      applyBattleScreenBackground(gameState.selectedQuest);
 
       // 上陣人數依關卡設定各自決定(1主角+N武器)；雙方武器數量不再需要對稱，各自依關卡表(quest欄位)實際填寫的數量為準
       let playerHeroes = (playerIds && playerIds.length > 0) ? getPlayerHeroesWithOwnLevels(playerIds) : getRandomHeroes(5);
@@ -11844,6 +11854,41 @@ let GOD_POINT_CURVE = [
     // 共用檢查：只要有尚未播放的劇情(Guide._pendingMainAfterMapId，由showResultModal監聽勝利時記錄)，
     // 就先播放完劇情，才會繼續執行原本要做的事(afterFn)；回傳true代表劇情正在播放中(呼叫端應該直接return，
     // 不要再往下執行)，false代表沒有待播放劇情，呼叫端可以照常立即繼續。
+    // 2026-09-12新增：主線戰鬥背景改依玩家故事進度動態顯示(Wei要求)，不再寫死同一張dungeon-hall.png。
+    // 存/讀都走localStorage——這是目前整個遊戲第一個有做「跨瀏覽器重整持久化」的資料，因為原本完全沒有
+    // 任何存檔機制(整份gameState都只存在記憶體裡，重新整理頁面就會全部重置)；如果之後Wei想要把其他玩家
+    // 資料(等級/裝備/道具...)也做成重整不會遺失，需要另外建立一套完整的存檔系統，這裡先只針對「故事進度
+    // 背景」這一項單獨處理，範圍不會擴大到其他資料。
+    const STORY_PROGRESS_BG_STORAGE_KEY = 'immortalJourney_storyProgressBg';
+    function saveStoryProgressBg(bgFile) {
+      if (!bgFile) return;
+      gameState.storyProgressBg = bgFile;
+      try { localStorage.setItem(STORY_PROGRESS_BG_STORAGE_KEY, bgFile); } catch (e) { /* 無痕模式等情況下localStorage可能無法使用，靜默忽略，僅本次執行期間記得住 */ }
+    }
+    function loadStoryProgressBg() {
+      try {
+        const saved = localStorage.getItem(STORY_PROGRESS_BG_STORAGE_KEY);
+        if (saved) gameState.storyProgressBg = saved;
+      } catch (e) { /* 同上，讀取失敗就維持預設值ch0.jpg */ }
+    }
+    loadStoryProgressBg(); // 頁面載入時立刻嘗試還原，之後才會有戰鬥發生，確保第一場戰鬥就是對的背景
+
+    // 主線戰鬥的背景圖：依玩家目前故事進度(gameState.storyProgressBg)動態切換，統一透過CSS變數
+    // --battle-bg-image覆寫(見assets/css/pixel-dungeon.css的#screen-battle)，其餘定位/縮放設定完全不變。
+    // 無限地城/試煉之塔/神格試煉/殲滅任務這4種關卡類型，跟主線故事進度無關，目前仍沿用原本寫死的
+    // dungeon-hall.png(不設定這個CSS變數，讓CSS的預設值生效)，等Wei之後提供這幾種類型各自的背景規則
+    // 再另外串接。
+    function applyBattleScreenBackground(quest) {
+      const el = document.getElementById('screen-battle');
+      if (!el) return;
+      if (quest && quest.type === 'main') {
+        const bg = gameState.storyProgressBg || 'ch0.jpg';
+        el.style.setProperty('--battle-bg-image', `url('assets/images/background/${bg}?v=${ASSET_VERSION}')`);
+      } else {
+        el.style.removeProperty('--battle-bg-image');
+      }
+    }
+
     function checkPendingMainStory(afterFn) {
       if (Guide._pendingMainAfterMapId != null) {
         const mapId = Guide._pendingMainAfterMapId;
@@ -11853,6 +11898,9 @@ let GOD_POINT_CURVE = [
         gameState.pendingResultModal = null;
         updateMiniBattleBar();
         const storyMeta = getMainlineStoryFor(mapId);
+        // 2026-09-12新增：記錄玩家目前故事進度對應的背景圖(見saveStoryProgressBg())，之後的主線戰鬥
+        // 背景就會統一依照這裡最後記錄到的值顯示，直到下一段劇情又更新它為止
+        if (storyMeta.bgFile) saveStoryProgressBg(storyMeta.bgFile);
         Story.playAsync(storyMeta.after, { bgFile: storyMeta.bgFile }).then(afterFn);
         return true;
       }
@@ -15384,15 +15432,22 @@ let GOD_POINT_CURVE = [
     // 主線關卡「戰前」劇情：只要 MAINLINE_STORY 中該 mapId 設有 before，且尚未播放過，開戰前先播放
     gameState.playedStoryKeys = gameState.playedStoryKeys || new Set();
     const __origProceedSelectQuest = proceedSelectQuest;
-    proceedSelectQuest = function(quest) {
-      const beforeLines = getMainlineStoryFor(quest.mapId) && getMainlineStoryFor(quest.mapId).before;
+    // 2026-09-12修正(又發現一次「縮小戰鬥被強制跳回戰鬥畫面」的同一種bug)：這個monkeypatch又被改回只接收
+    // quest一個參數，呼叫__origProceedSelectQuest時也只傳了quest，把「縮小戰鬥」機制依賴的第二個參數opts
+    // (內含keepMinimized:true)弄丟了——這是先前修過、後來又不小心被回復成舊版的同一個bug，這裡改成完整
+    // 轉發opts參數。同時把「戰前」劇情的background(bgFile)也一併補上(先前只顧到mapid=100那幾段，
+    // 一般主線關卡的「戰前」劇情background欄位其實一直沒有生效)，並記錄故事進度背景。
+    proceedSelectQuest = function(quest, opts) {
+      const storyMeta = getMainlineStoryFor(quest.mapId);
+      const beforeLines = storyMeta && storyMeta.before;
       const key = 'before_' + quest.mapId;
       if (beforeLines && !gameState.playedStoryKeys.has(key)) {
         gameState.playedStoryKeys.add(key);
-        Story.playAsync(beforeLines).then(() => __origProceedSelectQuest(quest));
+        if (storyMeta.bgFile) saveStoryProgressBg(storyMeta.bgFile);
+        Story.playAsync(beforeLines, { bgFile: storyMeta.bgFile }).then(() => __origProceedSelectQuest(quest, opts));
         return;
       }
-      __origProceedSelectQuest(quest);
+      __origProceedSelectQuest(quest, opts);
     };
 
     // 佈陣「開始戰鬥」：若正處於引導中，結束引導(真正的戰鬥啟動交由上面 proceedSelectQuest 鉤子接手播放戰前劇情)
