@@ -12307,14 +12307,22 @@ let GOD_POINT_CURVE = [
         const bg = (trackedBg && !isNaN(trackedChapterNum) && trackedChapterNum >= currentChapter)
           ? trackedBg
           : getChapterFallbackBg();
-        el.style.setProperty('--battle-bg-image', `url('assets/images/background/${bg}?v=${ASSET_VERSION}')`);
-        // 除錯用途：Wei回報戰鬥背景仍然不會依章節切換、還是顯示dungeon-hall.png，但程式邏輯跟CSS變數機制
-        // 逐項檢查/實際測試都正常。先加這行console.debug，下次再發生時麻煩到瀏覽器開發者工具的Console分頁
-        // 截圖給我看這行印出的內容(尤其quest.type是不是真的是'main'、currentChapter/bg算出來是什麼)。
-        console.debug('[戰鬥背景除錯]', { questType: quest.type, mapId: quest.mapId, trackedBg, currentChapter, bg, appliedVar: el.style.getPropertyValue('--battle-bg-image') });
+        // 2026-09-13修正(真正找到根因了，感謝Wei一路追問「為什麼劇情讀得到、戰鬥讀不到」)：
+        // --battle-bg-image這個CSS變數是在index.html這邊用JS設定的，但真正「使用」這個變數的CSS規則
+        // (#screen-battle{background-image:var(--battle-bg-image,...)})卻寫在外部檔案
+        // assets/css/pixel-dungeon.css裡——CSS規格規定，自訂變數裡的url()相對路徑，是依照「var()實際被
+        // 使用的那個樣式表」的所在位置去解析，不是依照「JS設定當下所在的文件」解析！所以原本寫的相對路徑
+        // 'assets/images/background/ch1.jpg'，瀏覽器會誤以為要從assets/css/這個資料夾底下去找，變成
+        // assets/css/assets/images/background/ch1.jpg，當然一定404。劇情的背景圖(Story.play())是直接
+        // 用JS設定在index.html自己的內聯樣式上，沒有經過外部CSS檔案的var()轉手，才沒有這個問題，
+        // 這也是為什麼「同一張圖，劇情讀得到、戰鬥讀不到」——兩者的CSS解析路徑基準點根本不一樣。
+        // 改成用 new URL(...).href 算出「完整、明確」的絕對網址(https://開頭)再存進CSS變數，不管
+        // 之後是哪個樣式表(不論站內任何路徑深度)去引用這個變數，都不會再有相對路徑基準點不一致的問題。
+        const absoluteUrl = new URL(`assets/images/background/${bg}?v=${ASSET_VERSION}`, document.baseURI).href;
+        el.style.setProperty('--battle-bg-image', `url('${absoluteUrl}')`);
+        console.debug('[戰鬥背景除錯]', { questType: quest.type, mapId: quest.mapId, trackedBg, currentChapter, bg, absoluteUrl });
       } else {
         el.style.removeProperty('--battle-bg-image');
-        console.debug('[戰鬥背景除錯] 非主線關卡類型，維持寫死的dungeon-hall.png', { questType: quest && quest.type });
       }
     }
 
