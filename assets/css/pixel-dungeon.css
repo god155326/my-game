@@ -98,3 +98,31 @@ body{background:#08090b;font-family:Georgia,"Noto Serif TC","PMingLiU",serif}
 #class-list .class-stats-summary-set{color:#b9a783}
 .class-sub-tab-btn{border:3px ridge #785637;border-radius:0;background:#141112;color:#cfc1a7;font-size:16px;padding:9px}
 .class-sub-tab-btn.active{border-color:#bd914d;color:#ffe2a5;background:linear-gradient(#392a17,#18120b)}
+/* Equipment overview and its empty/selected slots share the bronze palette. */
+.class-equip-summary-box{border:3px ridge #8b643f;border-radius:0;background:linear-gradient(115deg,#251d17,#0c0c0f 70%);padding:12px;box-shadow:inset 0 0 0 1px #050506;gap:12px}
+.class-equip-summary-icon{width:56px;height:56px;border:3px ridge #94704b;border-radius:0}
+.class-equip-summary-lv{font-size:14px;color:#bbaa90}
+.class-equip-summary-name{font-size:16px;color:#f1dbb3;line-height:1.4}
+.class-equip-summary-hint{font-family:"Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.5;color:#c9b58e;margin-bottom:8px}
+#class-equip-summary-roleaddition{color:#e0d3bb!important}
+.class-equip-slot-row{gap:8px}
+.class-equip-slot-item{border:2px ridge #765337;border-radius:0;background:linear-gradient(135deg,#261d17,#0c0c0f);min-height:90px;padding:7px 3px;gap:4px}
+.class-equip-slot-item.selected{border-color:#dfb267;background:linear-gradient(135deg,#3e2b17,#17110c);box-shadow:inset 0 0 0 1px #e2c17e44,0 0 5px #bd8c3844}
+.class-equip-slot-item.filled{border-color:#a78050}
+.class-equip-slot-item.selected.filled{border-color:#dfb267}
+.class-equip-slot-label{font-size:14px;color:#d5c4a5}
+.class-equip-slot-lv{font-size:12px;color:#c6b99d!important}
+.class-equip-arrow{color:#d0ad72;border:1px solid #58402b;background:#15100d}
+.class-equip-setbonus-panel,#class-equip-detail-panel{border-radius:0;border-color:#705235;background:#0c0b0ed9}
+#mini-battle-bar-log,.mini-battle-bar-log-line{font-size:15px;line-height:1.4}
+#mini-battle-bar-log{max-height:63px}
+/* Seven equal sprite cells, positioned without modifying the source artwork. */
+.bottom-nav-item{padding:0;gap:1px}
+.bottom-nav-item .nav-icon-img{width:42px;height:50px;flex-shrink:0;background-image:url('../images/ui/nav-icons.png')!important;background-size:294px auto;background-position:calc(var(--nav-index) * -42px) -26px;filter:none;image-rendering:pixelated}
+.bottom-nav-item[data-nav="class"]{--nav-index:0}
+.bottom-nav-item[data-nav="talent"]{--nav-index:1}
+.bottom-nav-item[data-nav="weapon"]{--nav-index:2}
+.bottom-nav-item[data-nav="main"]{--nav-index:3}
+.bottom-nav-item[data-nav="equip"]{--nav-index:4}
+.bottom-nav-item[data-nav="quest"]{--nav-index:5}
+.bottom-nav-item[data-nav="summon"]{--nav-index:6}
