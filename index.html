@@ -17082,5 +17082,22 @@ let GOD_POINT_CURVE = [
 }
 </style>
 
+
+
+<!-- Codex UI polish v13: clearly illuminated selected class card -->
+<style id="codex-ui-polish-v13">
+#class-list .class-card {
+  transition: filter .16s ease, box-shadow .16s ease, background-color .16s ease !important;
+}
+#class-list .class-card.pending {
+  filter: brightness(1.38) saturate(1.10) !important;
+  border-color: #ffd700 !important;
+  box-shadow:
+    0 0 10px #ffd700,
+    0 0 22px rgba(255, 215, 0, .72),
+    inset 0 0 16px rgba(255, 215, 0, .16) !important;
+}
+</style>
+
 </body>
 </html>
