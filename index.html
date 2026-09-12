@@ -17099,5 +17099,59 @@ let GOD_POINT_CURVE = [
 }
 </style>
 
+
+
+<!-- Codex UI polish v14: one battle-only mask directly above the scenery -->
+<style id="codex-ui-polish-v14">
+/* Disable every earlier segmented battle mask. */
+#screen-battle .battle-enemy-zone::before,
+#screen-battle .battle-player-zone::before,
+#screen-battle .battle-enemy-zone > .log-header::after,
+#screen-battle .battle-player-zone > .battle-player-heading::after,
+#screen-battle #enemy-row::before,
+#screen-battle #enemy-row::after,
+#screen-battle #player-row::before,
+#screen-battle #player-row::after,
+#screen-battle #enemy-role-hp-block::before,
+#screen-battle #player-role-hp-block::before,
+#screen-battle .battle-grid::before,
+#screen-battle .battle-grid::after {
+  display: none !important;
+}
+
+/* Remove the three section backgrounds so there are no visible mask seams. */
+#screen-battle .battle-enemy-zone,
+#screen-battle .battle-player-zone,
+#screen-battle .battle-grid,
+#screen-battle #enemy-row,
+#screen-battle #player-row {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* This is the only battle mask: scenery below, all battle UI above. */
+#screen-battle {
+  position: relative !important;
+  isolation: isolate;
+}
+#screen-battle::before {
+  content: "";
+  display: block;
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .90);
+  pointer-events: none;
+  z-index: 0;
+}
+#screen-battle > .battle-enemy-zone,
+#screen-battle > .battle-player-zone,
+#screen-battle > .battle-grid,
+#screen-battle > .bottom-tab-reserved {
+  position: relative;
+  z-index: 1;
+}
+</style>
+
 </body>
 </html>
