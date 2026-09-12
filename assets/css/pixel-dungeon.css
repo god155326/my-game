@@ -1,128 +1,88 @@
-/* Reference direction: black iron, aged bronze, pixel dungeon. */
-:root{--ui-gold:#e6c48b;--ui-text:#f4eedb;--ui-muted:#b6aa95;--ui-line:#785638;--ui-panel:#111012}
-body{background:#08090b;font-family:Georgia,"Noto Serif TC","PMingLiU",serif}
-.game-container{padding:8px;border:3px ridge #866140;border-radius:0;background:linear-gradient(#09090bea,#0c0b0deb),url('../images/ui/dungeon-hall.png') center/cover;box-shadow:0 0 0 2px #18100b,0 12px 65px #000;justify-content:flex-start;gap:7px}
-.top-header{margin:0;min-height:61px;padding:6px 9px;gap:10px;border:3px ridge #896340;border-radius:0;background:linear-gradient(110deg,#1a1715,#0c0d10 55%,#171515);box-shadow:inset 0 0 0 2px #080809;position:relative}
-.top-header-avatar{width:43px;height:43px;border:2px ridge #ab8251;border-radius:0;background:#111116}
-.top-header-name{font-size:16px;letter-spacing:1px;color:#f8ebcf}
-.top-header-power{font-size:14px;color:#e7d5ae}
-.top-header-currency{font-size:17px;gap:12px}
-.top-header-currency>span{border:0;background:none;padding:0;border-radius:0}
-.top-header-currency>span:last-child{color:#82b9ff}
-#screen-wrapper{flex:1;min-height:0;height:auto!important}
-#screen-battle{flex:1;min-height:0;height:auto;gap:5px;justify-content:flex-start;background:url('../images/ui/dungeon-hall.png') center 37%/100% auto no-repeat}
-.battle-enemy-zone{order:0;position:relative;flex-shrink:0}
-.battle-enemy-zone>.log-header{height:30px;padding:0 4px 0 67px;margin-bottom:6px}
-.battle-enemy-zone .log-header-text-group{justify-content:flex-start;overflow:visible}
-.battle-enemy-zone .log-header-quest{flex:0 1 auto;min-width:0}
-.battle-enemy-zone .log-header-wave{flex-shrink:0}
-.battle-enemy-zone .timeline-list{flex-direction:row;justify-content:flex-end;gap:5px;margin-left:auto;flex-shrink:0;padding:2px 5px}
-.battle-enemy-zone .timeline-item{width:26px;height:26px}
-.battle-enemy-zone #turn-info{flex-shrink:0}
-.battle-faction{font-size:17px;letter-spacing:3px;font-weight:bold;line-height:26px;padding:0 12px;border:2px ridge #7d3430;color:#ffcfb9;background:linear-gradient(90deg,#511718,#160b0c);width:max-content;text-shadow:0 2px #000}
-.enemy-faction{position:absolute;left:0;top:0;font-size:15px;padding:0 8px}
-.player-faction{border-color:#395d89;color:#c2deff;background:linear-gradient(90deg,#142e55,#09111e)}
-.log-header-quest{font-size:15px;max-width:65%;color:#f1e4c7}
-.log-header-text{font-size:15px;color:#f0dbab;border:2px ridge #856340;padding:2px 9px;background:#0b0b0ddd;white-space:nowrap}
-.battle-scenery{order:1;flex:1;min-height:0;pointer-events:none}
-.battle-player-zone{order:2;flex-shrink:0}
-.battle-player-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;height:38px}
-.battle-player-heading>.btn-auto-float{justify-self:end}
-.btn-auto-float{border:2px ridge #886340;border-radius:0;background:#121112;font-family:inherit;min-height:28px;padding:3px 10px;font-size:13px;color:#e4ddce}
-.card-row{gap:8px;height:200px}
-.card{min-width:0;padding:5px 4px 4px;border:3px ridge #9a7046;border-radius:2px;background:linear-gradient(110deg,#24201c,#100f11 40%,#171416);box-shadow:inset 0 0 0 2px #09090a,0 3px 0 #050505;justify-content:flex-start;gap:2px}
-.card.player,.card.enemy{border-top:3px ridge #9a7046}
-.card::before,.card::after{content:"";position:absolute;width:5px;height:5px;background:#d3ab71;border:1px solid #4b301b;pointer-events:none;z-index:5}
-.card::before{left:-2px;top:-2px;box-shadow:0 191px #9c754b}
-.card::after{right:-2px;bottom:-2px;box-shadow:0 -191px #9c754b}
-.card .hero-avatar{height:68px;aspect-ratio:auto;flex-shrink:0}
-.card .hero-avatar img{image-rendering:pixelated}
-.card-lv{font-size:12px;line-height:15px;color:#f1d870}
-.card-name{font-family:"Microsoft JhengHei",sans-serif;font-size:13px;line-height:18px;min-height:18px;flex-shrink:0;margin:0;color:#f1eee6}
-.card .buff-container{height:38px;min-height:38px;max-height:38px;flex:0 0 38px;margin:0;gap:2px;align-content:flex-start;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y;scrollbar-width:thin}
-.card .buff-icon{flex:0 0 auto;min-height:18px;max-width:100%;font-size:12px;line-height:16px;padding:0 2px;border-radius:2px;white-space:nowrap}
-.card .unit-status-box{margin-top:auto;gap:2px;flex-shrink:0}
-.mini-bar{height:13px;border:1px solid #7b453b;border-radius:2px;box-shadow:inset 0 1px #fff4}
-.mini-bar-agi{height:3px;border:0}
-.mini-text{font-size:11px;font-family:Georgia,serif;font-weight:normal}
-.mini-fill-hp{background:linear-gradient(#fa4045,#b50816)}
-.mini-fill-mp{background:linear-gradient(#20b3ff,#005ed6)}
-.card.active,.card.selected{border-color:#ffe285!important;box-shadow:0 0 0 1px #fff0af,inset 0 0 13px #ecac273b,0 0 13px #ffb522aa}
-.role-hp-block{margin:3px 0;min-height:0}
-.role-icon-mini{width:23px;height:23px}
-.role-name-label{font-size:12px}
-.battle-grid{order:3;flex:0 0 145px;margin:0;padding:5px;gap:5px;background:#0b0a0de8;border:3px ridge #946d46;border-radius:0;overflow:visible;min-height:0}
-.battle-record-heading{font-size:17px;line-height:24px;letter-spacing:3px;color:#ebdab5;border-bottom:1px solid #785638;padding:0 5px 3px}
-.log-col{min-height:0}
-.log-box{background:#0b0b0dcc;border:1px solid #463727;border-radius:0;font-family:"Microsoft JhengHei",sans-serif;font-size:12px;line-height:1.55;padding:5px 7px}
-.battle-grid:has(.action-popup.visible){flex-basis:225px}
-.action-popup{z-index:15;min-height:0;bottom:0;top:0;border:3px ridge #ae8150;border-radius:0;background:#151115;box-shadow:0 0 15px #0008}
-.bottom-tab-reserved{order:4;height:79px;margin:0}
-.bottom-nav{left:8px;right:8px;bottom:8px;height:79px;padding:0;gap:0;border:3px ridge #956b42;border-radius:0;background:#0b0a0d;box-shadow:0 -3px #080808}
-.bottom-nav-item{font-size:17px;border-radius:0;border-top:0;border-right:2px ridge #684b32;gap:5px;padding:7px 0;color:#eadfbd;position:relative;background:linear-gradient(110deg,#211b17,#0c0b0d 55%)}
-.bottom-nav-item:last-child{border-right:0}
-.bottom-nav-item .nav-icon-img{width:34px;height:34px;image-rendering:pixelated;filter:sepia(.35) saturate(.8)}
-.bottom-nav-item.active{border-top:0;color:#ffdc7e;background:linear-gradient(#503214,#211405);box-shadow:inset 0 0 0 2px #c99746,inset 0 0 18px #c87b1e44}
-.bottom-nav-item.active::before{content:"";position:absolute;top:0;left:25%;right:25%;height:2px;background:#ffdc89;box-shadow:0 0 9px #ffbb4a}
-.bottom-nav-item.nav-locked{opacity:.65;filter:grayscale(.5)}
-#bottom-reserved-space{min-height:85px}
-.mini-battle-bar{bottom:93px;border-radius:0;border:3px ridge #8c663f;background:#131013}
-.screen-title,.mainline-chapter-tag{border:3px ridge #8e6742;background:linear-gradient(90deg,#30231a,#100e10);border-radius:0;color:#ecd7a7;font-family:inherit}
-.btn,.btn-restart,.btn-restart-dark,.equip-menu-btn,.class-card,.quest-category-btn{border:3px ridge #896340;border-radius:1px;box-shadow:inset 0 0 0 1px #080708;background:linear-gradient(120deg,#2b211a,#100e11);color:#f0dfb5}
-.btn-restart{background:linear-gradient(#66451f,#302010);border-color:#c89a54;color:#ffe2a3}
-.result-modal-box,.cheat-modal-box,.event-select-box,.event-announce-box{border:4px ridge #9f7749;border-radius:0;background:linear-gradient(135deg,#241c18,#0c0c0f)}
-.mainline-map-banner,.mainline-battle-area{border:3px ridge #896340;border-radius:0}
-@media(prefers-reduced-motion:reduce){.card{transition:none}}
-/* Apply once to every game screen, including dialogs and loading. */
-.game-container,#preload-overlay{filter:brightness(.9)}
-/* Class selection uses the same iron panels and bronze fittings as battle. */
-#class-list{gap:12px;padding:4px 5px 8px;scrollbar-gutter:stable}
-#class-list .class-card{display:grid;grid-template-columns:76px minmax(0,1fr) 110px;grid-template-rows:auto auto;gap:10px 12px;flex-shrink:0;padding:12px;border:3px ridge #765438;background:linear-gradient(115deg,#211b17,#0d0d10 65%);position:relative}
-#class-list .class-card.pending{border-color:#e4b75e;background:linear-gradient(115deg,#382814,#15110c 70%);box-shadow:inset 0 0 0 1px #f0cb7544,0 0 6px #b9852633}
-#class-list .class-card.active-class{border-color:#b8a271}
-#class-list .class-card.locked{opacity:.65}
-#class-list .class-avatar-col{grid-column:1;grid-row:1 / 3;width:auto;align-self:center;gap:6px}
-#class-list .class-avatar{width:60px;height:60px;border:3px ridge #8e6943;border-radius:0;background:#0a0b0e;box-shadow:inset 0 0 10px #000}
-#class-list .class-name-lv{font-size:16px;line-height:1.5;color:#f2dfb8}
-#class-list .class-active-tag,#class-list .class-locked-tag{font-size:12px;border-radius:0;color:#e0c594}
-#class-list .class-skill-grid{grid-column:2;grid-row:1;display:flex;gap:7px;align-items:center}
-#class-list .class-skill-slot{width:52px;height:52px;flex:0 0 52px;padding:3px;border:3px ridge #89613a;border-radius:0;background:radial-gradient(#30231b,#08090c);box-shadow:inset 0 0 0 1px #030304;overflow:hidden}
-#class-list .class-skill-slot img{display:block;width:100%;height:100%;object-fit:contain}
-#class-list .class-skill-slot:hover{border-color:#e7bf70;background:#302419}
-#class-list .class-skill-slot:focus-visible{outline:2px solid #f4d693;outline-offset:2px}
-#class-list .class-equip-grid{grid-column:3;grid-row:1;margin:0;grid-template-columns:repeat(3,32px);gap:5px;align-self:center}
-#class-list .class-equip-slot{width:32px;height:32px;border:1px solid #654c35;border-radius:0;background:#090a0d;box-shadow:inset 0 0 0 2px #211a14}
-#class-list .class-equip-slot.filled{border:2px ridge #a47d4e}
-#class-list .class-stats-summary{grid-column:2 / 4;grid-row:2;margin:0;padding-top:8px;border-top:1px solid #59432e;font-family:"Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.5;gap:3px;color:#d5cbb8;min-width:0}
-#class-list .class-stats-summary-line,#class-list .class-stats-summary-set{white-space:normal;overflow-wrap:anywhere}
-#class-list .class-stats-summary-set{color:#b9a783}
-.class-sub-tab-btn{border:3px ridge #785637;border-radius:0;background:#141112;color:#cfc1a7;font-size:16px;padding:9px}
-.class-sub-tab-btn.active{border-color:#bd914d;color:#ffe2a5;background:linear-gradient(#392a17,#18120b)}
-/* Equipment overview and its empty/selected slots share the bronze palette. */
-.class-equip-summary-box{border:3px ridge #8b643f;border-radius:0;background:linear-gradient(115deg,#251d17,#0c0c0f 70%);padding:12px;box-shadow:inset 0 0 0 1px #050506;gap:12px}
-.class-equip-summary-icon{width:56px;height:56px;border:3px ridge #94704b;border-radius:0}
-.class-equip-summary-lv{font-size:14px;color:#bbaa90}
-.class-equip-summary-name{font-size:16px;color:#f1dbb3;line-height:1.4}
-.class-equip-summary-hint{font-family:"Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.5;color:#c9b58e;margin-bottom:8px}
-#class-equip-summary-roleaddition{color:#e0d3bb!important}
-.class-equip-slot-row{gap:8px}
-.class-equip-slot-item{border:2px ridge #765337;border-radius:0;background:linear-gradient(135deg,#261d17,#0c0c0f);min-height:90px;padding:7px 3px;gap:4px}
-.class-equip-slot-item.selected{border-color:#dfb267;background:linear-gradient(135deg,#3e2b17,#17110c);box-shadow:inset 0 0 0 1px #e2c17e44,0 0 5px #bd8c3844}
-.class-equip-slot-item.filled{border-color:#a78050}
-.class-equip-slot-item.selected.filled{border-color:#dfb267}
-.class-equip-slot-label{font-size:14px;color:#d5c4a5}
-.class-equip-slot-lv{font-size:12px;color:#c6b99d!important}
-.class-equip-arrow{color:#d0ad72;border:1px solid #58402b;background:#15100d}
-.class-equip-setbonus-panel,#class-equip-detail-panel{border-radius:0;border-color:#705235;background:#0c0b0ed9}
-#mini-battle-bar-log,.mini-battle-bar-log-line{font-size:15px;line-height:1.4}
-#mini-battle-bar-log{max-height:63px}
-/* Seven equal sprite cells, positioned without modifying the source artwork. */
-.bottom-nav-item{padding:0;gap:1px}
-.bottom-nav-item .nav-icon-img{width:42px;height:50px;flex-shrink:0;background-image:url('../images/ui/nav-icons.png')!important;background-size:294px auto;background-position:calc(var(--nav-index) * -42px) -26px;filter:none;image-rendering:pixelated}
-.bottom-nav-item[data-nav="class"]{--nav-index:0}
-.bottom-nav-item[data-nav="talent"]{--nav-index:1}
-.bottom-nav-item[data-nav="weapon"]{--nav-index:2}
-.bottom-nav-item[data-nav="main"]{--nav-index:3}
-.bottom-nav-item[data-nav="equip"]{--nav-index:4}
-.bottom-nav-item[data-nav="quest"]{--nav-index:5}
-.bottom-nav-item[data-nav="summon"]{--nav-index:6}
+/* Shared nine-slice forged-iron frame, matching the supplied RPG reference. */
+:root{--iron-frame:url('../images/ui/iron-frame.png');--iron-fill:linear-gradient(105deg,#191616,#090a0d 58%,#171313)}
+.game-container{border:0;padding:12px;background-color:#0b0a0c;box-shadow:0 15px 60px #000;isolation:isolate}
+.game-container::before{content:"";position:absolute;inset:0;z-index:200;pointer-events:none;border:18px solid transparent;border-image:var(--iron-frame) 14% / 18px / 0 stretch}
+.top-header{border:10px solid transparent;border-image:var(--iron-frame) 14% / 12px / 2px stretch;background:var(--iron-fill);padding:2px 5px;min-height:66px;box-shadow:none}
+.top-header-avatar{border:2px solid #5f4731;box-shadow:inset 0 0 0 1px #bd9860;background:#080b11;width:46px;height:46px}
+.top-header-name{font-size:18px;letter-spacing:1px}
+.top-header-currency{border-left:2px groove #5c422b;padding-left:12px;align-self:stretch}
+.top-header-currency>span{font-size:17px}
+.screen-panel>.screen-title,.mainline-chapter-tag{position:relative;display:flex;align-items:center;justify-content:center;min-height:48px;flex-shrink:0;margin:0 0 10px;padding:2px 18px;border:10px solid transparent;border-image:var(--iron-frame) 14% / 12px / 0 stretch;background:var(--iron-fill);font-size:21px;font-weight:700;letter-spacing:5px;color:#eee0bb;text-shadow:0 2px 2px #000;line-height:1.2}
+.screen-panel>.screen-title::before,.screen-panel>.screen-title::after{content:"◆";font-size:10px;color:#ad7c44;margin:0 14px;letter-spacing:0}
+#bottom-nav{left:10px;right:10px;bottom:10px;height:81px;border:0;background:#08090c;box-shadow:none;padding:4px}
+#bottom-nav::before{content:"";position:absolute;inset:-3px;pointer-events:none;z-index:3;border:12px solid transparent;border-image:var(--iron-frame) 14% / 12px / 0 stretch}
+#bottom-nav .bottom-nav-item{border:0;border-radius:0;background:linear-gradient(110deg,#1c1713,#09090c 65%);box-shadow:inset 1px 0 #694a2e,inset -1px 0 #241b14;font-size:17px;color:#e2d5b5}
+#bottom-nav .bottom-nav-item.active{background:radial-gradient(ellipse at bottom,#664016,#25180b 70%);box-shadow:inset 2px 0 #e3b15c,inset -2px 0 #e3b15c,inset 0 -2px #ffdc83;color:#ffe1a0}
+#bottom-nav .bottom-nav-item.active::before{top:-2px;left:10%;right:10%;height:2px;background:#ffd789;box-shadow:0 0 9px 2px #d99235}
+#bottom-nav .nav-icon-img{height:46px;background-position-y:-28px}
+.weapon-menu-preview,#mainline-stage-detail,.equip-menu-btn,.class-equip-summary-box,.battle-grid,.mini-battle-bar{border:9px solid transparent;border-image:var(--iron-frame) 14% / 11px / 1px stretch;border-radius:0;background:var(--iron-fill);box-shadow:none;padding:7px}
+.weapon-menu-preview{margin-bottom:12px}
+.weapon-menu-main{gap:12px}
+.weapon-menu-name{font-size:16px;color:#eee0bd}
+.weapon-menu-skills{font-family:"Microsoft JhengHei",sans-serif;font-size:13px;line-height:1.65;color:#d6cebe}
+.weapon-menu-skill-name{color:#dcc086}
+.weapon-menu-tags-line{font-size:12px;line-height:1.4;border-top:1px solid #57422d;color:#afa28d}
+.weapon-menu-tag,.weapon-menu-lv-tag{border-radius:0;border:2px groove #86653d;background:#241a11;color:#e7c991}
+.weapon-menu-grid .weapon-slot-card,.weapon-slot-row.mini .weapon-slot-card{border:2px solid #57402c;border-radius:0;background:linear-gradient(110deg,#221c17,#0a0a0d 70%);box-shadow:inset 0 0 0 1px #08090a;position:relative}
+.weapon-slot-card::before,.card::before{content:"";position:absolute;inset:-3px;width:auto;height:auto;pointer-events:none;border:9px solid transparent;border-image:var(--iron-frame) 14% / 9px / 0 stretch;background:none;box-shadow:none;z-index:5}
+.card::after{display:none}
+.card{border:2px solid #5d4430;border-radius:0;background:var(--iron-fill)}
+.card.player,.card.enemy{border-top:2px solid #5d4430}
+.weapon-slot-card.selected{border-color:#edbf6f!important;box-shadow:0 0 8px #d9a34599!important;background:linear-gradient(#3c2b14,#151009)!important}
+.weapon-slot-card.selected::before,.card.active::before,.card.selected::before{filter:brightness(1.7) sepia(.5)}
+.weapon-menu-grid .weapon-slot-name{font-size:11px}
+.mainline-battle-area{border:8px solid transparent;border-image:var(--iron-frame) 14% / 10px / 0 stretch;border-radius:0;padding:6px;background-color:#0c0b0e}
+.weapon-slot-row.mini{gap:6px;justify-content:center}
+.weapon-slot-row.mini .weapon-slot-card{width:62px;min-height:100px;padding:5px 4px 4px;gap:2px;flex-shrink:0}
+.weapon-slot-row.mini .weapon-slot-card.compact-hp{min-height:100px}
+.weapon-slot-row.mini .weapon-slot-badge{border-radius:0}
+.weapon-slot-row.mini .weapon-slot-name{font-size:10px;color:#e9ddc6;line-height:1.3}
+.weapon-slot-row.mini .weapon-slot-lv{font-size:11px;color:#ecd077}
+.weapon-slot-row.mini .weapon-slot-bar-track{height:6px;border:1px solid #512223;background:#180b0d}
+.weapon-slot-row.mini .weapon-slot-bar-fill.hp{background:linear-gradient(#f44449,#a90717)}
+.weapon-slot-row.mini .weapon-slot-bars>div:last-child{font-size:10px!important;color:#edc7bd!important;text-align:center}
+.mainline-battle-side-label{font-size:14px;letter-spacing:2px;color:#dac39a}
+#mainline-stage-detail{padding:8px 10px;margin-top:4px;min-height:0;background:linear-gradient(#171416f5,#0b0b0ef5)}
+#mainline-stage-detail .quest-card{background:none;border:0;border-radius:0;padding:0;box-shadow:none}
+#mainline-stage-detail .reward-bar-label{font-size:14px;color:#d9bd88;padding:8px 0 4px;border-top:1px solid #51402d;margin-top:8px}
+#mainline-stage-detail .btn{font-size:14px!important;border:5px solid transparent;border-image:var(--iron-frame) 14% / 7px / 0 stretch;border-radius:0;background:#20170e;color:#ecd3a2}
+.action-bar .btn,.action-bar .btn-restart,.action-bar .btn-restart-dark{border:6px solid transparent;border-image:var(--iron-frame) 14% / 8px / 0 stretch;border-radius:0;box-shadow:none;background:linear-gradient(#292017,#100e0e);color:#eddbb3}
+.action-bar .btn-restart:not(:disabled){background:linear-gradient(#56391a,#24180b);color:#ffe1a3}
+.mini-battle-bar{bottom:97px}
+#mainline-stage-detail .quest-card-summary-block{font-size:14px;line-height:1.55;color:#cec4b1}
+#mainline-stage-detail .quest-card-title{font-size:14px;color:#bda783}
+#mainline-stage-detail .quest-card-hint-big{font-size:21px;color:#eed39b}
+#mainline-stage-detail .quest-event-btn{border-radius:0;border:5px solid transparent;border-image:var(--iron-frame) 14% / 7px / 0 stretch;background:#3b2713;color:#ebd09b}
+/* Shared riveted frames for secondary screens and battle controls. */
+.result-modal-box, #btn-auto, #class-list .class-card,
+#class-sub-tab-class, #class-sub-tab-god, .gacha-banner,
+.gacha-banner button, .mainline-idle-overlay > button {
+  border: 9px solid transparent;
+  border-image: var(--iron-frame) 14% / 11px / 1px stretch;
+  border-radius: 0;
+  background: var(--iron-fill);
+  box-shadow: inset 0 0 18px #0009, 0 3px 8px #0008;
+}
+.result-modal-box { padding: 24px 18px 18px; }
+#result-loot { display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin:18px 0; }
+.result-loot-item { display:flex; flex-direction:column; align-items:center; gap:6px; min-width:68px; padding:9px; background:#0b0a09; border:1px solid #66503a; color:#f1ddaa; font-size:16px; }
+.result-loot-icon { display:flex; width:42px; height:42px; align-items:center; justify-content:center; font-size:36px; }
+.result-loot-icon img, .result-loot-icon .inline-icon { width:42px!important; height:42px!important; object-fit:contain; }
+#btn-auto { padding:3px 8px; min-height:34px; color:#dfc797; }
+.battle-faction.player-faction, .battle-faction.enemy-faction { box-sizing:border-box; font-size:15px; min-width:70px; height:32px; padding:0 8px; display:flex; align-items:center; justify-content:center; }
+#class-list .class-card { padding:12px; }
+#class-list .class-card.active-class, #class-list .class-card.pending { background:linear-gradient(110deg,#2d2314,#11100f 65%); box-shadow:inset 0 0 16px #a4772429; }
+#class-sub-tab-class, #class-sub-tab-god { min-height:42px; }
+.gacha-banner { padding:16px 12px; }
+.gacha-banner button { padding:8px 16px; color:#ead29f; }
+#mainline-battle-area .mainline-battle-side-label,
+#mainline-stage-detail > .reward-bar-label,
+#mainline-stage-detail > .idle-reward-preview { display:none!important; }
+#screen-mainline > .mainline-idle-overlay { position:relative; inset:auto; display:flex; flex-direction:row; align-items:stretch; gap:8px; width:100%; flex-shrink:0; margin:4px 0 7px; z-index:auto; }
+.mainline-idle-overlay #mainline-idle-status { flex:1; width:auto; text-align:left; padding:3px 9px; font-size:14px; }
+.mainline-idle-overlay #btn-claim-idle { flex:0 0 92px; width:92px; min-width:0; padding:3px 2px; font-size:13px; }
+#mainline-battle-area .mainline-side-row { margin:8px 0; }
+#timeline-list > * { background:transparent!important; box-shadow:none!important; }
+.log-header-text-group { background:transparent!important; }
+.result-loot-icon > span { width:42px!important; height:42px!important; }
+.result-btn-row button { border:7px solid transparent; border-image:var(--iron-frame) 14% / 9px / 1px stretch; border-radius:0; }
