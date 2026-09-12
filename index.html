@@ -6059,26 +6059,10 @@ let DUNGEONPREFEB_DATABASE = [
 
 
     // ##AUTO-GENERATED:START_GIFT_DATABASE:START##
-    // 注意：這份陣列只是 xlsx 讀取失敗時的備援預設值，正式執行時一律會被
-    // buildStartGiftDatabase(wb) 讀取 xlsx 的 start_gift 分頁整組覆寫(見 xlsx-loader.js)。
-    // 2026-09-09 修正：start_gift 分頁先前是空的(只有表頭、沒有任何資料列)，導致
-    // claimStartGift() 在 runIntroSequence() 一開始靜默呼叫時實際上什麼都沒發，
-    // 玩家在後面的 guideGachaStep()(教學引導召喚武器)完全沒有鑽石可以召喚。
-    // 已補上 xlsx 的 start_gift 分頁資料，這裡的備援值同步更新(鑽石依 Wei 指示改為3000個)。
-    // 2026-09-09 再次修正：Wei 明確要求「天賦點數創建帳號時只能是0點」，8002(天賦點數)這裡改成0
-    // (實際發放邏輯也已在 claimStartGift() 直接排除 id===8002，這裡只是同步備援值避免混淆)。
-    let START_GIFT_DATABASE = [
-      { id: 1000, amount: 9999 },
-      { id: 1001, amount: 3000 },
-      { id: 8001, amount: 9999 },
-      { id: 8002, amount: 0 },
-      { id: 8003, amount: 9999 },
-      { id: 2000, amount: 9999 },
-      { id: 2001, amount: 9999 },
-      { id: 2002, amount: 9999 },
-      { id: 2005, amount: 100 },
-      { id: 2006, amount: 100 }
-    ];
+    // 2026-09-13修正(Wei指示)：刪除所有寫死的新手禮包內容，統一改成純粹讀取xlsx的start_gift分頁——
+    // 如果這個分頁裡有填資料列，玩家開場就會拿到那些道具；如果分頁是空的(只有表頭)，就完全不會發放
+    // 任何東西，不會再有任何內建的預設值當備援墊底。
+    let START_GIFT_DATABASE = [];
 // ##AUTO-GENERATED:START_GIFT_DATABASE:END##
 
     // ##AUTO-GENERATED:EQUIPMENT_DATABASE:START##
@@ -7909,7 +7893,7 @@ let GOD_POINT_CURVE = [
           let s = SKILL_DATABASE[skillId];
           if (!s) return `<div class="class-skill-slot empty"></div>`;
           const label = String(s.name || '技能').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-          return `<button type="button" class="class-skill-slot filled" title="${label}" aria-label="${label}" onclick="event.stopPropagation(); showClassSkillInfo(${skillId})"><img src="${classSkillImagePath(s)}" alt="" onerror="this.onerror=null;this.src='assets/images/skill/skill_buff.png'"></button>`;
+          return `<button type="button" class="class-skill-slot filled" title="${label}" aria-label="${label}" onclick="event.stopPropagation(); showClassSkillInfo(${skillId})">${skillIconHtml(s)}</button>`;
         }
 
         // 職業加成/套裝效果摘要：顯示於裝備預覽格的左邊，顯示「職業加成」(role_addition+已裝備6件裝備算出的加成量，不含card本身數值)與目前啟動的套裝效果名稱
@@ -8952,6 +8936,7 @@ let GOD_POINT_CURVE = [
     // 探索專用的初始化：與 initGame 相同，但敵方單位改用隨機0.5~0.7倍基礎數值(AGI除外)，不影響正式關卡的 initGame
     function initGameExplore(playerIds, enemyIds, enemyLevel, playerRoleId, enemyRoleId) {
       document.getElementById('result-modal').style.display = 'none';
+      gameState.battleStartTime = gameState.battleStartTime || Date.now(); // 掛機探索沿用同一套card_prefeb動畫定位機制
 
       let playerHeroes = getPlayerHeroesWithOwnLevels(playerIds);
       let enemyHeroes = enemyIds.map(id => {
@@ -9210,13 +9195,6 @@ let GOD_POINT_CURVE = [
 
     function claimStartGift() {
       START_GIFT_DATABASE.forEach(g => {
-        // 2026-09-09修正：Wei明確要求「天賦點數創建帳號時只能是0點，之後完全依curve每次升級發放」，
-        // 但xlsx的start_gift分頁裡有一列(id=8002天賦點數)是先前(第28項)依index.html舊備援值原樣還原的
-        // 內容(數量9999)，這其實不該屬於新手禮包的一部分。因為start_gift.xlsx目前被Wei電腦上的Excel
-        // 開啟中(無法直接寫回xlsx移除這一列)，這裡先在程式碼層面直接把8002排除在新手禮包發放範圍外，
-        // 不論xlsx這一列將來被填成什麼數量都不會被領取到，從根本保證「創帳號時天賦點數=0」這條規則；
-        // 等xlsx之後可以編輯時，也建議順手把start_gift分頁裡的8002那一列直接刪除，維持資料一致。
-        if (g.id === 8002) return;
         let card = CARD_DATABASE.find(c => c.id === g.id);
         if (card && card.isRole) {
           gameState.ownedClasses.add(g.id);
@@ -11892,6 +11870,9 @@ let GOD_POINT_CURVE = [
     function initGame(playerIds, enemyIds, enemyLevel, playerRoleId, enemyRoleId) {
       document.getElementById('result-modal').style.display = 'none';
       applyBattleScreenBackground(gameState.selectedQuest);
+      // 2026-09-13新增：記錄戰鬥開始的真實時間戳記(不受戰鬥速度倍率影響)，供card_prefeb常駐特效的
+      // animation-delay計算使用，避免renderRow()頻繁重建卡片DOM時，特效動畫被重置成看起來像加速播放。
+      gameState.battleStartTime = Date.now();
 
       // 上陣人數依關卡設定各自決定(1主角+N武器)；雙方武器數量不再需要對稱，各自依關卡表(quest欄位)實際填寫的數量為準
       let playerHeroes = (playerIds && playerIds.length > 0) ? getPlayerHeroesWithOwnLevels(playerIds) : getRandomHeroes(5);
