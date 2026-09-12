@@ -165,6 +165,39 @@ function buildCostDatabase(wb) {
   return gen;
 }
 
+// 2026-09-12新增：商店系統。shop分頁(商店群組，對應SHOP_GROUP_DATABASE) 定義「這個群組裡有哪些商品」，
+// shop_list分頁(商店清單，對應SHOP_LIST_DATABASE) 定義「有哪些商店、各自對應哪個群組、是固定式還是可刷新式」。
+// 兩者用group/shop_group這組欄位對應起來(shop_list.group === shop.shop_group)。
+function buildShopGroupDatabase(wb) {
+  const rows = xlsxSheetToObjects(wb, 'shop').filter(o => typeof o.shop_group === 'number');
+  const gen = {};
+  rows.forEach(o => {
+    const group = o.shop_group;
+    if (!gen[group]) gen[group] = [];
+    gen[group].push({
+      id1: o.id1,
+      id1Amount: o.id1_amount,
+      priceId: o.price_id,
+      priceAmount: o.price_amount,
+      // power/limit都可能是null(固定式商品沒有這兩欄)：power是刷新式商店抽選權重，limit是刷新前的購買次數上限
+      power: (o.power === null || o.power === undefined) ? null : o.power,
+      limit: (o.limit === null || o.limit === undefined) ? null : o.limit,
+    });
+  });
+  return gen;
+}
+function buildShopListDatabase(wb) {
+  return xlsxSheetToObjects(wb, 'shop_list').filter(o => typeof o.shop_id === 'number').map(o => ({
+    shopId: o.shop_id,
+    group: o.group,
+    // type欄位偶爾會不小心多打空格(例如" refresh")，這裡統一trim，避免比對失敗整個商店讀不到資料
+    type: String(o.type || '').trim(),
+    refreshAmount: o.refresh_amount,
+    refreshId: o.refresh_id,
+    refreshPrice: o.refresh_price,
+  }));
+}
+
 function buildRefineDatabase(wb) {
   const gen = {};
   xlsxSheetToObjects(wb, 'refine').filter(o => typeof o.id === 'number').forEach(o => {
@@ -1134,6 +1167,8 @@ async function loadGameDataFromXlsx() {
     START_GIFT_DATABASE = buildStartGiftDatabase(wb);
     COST_DATABASE = buildCostDatabase(wb);
     REFINE_DATABASE = buildRefineDatabase(wb);
+    SHOP_GROUP_DATABASE = buildShopGroupDatabase(wb);
+    SHOP_LIST_DATABASE = buildShopListDatabase(wb);
     ITEM_DATABASE = buildItemDatabase(wb);
     LEVELCURVE_DATABASE = buildLevelcurveDatabase(wb);
     TALENT_CURVE = buildTalentCurve(wb);

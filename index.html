@@ -1851,6 +1851,136 @@
     }
     .equip-menu-label { font-size: 15px; font-weight: bold; color: #e5d4c0; }
 
+    /* ============ 道具背包(2026-09-12新增) ============ */
+    .item-backpack-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+    .item-backpack-tab {
+      flex: 1;
+      padding: 8px 4px;
+      background: #1f1b18;
+      border: 1px solid #4a3e35;
+      border-radius: 6px;
+      color: #b8a890;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .item-backpack-tab.active { border-color: #ffd700; color: #ffd700; background: #2a2420; }
+    .item-backpack-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      padding: 4px;
+    }
+    .item-backpack-slot {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: #1f1b18;
+      border: 1px solid #4a3e35;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .item-backpack-slot-icon {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+    .item-backpack-slot-amount {
+      position: absolute;
+      bottom: 2px;
+      right: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 0 3px #000, 0 0 3px #000;
+      z-index: 2;
+    }
+    .item-backpack-list { display: flex; flex-direction: column; gap: 6px; padding: 4px; }
+    .item-backpack-list-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      background: #1f1b18;
+      border: 1px solid #4a3e35;
+      border-radius: 8px;
+    }
+    .item-backpack-list-icon { position: relative; width: 32px; height: 32px; flex-shrink: 0; font-size: 22px; display: flex; align-items: center; justify-content: center; }
+    .item-backpack-list-name { flex: 1; color: #e5d4c0; font-size: 14px; }
+    .item-backpack-list-amount { color: #ffd700; font-weight: bold; font-size: 14px; }
+
+    /* ============ 商店(2026-09-12新增) ============ */
+    .shop-section {
+      background: #1f1b18;
+      border: 1px solid #4a3e35;
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 12px;
+    }
+    .shop-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #ffd700;
+      font-weight: bold;
+      font-size: 15px;
+      margin-bottom: 8px;
+    }
+    .shop-refresh-btn {
+      background: #3a2f24;
+      border: 1px solid #7a6350;
+      border-radius: 6px;
+      color: #e5d4c0;
+      font-size: 12px;
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+    .shop-item-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .shop-item-slot {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #14110e;
+      border: 1px solid #4a3e35;
+      border-radius: 8px;
+      padding: 6px;
+      gap: 3px;
+    }
+    .shop-item-icon {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      font-size: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .shop-item-name { font-size: 11px; color: #e5d4c0; text-align: center; line-height: 1.2; height: 2.4em; overflow: hidden; }
+    .shop-item-qty { font-size: 11px; color: #8a7a68; }
+    .shop-buy-btn {
+      width: 100%;
+      background: #2a4020;
+      border: 1px solid #4a7a35;
+      border-radius: 6px;
+      color: #d4f0c0;
+      font-size: 11px;
+      padding: 4px 2px;
+      cursor: pointer;
+    }
+    .shop-buy-btn:disabled { background: #2a2420; border-color: #4a3e35; color: #6a5a48; cursor: not-allowed; }
+    .shop-item-limit { font-size: 10px; color: #8a7a68; }
+
+
+
     /* ============ 通用紅點提示(可重複使用於任何按鈕右上角，代表有新內容/可領取項目) ============ */
     .red-dot-badge {
       position: absolute;
@@ -3903,8 +4033,8 @@
           <div class="top-header-name-row">
             <div class="top-header-name" id="header-player-name">匿名的勇者</div>
             <div class="top-header-currency">
-              <span>🪙 <span id="header-gold">0</span></span>
-              <span>💎 <span id="header-diamond">0</span></span>
+              <span onclick="openShopScreen()" style="cursor:pointer;">🪙 <span id="header-gold">0</span></span>
+              <span onclick="openShopScreen()" style="cursor:pointer;">💎 <span id="header-diamond">0</span></span>
             </div>
           </div>
           <div class="top-header-power" id="top-header-power">
@@ -4037,16 +4167,45 @@
 
       <!-- 畫面：裝備系統主選單 -->
       <div class="screen-panel" id="screen-equip-menu" style="display:none;">
-        <div class="screen-title">裝備</div>
+        <div class="screen-title">背包</div>
         <div class="equip-menu-list">
           <div class="equip-menu-btn" onclick="onClassEquipClick()">
             <div class="equip-menu-icon equip-menu-icon-img" style="background-image:url('assets/images/img_9236b1703116.png')"></div>
-            <div class="equip-menu-label">職業裝備</div>
+            <div class="equip-menu-label">裝備背包</div>
           </div>
           <div class="equip-menu-btn" onclick="onGemMenuClick()">
             <div class="equip-menu-icon equip-menu-icon-img" style="background-image:url('assets/images/img_a5f2a912e5f4.png')"></div>
             <div class="equip-menu-label">魔法石</div>
           </div>
+          <div class="equip-menu-btn" onclick="openItemBackpackScreen()">
+            <div class="equip-menu-icon equip-menu-icon-img" style="background-image:url('assets/images/img_9236b1703116.png')"></div>
+            <div class="equip-menu-label">道具背包</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 畫面：道具背包(2026-09-12新增)：usage=1(一般道具)/usage=100(碎片道具)用格子式圖示呈現，
+           usage=9999(職業經驗/武器經驗/天賦點數/屬性點數等特殊點數類道具)則用條列式(icon+名稱+數量)呈現 -->
+      <div class="screen-panel" id="screen-item-backpack" style="display:none;">
+        <div class="screen-title">道具背包</div>
+        <div class="item-backpack-tabs">
+          <button class="item-backpack-tab active" data-tab="1" onclick="switchItemBackpackTab(1)">道具</button>
+          <button class="item-backpack-tab" data-tab="100" onclick="switchItemBackpackTab(100)">碎片道具</button>
+          <button class="item-backpack-tab" data-tab="9999" onclick="switchItemBackpackTab(9999)">點數道具</button>
+        </div>
+        <div id="item-backpack-content" style="flex:1; overflow-y:auto; min-height:0;"></div>
+        <div class="action-bar">
+          <button class="btn-restart" onclick="showScreen('equip-menu')">返回</button>
+        </div>
+      </div>
+
+      <!-- 畫面：商店(2026-09-12新增)：點選頂部金幣/鑽石進入。每個商店(shop_list一列)顯示成一個區塊，
+           fixed類型固定顯示該群組全部商品；refresh類型顯示目前抽選出來的一批商品，並提供刷新按鈕 -->
+      <div class="screen-panel" id="screen-shop" style="display:none;">
+        <div class="screen-title">商店</div>
+        <div id="shop-content" style="flex:1; overflow-y:auto; min-height:0;"></div>
+        <div class="action-bar">
+          <button class="btn-restart" onclick="showScreen('mainline')">返回</button>
         </div>
       </div>
 
@@ -4214,7 +4373,7 @@
       <div class="bottom-nav-item" data-nav="talent" onclick="onNavClick('talent')"><span class="nav-icon nav-icon-img" style="background-image:url('assets/images/img_f45c78e4719e.png')"></span>天賦</div>
       <div class="bottom-nav-item" data-nav="weapon" onclick="onNavClick('weapon')"><span class="nav-icon nav-icon-img" style="background-image:url('assets/images/img_dd129a6a27f3.png')"></span>武器<span class="red-dot-badge" id="nav-weapon-dot" style="display:none; top:2px; right:6px;"></span></div>
       <div class="bottom-nav-item" data-nav="main" onclick="onNavClick('main')"><span class="nav-icon nav-icon-img" style="background-image:url('assets/images/img_daee3673a3cf.png')"></span>主線<span class="red-dot-badge" id="nav-main-dot" style="display:none; top:2px; right:6px;"></span></div>
-      <div class="bottom-nav-item" data-nav="equip" onclick="onNavClick('equip')"><span class="nav-icon nav-icon-img" style="background-image:url('assets/images/img_36727b422c52.png')"></span>裝備</div>
+      <div class="bottom-nav-item" data-nav="equip" onclick="onNavClick('equip')"><span class="nav-icon nav-icon-img" style="background-image:url('assets/images/img_36727b422c52.png')"></span>背包</div>
       <div class="bottom-nav-item" data-nav="quest" onclick="onNavClick('quest')"><span class="nav-icon nav-icon-img" style="background-image:url('assets/images/img_84daff1a7132.png')"></span>副本</div>
       <div class="bottom-nav-item" data-nav="summon" onclick="onNavClick('summon')"><span class="nav-icon nav-icon-img" style="background-image:url('assets/images/img_4b5e25b33be6.png')"></span>召喚</div>
     </div>
@@ -6133,6 +6292,11 @@ let DUNGEONPREFEB_DATABASE = [
       905: { 1: {hp:104, atk:2, matk:17, def:6, mdef:9, mp:23, agi:1}, 2: {hp:156, atk:3, matk:25, def:8, mdef:14, mp:34}, 3: {hp:208, atk:4, matk:34, def:10, mdef:18, mp:46, agi:1}, 4: {hp:260, atk:6, matk:42, def:13, mdef:22, mp:58}, 5: {hp:312, atk:6, matk:50, def:16, mdef:26, mp:69, agi:1}, 6: {hp:364, atk:7, matk:58, def:18, mdef:31, cri:0.05, mp:80, criDamage:0.05}, 7: {hp:416, atk:8, matk:66, def:21, mdef:35, cri:0.05, mp:91, agi:1, criDamage:0.05}, 8: {hp:468, atk:10, matk:75, def:23, mdef:40, cri:0.05, mp:103, criDamage:0.05}, 9: {hp:520, atk:10, matk:83, def:26, mdef:44, cri:0.05, mp:114, agi:1, criDamage:0.05}, 10: {hp:624, atk:13, matk:100, def:31, mdef:53, cri:0.05, mp:138, agi:2, criDamage:0.05} }
     };
 
+    // 由 xlsx shop/shop_list 分頁產生：shop_group為商品群組(SHOP_GROUP_DATABASE)，shop_list為商店清單(SHOP_LIST_DATABASE)。
+    // 資料還沒讀進來前先給空物件/空陣列，避免商店畫面在資料載入完成前被打開而報錯。
+    let SHOP_GROUP_DATABASE = {};
+    let SHOP_LIST_DATABASE = [];
+
 let COST_DATABASE = {
       700: { 1: { item1Id:2000, item1Amount:1, item2Id:1000, item2Amount:4000, rate:1 }, 2: { item1Id:2000, item1Amount:2, item2Id:1000, item2Amount:4500, rate:1 }, 3: { item1Id:2000, item1Amount:3, item2Id:1000, item2Amount:5000, rate:1 }, 4: { item1Id:2000, item1Amount:6, item2Id:1000, item2Amount:5500, rate:1 }, 5: { item1Id:2000, item1Amount:10, item2Id:1000, item2Amount:6000, rate:0.9 }, 6: { item1Id:2000, item1Amount:12, item2Id:1000, item2Amount:6500, rate:0.7 }, 7: { item1Id:2000, item1Amount:15, item2Id:1000, item2Amount:7000, rate:0.5 }, 8: { item1Id:2000, item1Amount:20, item2Id:1000, item2Amount:7500, rate:0.45 }, 9: { item1Id:2000, item1Amount:25, item2Id:1000, item2Amount:8000, rate:0.35 }, 10: { item1Id:2000, item1Amount:40, item2Id:1000, item2Amount:8500, rate:0.3 } },
       701: { 1: { item1Id:2003, item1Amount:1, item2Id:1000, item2Amount:5000, rate:1 }, 2: { item1Id:2003, item1Amount:2, item2Id:1000, item2Amount:5500, rate:1 }, 3: { item1Id:2003, item1Amount:3, item2Id:1000, item2Amount:6000, rate:1 }, 4: { item1Id:2003, item1Amount:6, item2Id:1000, item2Amount:6500, rate:1 }, 5: { item1Id:2003, item1Amount:10, item2Id:1000, item2Amount:7000, rate:0.9 }, 6: { item1Id:2003, item1Amount:12, item2Id:1000, item2Amount:7500, rate:0.7 }, 7: { item1Id:2003, item1Amount:15, item2Id:1000, item2Amount:8000, rate:0.5 }, 8: { item1Id:2003, item1Amount:20, item2Id:1000, item2Amount:8500, rate:0.45 }, 9: { item1Id:2003, item1Amount:25, item2Id:1000, item2Amount:9000, rate:0.35 }, 10: { item1Id:2003, item1Amount:40, item2Id:1000, item2Amount:9500, rate:0.3 } },
@@ -6978,6 +7142,22 @@ let GOD_POINT_CURVE = [
 
     // 武器id -> 突破碎片item id 對照表(依xlsx item分頁順序1:1對應 10001~10030 -> 9101~9130)
     function getWeaponShardId(weaponCardId) { return weaponCardId - 900; }
+    // 反向對照：由碎片item id查回對應的武器card id
+    function getWeaponIdFromShardId(shardItemId) { return shardItemId + 900; }
+
+    // 2026-09-12新增(Wei指示)：武器碎片的圖示統一改成「武器本身的icon + 金色拼圖底圖」組合而成，
+    // 不再需要為每把武器個別上傳一張專屬的碎片圖——只要card分頁裡那把武器本身有圖，它的碎片icon就自動
+    // 生效，之後新增武器完全不用再多做一張碎片素材。拼圖底圖本身是Wei上傳的固定素材(fragment-overlay.png)，
+    // 武器圖示縮小疊在中間，做出「這把武器的拼圖碎片」的視覺效果。
+    const FRAGMENT_OVERLAY_SRC = `assets/images/ui/fragment-overlay.png?v=${ASSET_VERSION}`;
+    function buildFragmentIconHtml(shardItemId) {
+      const weaponId = getWeaponIdFromShardId(shardItemId);
+      const weaponSrc = `assets/images/card/card_${weaponId}.png?v=${ASSET_VERSION}`;
+      return `<div style="position:relative;width:100%;height:100%;">`
+        + `<img src="${FRAGMENT_OVERLAY_SRC}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;">`
+        + `<img src="${weaponSrc}" style="position:absolute;top:48%;left:50%;transform:translate(-50%,-50%);width:52%;height:52%;object-fit:contain;pointer-events:none;" onerror="this.style.display='none'">`
+        + `</div>`;
+    }
 
     // 戰鬥特效素材：依「特效名稱」(對應 skill 表 prefeb_atk/prefeb_hit1/prefeb_hit2 欄位填的名稱)
     // 動態組成檔名 assets/images/skill/skill_<特效名稱>.png，無需程式碼跟著改。
@@ -7169,6 +7349,15 @@ let GOD_POINT_CURVE = [
     //                只能回傳 emoji，否則畫面會把 HTML 原始碼直接當文字印出來
     function itemIcon(itemId, mode) {
       mode = mode || 'inline';
+      // 2026-09-12新增：武器碎片(9101~9130)一律用「武器icon+金色拼圖底圖」動態組成，不看ITEM_DATABASE
+      // 裡原本填的icon(不管是emoji還是舊的個別上傳圖，這裡都優先蓋過去，確保碎片圖示統一規則生效)。
+      // text模式(純文字情境，不能輸出HTML)仍然只能回傳emoji，跟其他道具一致。
+      if (itemId >= 9101 && itemId <= 9130) {
+        if (mode === 'text') return '🧩';
+        const html = buildFragmentIconHtml(itemId);
+        if (mode === 'box') return html;
+        return `<span class="icon-inline" style="display:inline-block;width:1.4em;height:1.4em;vertical-align:middle;position:relative;">${html}</span>`;
+      }
       if (mode === 'text') return (EQUIP_ICON_MAP && EQUIP_ICON_MAP[itemId] !== undefined && !ITEM_DATABASE[itemId]) ? EQUIP_ICON_MAP[itemId] : itemIconEmoji(itemId);
       let data = ITEM_DATABASE[itemId];
       let fallback = itemIconEmoji(itemId);
@@ -7879,6 +8068,178 @@ let GOD_POINT_CURVE = [
       if (!guardLockedFeature('annihilation')) return;
       openGemScreen();
     }
+
+    // ============ 道具背包(2026-09-12新增) ============
+    // 三個分頁分別對應item分頁usage欄位的三種值：1(一般道具)/100(碎片道具，用武器icon+拼圖底圖組成)/
+    // 9999(職業經驗、武器經驗、天賦點數、屬性點數等特殊點數類道具)。前兩個用格子式圖示呈現(icon置中、
+    // 右下角標數量)，第三個因為種類少、數字本身比較重要，改用條列式(icon+名稱+數量一行)呈現。
+    let itemBackpackCurrentTab = 1;
+    function openItemBackpackScreen() {
+      showScreen('item-backpack');
+      switchItemBackpackTab(1);
+    }
+    function switchItemBackpackTab(usage) {
+      itemBackpackCurrentTab = usage;
+      document.querySelectorAll('.item-backpack-tab').forEach(el => {
+        el.classList.toggle('active', Number(el.dataset.tab) === usage);
+      });
+      renderItemBackpack();
+    }
+    function renderItemBackpack() {
+      const container = document.getElementById('item-backpack-content');
+      if (!container) return;
+      const usage = itemBackpackCurrentTab;
+      // 只列出「玩家實際擁有(數量>0)」且該item分頁usage欄位符合目前分頁的道具
+      const ownedIds = Object.keys(gameState.items)
+        .map(Number)
+        .filter(id => getItemAmount(id) > 0 && ITEM_DATABASE[id] && ITEM_DATABASE[id].usage === usage)
+        .sort((a, b) => a - b);
+      if (ownedIds.length === 0) {
+        container.innerHTML = `<div style="padding:24px; text-align:center; color:#8a7a68;">目前沒有擁有這個分類的道具</div>`;
+        return;
+      }
+      if (usage === 9999) {
+        // 條列式：icon + 名稱 + 數量，一行一個
+        container.innerHTML = `<div class="item-backpack-list">` + ownedIds.map(id => `
+          <div class="item-backpack-list-row">
+            <span class="icon-box item-backpack-list-icon">${itemIcon(id, 'box')}</span>
+            <span class="item-backpack-list-name">${itemName(id)}</span>
+            <span class="item-backpack-list-amount">x${getItemAmount(id).toLocaleString()}</span>
+          </div>
+        `).join('') + `</div>`;
+      } else {
+        // 格子式：icon置中、右下角標數量(usage=1一般道具/usage=100碎片道具共用同一種格子樣式)
+        container.innerHTML = `<div class="item-backpack-grid">` + ownedIds.map(id => `
+          <div class="item-backpack-slot" title="${itemName(id)}">
+            <span class="icon-box item-backpack-slot-icon">${itemIcon(id, 'box')}</span>
+            <div class="item-backpack-slot-amount">${getItemAmount(id).toLocaleString()}</div>
+          </div>
+        `).join('') + `</div>`;
+      }
+    }
+
+    // ============ 商店系統(2026-09-12新增) ============
+    // shop分頁(SHOP_GROUP_DATABASE)：以shop_group分組，每組是一份商品清單(id1=商品的item id、
+    // id1Amount=購買後獲得的數量、priceId/priceAmount=需要消耗的幣別與數量、power=刷新式商店的抽選權重、
+    // limit=刷新前每個商品可購買的次數上限，沒填=不限次數)。
+    // shop_list分頁(SHOP_LIST_DATABASE)：每一列是一間商店，對應到上面的某個shop_group，
+    // type=fixed(固定商店，永遠顯示該群組全部商品)或refresh(刷新商店，每次只顯示其中抽出來的一批，
+    // refresh_amount決定抽幾個、refresh_id/refresh_price決定花多少該幣別可以重新抽一次)。
+    // 目前商品的購買次數/刷新選中清單只存在gameState記憶體內(跟其餘玩家資料一致，重整頁面會重置)。
+    gameState.shopPurchaseCounts = gameState.shopPurchaseCounts || {}; // { shopId: { id1: 已購買次數 } }
+    gameState.shopSelections = gameState.shopSelections || {}; // { shopId: [目前抽選出來的id1清單] }(僅refresh型商店使用)
+
+    // 依power欄位做「不重複抽樣」的加權隨機抽選：power值越大，被抽中的機率越高
+    function weightedSampleWithoutReplacement(items, count) {
+      let pool = items.slice();
+      let picked = [];
+      for (let i = 0; i < count && pool.length > 0; i++) {
+        let totalWeight = pool.reduce((sum, it) => sum + (it.power || 1), 0);
+        let roll = Math.random() * totalWeight;
+        let idx = 0;
+        for (; idx < pool.length; idx++) {
+          roll -= (pool[idx].power || 1);
+          if (roll <= 0) break;
+        }
+        idx = Math.min(idx, pool.length - 1);
+        picked.push(pool[idx]);
+        pool.splice(idx, 1);
+      }
+      return picked;
+    }
+
+    // 取得某間商店目前實際要顯示的商品清單：fixed商店永遠是該群組全部商品；refresh商店第一次開啟時
+    // 立刻抽一批(之後除非按刷新，否則同一批持續顯示，方便玩家一直觀察/累積購買次數到上限)
+    function getShopDisplayItems(shopEntry) {
+      const groupItems = SHOP_GROUP_DATABASE[shopEntry.group] || [];
+      if (shopEntry.type !== 'refresh') return groupItems;
+      if (!gameState.shopSelections[shopEntry.shopId]) {
+        const picked = weightedSampleWithoutReplacement(groupItems, shopEntry.refreshAmount || groupItems.length);
+        gameState.shopSelections[shopEntry.shopId] = picked.map(it => it.id1);
+      }
+      const selectedIds = gameState.shopSelections[shopEntry.shopId];
+      return selectedIds.map(id1 => groupItems.find(it => it.id1 === id1)).filter(Boolean);
+    }
+
+    function openShopScreen() {
+      showScreen('shop');
+      renderShopScreen();
+    }
+
+    function renderShopScreen() {
+      const container = document.getElementById('shop-content');
+      if (!container) return;
+      if (!SHOP_LIST_DATABASE.length) {
+        container.innerHTML = `<div style="padding:24px; text-align:center; color:#8a7a68;">目前尚無商店資料</div>`;
+        return;
+      }
+      container.innerHTML = SHOP_LIST_DATABASE.map(shopEntry => {
+        const items = getShopDisplayItems(shopEntry);
+        const counts = gameState.shopPurchaseCounts[shopEntry.shopId] || {};
+        const itemsHtml = items.map(it => {
+          const bought = counts[it.id1] || 0;
+          const soldOut = it.limit != null && bought >= it.limit;
+          const priceText = `${itemIcon(it.priceId, 'inline')} ${it.priceAmount.toLocaleString()}`;
+          return `
+            <div class="shop-item-slot">
+              <span class="icon-box shop-item-icon">${itemIcon(it.id1, 'box')}</span>
+              <div class="shop-item-name">${itemName(it.id1)}</div>
+              <div class="shop-item-qty">x${it.id1Amount}</div>
+              <button class="shop-buy-btn" ${soldOut ? 'disabled' : ''} onclick="buyShopItem(${shopEntry.shopId}, ${it.id1})">
+                ${soldOut ? '已售完' : priceText}
+              </button>
+              ${it.limit != null ? `<div class="shop-item-limit">${bought}/${it.limit}</div>` : ''}
+            </div>
+          `;
+        }).join('');
+        const refreshHtml = shopEntry.type === 'refresh' ? `
+          <button class="shop-refresh-btn" onclick="refreshShop(${shopEntry.shopId})">
+            🔄 刷新(${itemIcon(shopEntry.refreshId, 'inline')} ${shopEntry.refreshPrice.toLocaleString()})
+          </button>
+        ` : '';
+        return `
+          <div class="shop-section">
+            <div class="shop-section-header">
+              <span>商店 #${shopEntry.shopId}</span>
+              ${refreshHtml}
+            </div>
+            <div class="shop-item-grid">${itemsHtml}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function buyShopItem(shopId, id1) {
+      const shopEntry = SHOP_LIST_DATABASE.find(s => s.shopId === shopId);
+      if (!shopEntry) return;
+      const groupItems = SHOP_GROUP_DATABASE[shopEntry.group] || [];
+      const it = groupItems.find(g => g.id1 === id1);
+      if (!it) return;
+      const counts = gameState.shopPurchaseCounts[shopId] = gameState.shopPurchaseCounts[shopId] || {};
+      const bought = counts[id1] || 0;
+      if (it.limit != null && bought >= it.limit) { Guide.toast('這個商品已經賣完了，刷新後才會再出現'); return; }
+      if (getItemAmount(it.priceId) < it.priceAmount) { Guide.toast('幣別不足，無法購買'); return; }
+      spendItem(it.priceId, it.priceAmount);
+      addItem(id1, it.id1Amount);
+      counts[id1] = bought + 1;
+      updateTopHeader();
+      renderShopScreen();
+      Guide.toast(`購買成功：${itemName(id1)} x${it.id1Amount}`);
+    }
+
+    function refreshShop(shopId) {
+      const shopEntry = SHOP_LIST_DATABASE.find(s => s.shopId === shopId);
+      if (!shopEntry || shopEntry.type !== 'refresh') return;
+      if (getItemAmount(shopEntry.refreshId) < shopEntry.refreshPrice) { Guide.toast('幣別不足，無法刷新'); return; }
+      spendItem(shopEntry.refreshId, shopEntry.refreshPrice);
+      const groupItems = SHOP_GROUP_DATABASE[shopEntry.group] || [];
+      const picked = weightedSampleWithoutReplacement(groupItems, shopEntry.refreshAmount || groupItems.length);
+      gameState.shopSelections[shopId] = picked.map(it => it.id1);
+      gameState.shopPurchaseCounts[shopId] = {}; // 刷新後，這個商店裡每個商品的購買次數重新計算
+      updateTopHeader();
+      renderShopScreen();
+    }
+
     function openGemScreen() {
       showScreen('gem-screen');
       renderGemScreen();
@@ -10538,6 +10899,8 @@ let GOD_POINT_CURVE = [
       document.getElementById('screen-team-formation').style.display = name === 'team-formation' ? 'flex' : 'none';
       document.getElementById('screen-class-select').style.display = name === 'class-select' ? 'flex' : 'none';
       document.getElementById('screen-equip-menu').style.display = name === 'equip-menu' ? 'flex' : 'none';
+      document.getElementById('screen-item-backpack').style.display = name === 'item-backpack' ? 'flex' : 'none';
+      document.getElementById('screen-shop').style.display = name === 'shop' ? 'flex' : 'none';
       document.getElementById('screen-gem-screen').style.display = name === 'gem-screen' ? 'flex' : 'none';
       document.getElementById('screen-class-equip').style.display = name === 'class-equip' ? 'flex' : 'none';
       document.getElementById('screen-gacha').style.display = name === 'gacha' ? 'flex' : 'none';
@@ -10551,7 +10914,7 @@ let GOD_POINT_CURVE = [
       let navKey = null;
       if (name === 'quest-select' || name === 'quest-category' || name === 'quest-type-list' || name === 'infinite-dungeon-home' || name === 'infinite-dungeon-layers' || name === 'god-trial') navKey = 'quest';
       else if (name === 'class-select') navKey = 'class';
-      else if (name === 'equip-menu' || name === 'gem-screen' || name === 'class-equip' || name === 'team-formation') navKey = 'equip';
+      else if (name === 'equip-menu' || name === 'item-backpack' || name === 'gem-screen' || name === 'class-equip' || name === 'team-formation') navKey = 'equip';
       else if (name === 'gacha') navKey = 'summon';
       else if (name === 'mainline') navKey = 'main';
       else if (name === 'weapon') navKey = 'weapon';
@@ -11878,11 +12241,28 @@ let GOD_POINT_CURVE = [
     // 無限地城/試煉之塔/神格試煉/殲滅任務這4種關卡類型，跟主線故事進度無關，目前仍沿用原本寫死的
     // dungeon-hall.png(不設定這個CSS變數，讓CSS的預設值生效)，等Wei之後提供這幾種類型各自的背景規則
     // 再另外串接。
+    // 2026-09-12修正(Wei回報背景沒有隨著章節更換)：查了text分頁才發現，background欄位只涵蓋到第10章
+    // 為止(第11~15章完全沒有任何一列有填這個欄位)，而gameState.storyProgressBg完全依賴「劇情觸發時
+    // 順便記一筆」這個間接機制，一旦某個章節轉換點沒有對應的劇情列(或該列忘了填background)，這個值就會
+    // 卡住不動、永遠停在前一次成功記錄到的章節，不會自己跟著實際章節推進。這裡改成「文字表的值」跟
+    // 「依目前所在章節直接推算(chapter N對應chN.jpg，兩者資料上完全一致，例如第11章就是ch11.jpg)」
+    // 兩者取「章節數字較大」的那個當實際顯示值：text分頁的值如果剛好涵蓋到目前章節或更後面(代表劇情本身
+    // 有特別設計提前換景)，就繼續尊重那個值；只要text分頁那邊資料不足、比實際章節落後，就自動改用依章節
+    // 算出來的預設值，確保背景一定會跟著玩家實際所在章節走，不會因為某幾章忘了填表就卡住。
+    function getChapterFallbackBg() {
+      let { chapter } = getCurrentMainProgress();
+      return `ch${chapter}.jpg`;
+    }
     function applyBattleScreenBackground(quest) {
       const el = document.getElementById('screen-battle');
       if (!el) return;
       if (quest && quest.type === 'main') {
-        const bg = gameState.storyProgressBg || 'ch0.jpg';
+        const trackedBg = gameState.storyProgressBg || '';
+        const trackedChapterNum = Number((trackedBg.match(/\d+/) || [])[0]);
+        const { chapter: currentChapter } = getCurrentMainProgress();
+        const bg = (trackedBg && !isNaN(trackedChapterNum) && trackedChapterNum >= currentChapter)
+          ? trackedBg
+          : getChapterFallbackBg();
         el.style.setProperty('--battle-bg-image', `url('assets/images/background/${bg}?v=${ASSET_VERSION}')`);
       } else {
         el.style.removeProperty('--battle-bg-image');
