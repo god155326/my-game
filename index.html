@@ -17153,5 +17153,24 @@ let GOD_POINT_CURVE = [
 }
 </style>
 
+
+
+<!-- Codex UI polish v15: restore target-mask positioning and opaque battle log -->
+<style id="codex-ui-polish-v15">
+/* Target masks are overlays, never flex items in the card row. */
+#screen-battle #enemy-row > .target-mask,
+#screen-battle #player-row > .target-mask {
+  position: absolute !important;
+  z-index: 60 !important;
+  flex: none !important;
+}
+
+/* Restore the battle-record panel's fully opaque black background. */
+#screen-battle .battle-grid {
+  background: #0b0a0d !important;
+  background-color: #0b0a0d !important;
+}
+</style>
+
 </body>
 </html>
