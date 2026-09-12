@@ -16811,5 +16811,49 @@ let GOD_POINT_CURVE = [
 }
 </style>
 
+
+
+<!-- Codex UI polish v9: real battle masks with 20% transparency -->
+<style id="codex-ui-polish-v9">
+/* Remove the older under-content shades. They were hidden behind the cards. */
+#screen-battle .battle-enemy-zone::before,
+#screen-battle .battle-player-zone::before {
+  display: none !important;
+}
+
+/* Each mask sits over its content while remaining fully click-through. */
+#screen-battle #enemy-row,
+#screen-battle #player-row,
+#screen-battle .battle-enemy-zone > .log-header,
+#screen-battle .battle-player-zone > .battle-player-heading {
+  position: relative !important;
+  isolation: isolate;
+}
+
+#screen-battle #enemy-row::after,
+#screen-battle #player-row::after,
+#screen-battle .battle-enemy-zone > .log-header::after,
+#screen-battle .battle-player-zone > .battle-player-heading::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  background: rgba(0, 0, 0, .80) !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+  pointer-events: none !important;
+  z-index: 2147483000 !important;
+}
+
+/* Keep the old row backgrounds neutral so only 20% of the artwork shows through. */
+#screen-battle #enemy-row,
+#screen-battle #player-row {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+</style>
+
 </body>
 </html>
