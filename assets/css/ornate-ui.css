@@ -53,3 +53,36 @@
 #mainline-stage-detail .quest-card-title{font-size:14px;color:#bda783}
 #mainline-stage-detail .quest-card-hint-big{font-size:21px;color:#eed39b}
 #mainline-stage-detail .quest-event-btn{border-radius:0;border:5px solid transparent;border-image:var(--iron-frame) 14% / 7px / 0 stretch;background:#3b2713;color:#ebd09b}
+/* Shared riveted frames for secondary screens and battle controls. */
+.result-modal-box, #btn-auto, #class-list .class-card,
+#class-sub-tab-class, #class-sub-tab-god, .gacha-banner,
+.gacha-banner button, .mainline-idle-overlay > button {
+  border: 9px solid transparent;
+  border-image: var(--iron-frame) 14% / 11px / 1px stretch;
+  border-radius: 0;
+  background: var(--iron-fill);
+  box-shadow: inset 0 0 18px #0009, 0 3px 8px #0008;
+}
+.result-modal-box { padding: 24px 18px 18px; }
+#result-loot { display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin:18px 0; }
+.result-loot-item { display:flex; flex-direction:column; align-items:center; gap:6px; min-width:68px; padding:9px; background:#0b0a09; border:1px solid #66503a; color:#f1ddaa; font-size:16px; }
+.result-loot-icon { display:flex; width:42px; height:42px; align-items:center; justify-content:center; font-size:36px; }
+.result-loot-icon img, .result-loot-icon .inline-icon { width:42px!important; height:42px!important; object-fit:contain; }
+#btn-auto { padding:3px 8px; min-height:34px; color:#dfc797; }
+.battle-faction.player-faction, .battle-faction.enemy-faction { box-sizing:border-box; font-size:15px; min-width:70px; height:32px; padding:0 8px; display:flex; align-items:center; justify-content:center; }
+#class-list .class-card { padding:12px; }
+#class-list .class-card.active-class, #class-list .class-card.pending { background:linear-gradient(110deg,#2d2314,#11100f 65%); box-shadow:inset 0 0 16px #a4772429; }
+#class-sub-tab-class, #class-sub-tab-god { min-height:42px; }
+.gacha-banner { padding:16px 12px; }
+.gacha-banner button { padding:8px 16px; color:#ead29f; }
+#mainline-battle-area .mainline-battle-side-label,
+#mainline-stage-detail > .reward-bar-label,
+#mainline-stage-detail > .idle-reward-preview { display:none!important; }
+#screen-mainline > .mainline-idle-overlay { position:relative; inset:auto; display:flex; flex-direction:row; align-items:stretch; gap:8px; width:100%; flex-shrink:0; margin:4px 0 7px; z-index:auto; }
+.mainline-idle-overlay #mainline-idle-status { flex:1; width:auto; text-align:left; padding:3px 9px; font-size:14px; }
+.mainline-idle-overlay #btn-claim-idle { flex:0 0 92px; width:92px; min-width:0; padding:3px 2px; font-size:13px; }
+#mainline-battle-area .mainline-side-row { margin:8px 0; }
+#timeline-list > * { background:transparent!important; box-shadow:none!important; }
+.log-header-text-group { background:transparent!important; }
+.result-loot-icon > span { width:42px!important; height:42px!important; }
+.result-btn-row button { border:7px solid transparent; border-image:var(--iron-frame) 14% / 9px / 1px stretch; border-radius:0; }
