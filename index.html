@@ -8122,7 +8122,7 @@ let GOD_POINT_CURVE = [
       if (usage === 9999) {
         // 條列式：icon + 名稱 + 數量，一行一個
         container.innerHTML = `<div class="item-backpack-list">` + ownedIds.map(id => `
-          <div class="item-backpack-list-row">
+          <div class="item-backpack-list-row" onclick="showItemInfoModal(${id})" style="cursor:pointer;">
             <span class="icon-box item-backpack-list-icon">${itemIcon(id, 'box')}</span>
             <span class="item-backpack-list-name">${itemName(id)}</span>
             <span class="item-backpack-list-amount">x${getItemAmount(id).toLocaleString()}</span>
@@ -8131,7 +8131,7 @@ let GOD_POINT_CURVE = [
       } else {
         // 格子式：icon置中、右下角標數量(usage=1一般道具/usage=100碎片道具共用同一種格子樣式)
         container.innerHTML = `<div class="item-backpack-grid">` + ownedIds.map(id => `
-          <div class="item-backpack-slot" title="${itemName(id)}">
+          <div class="item-backpack-slot" title="${itemName(id)}" onclick="showItemInfoModal(${id})" style="cursor:pointer;">
             <span class="icon-box item-backpack-slot-icon">${itemIcon(id, 'box')}</span>
             <div class="item-backpack-slot-amount">${getItemAmount(id).toLocaleString()}</div>
           </div>
@@ -8189,7 +8189,7 @@ let GOD_POINT_CURVE = [
 
     // 2026-09-12新增：點選商店裡的商品圖示/名稱，用現有的一般提示彈窗(generic-info-modal)顯示這個道具
     // 的item_info說明文字，並在下方額外附上「目前身上擁有的數量」，方便玩家購買前參考。
-    function showShopItemInfo(itemId) {
+    function showItemInfoModal(itemId) {
       const data = ITEM_DATABASE[itemId];
       const name = itemName(itemId);
       const desc = (data && data.info) ? data.info : '（尚無說明）';
@@ -8213,8 +8213,8 @@ let GOD_POINT_CURVE = [
           const priceText = `${itemIcon(it.priceId, 'inline')} ${it.priceAmount.toLocaleString()}`;
           return `
             <div class="shop-item-slot">
-              <span class="icon-box shop-item-icon" onclick="showShopItemInfo(${it.id1})" style="cursor:pointer;">${itemIcon(it.id1, 'box')}</span>
-              <div class="shop-item-name" onclick="showShopItemInfo(${it.id1})" style="cursor:pointer;">${itemName(it.id1)}</div>
+              <span class="icon-box shop-item-icon" onclick="showItemInfoModal(${it.id1})" style="cursor:pointer;">${itemIcon(it.id1, 'box')}</span>
+              <div class="shop-item-name" onclick="showItemInfoModal(${it.id1})" style="cursor:pointer;">${itemName(it.id1)}</div>
               <div class="shop-item-qty">x${it.id1Amount}</div>
               <button class="shop-buy-btn" ${soldOut ? 'disabled' : ''} onclick="buyShopItem(${shopEntry.shopId}, ${it.id1})">
                 ${soldOut ? '已售完' : priceText}
@@ -12307,8 +12307,13 @@ let GOD_POINT_CURVE = [
           ? trackedBg
           : getChapterFallbackBg();
         el.style.setProperty('--battle-bg-image', `url('assets/images/background/${bg}?v=${ASSET_VERSION}')`);
+        // 除錯用途：Wei回報戰鬥背景仍然不會依章節切換、還是顯示dungeon-hall.png，但程式邏輯跟CSS變數機制
+        // 逐項檢查/實際測試都正常。先加這行console.debug，下次再發生時麻煩到瀏覽器開發者工具的Console分頁
+        // 截圖給我看這行印出的內容(尤其quest.type是不是真的是'main'、currentChapter/bg算出來是什麼)。
+        console.debug('[戰鬥背景除錯]', { questType: quest.type, mapId: quest.mapId, trackedBg, currentChapter, bg, appliedVar: el.style.getPropertyValue('--battle-bg-image') });
       } else {
         el.style.removeProperty('--battle-bg-image');
+        console.debug('[戰鬥背景除錯] 非主線關卡類型，維持寫死的dungeon-hall.png', { questType: quest && quest.type });
       }
     }
 
