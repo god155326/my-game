@@ -4358,8 +4358,9 @@
         <div class="mainline-battle-area" id="mainline-battle-area">
           <div class="mainline-idle-overlay">
             <button class="btn mainline-idle-mini-btn" id="mainline-idle-status" onclick="openZonePicker()">
-              <span id="mainline-idle-zone-text">自動探索 : --</span><span id="mainline-idle-phase-text"></span>
+              <span id="mainline-idle-zone-text">--</span><span id="mainline-idle-phase-text"></span>
             </button>
+            <button class="btn mainline-idle-mini-btn" id="mainline-explore-drops" hidden>探索掉落資訊</button>
             <button class="btn mainline-idle-mini-btn" id="btn-claim-idle" onclick="openRewardPreviewModal()">領取掛機<span class="red-dot-badge" id="btn-claim-idle-dot" style="display:none;"></span></button>
           </div>
           <div class="mainline-battle-side-label">敵方陣容</div>
@@ -8693,12 +8694,13 @@ let GOD_POINT_CURVE = [
       // 修正：這裡過去直接把完整掉落清單(icon+機率)攤開列在主線畫面本體裡，解鎖越多系統後
       // (尤其R~SR裝備欄位)清單會變得很長，把整個畫面撐得很高。改成只顯示一顆精簡按鈕，
       // 完整清單點開才看、且可捲動(見 openIdleRewardListModal())，主線畫面本體高度維持穩定。
-      el.innerHTML = buildQuestCardHtml(quest, '主線', true) + (idlePreview.length ? `
-        <div class="reward-bar-label">🧭 掛機獎勵${idleQuest ? `（目前掛機：${idleQuest.hint}）` : ''}</div>
-        <div style="text-align:center;margin-top:4px;">
-          <button class="btn" style="font-size:11px;padding:4px 10px;" onclick="openIdleRewardListModalForZone(${idleMapId})">📋 查看掉落道具（共${idlePreview.length}種）</button>
-        </div>
-      ` : '');
+      el.innerHTML = buildQuestCardHtml(quest, '主線', true);
+      const dropsButton = document.getElementById('mainline-explore-drops');
+      if (dropsButton) {
+        dropsButton.hidden = !idlePreview.length;
+        dropsButton.onclick = () => openIdleRewardListModalForZone(idleMapId);
+        dropsButton.title = '探索掉落資訊（共' + idlePreview.length + '種）';
+      }
     }
 
     // EVENT彈窗：集中顯示該關卡的怪物陣容(含主角)與全部event1/event2的BUFF內容(比照戰鬥中狀態頁的呈現方式)
@@ -8743,7 +8745,7 @@ let GOD_POINT_CURVE = [
       let buffHtml = buffIds.map(bId => {
         let info = BUFF_DATABASE[bId];
         if (!info) return '';
-        return `<div class="unit-status-buff-row ${info.isUp ? 'up' : 'down'}"><span class="unit-status-buff-icon">${info.icon}</span><span class="unit-status-buff-name">${info.name}</span></div>`;
+        return `<div class="unit-status-buff-row ${info.isUp ? 'up' : 'down'}">${statusBuffVisualV20(info, 1)}</div>`;
       }).join('');
 
       document.getElementById('stage-event-modal-body').innerHTML = `
@@ -9053,7 +9055,7 @@ let GOD_POINT_CURVE = [
       }
       let quest = QUEST_DATABASE.find(q => q.mapId === gameState.idle.mapId);
       // 僅顯示「自動探索 : 目前掛機地點」單一組合字串(不再顯示第幾次演出等其他資訊)；按鈕本身功能(開啟地區選擇彈窗)不變
-      zoneEl.innerText = `自動探索 : ${quest ? quest.hint : (gameState.idle.mapId || '--')}`;
+      zoneEl.innerText = quest ? quest.hint : (gameState.idle.mapId || '--');
       phaseEl.innerText = '';
       renderMainlineBattleArea();
       updateClaimIdleRedDot();
@@ -12882,7 +12884,7 @@ let GOD_POINT_CURVE = [
       (unit.buffs || []).forEach(b => {
         let info = BUFF_DATABASE[b.buffId];
         if (!info || info.invisible) return; // 隱形/固有被動buff不在此顯示
-        let row = `<div class="unit-status-buff-row ${info.isUp ? 'up' : 'down'}"><span class="unit-status-buff-icon">${info.icon}</span><span class="unit-status-buff-name">${info.name}${b.stack > 1 ? ' x' + b.stack : ''}</span></div>`;
+        let row = `<div class="unit-status-buff-row ${info.isUp ? 'up' : 'down'}">${statusBuffVisualV20(info, b.stack)}</div>`;
         (info.isUp ? buffUps : buffDowns).push(row);
       });
       document.getElementById('unit-status-buffs-up').innerHTML = buffUps.join('') || '<div class="unit-status-buff-empty">（無）</div>';
@@ -17570,6 +17572,41 @@ function battleBuffVisualV19(info, stack) {
  let type=/灼|炎|火/.test(name)?'flame':/凍|冰/.test(name)?'ice':/恢復|回血|聖護/.test(name)?'cross':/技能|真言|真理/.test(name)?'scroll':/防|抗|護|分擔|減傷|不屈/.test(name)?'shield':/魔|回魔/.test(name)?'magic':/攻|劍|刀|傷/.test(name)?'sword':'star';
  const arrow=/上升|增加/.test(name)?'▲':/下降|減少/.test(name)?'▼':'';
  return '<svg class="buff-glyph-v19" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" fill-rule="evenodd" d="'+shapes[type]+'"/></svg><span class="buff-label-v19">'+escape(label)+'</span><span class="buff-direction-v19">'+arrow+'</span>'+(stack>1?'<b class="buff-stack-v19">'+Number(stack)+'</b>':'');
+}
+</script>
+
+<style id="codex-ui-v20">
+.unit-status-buff-row.up,.unit-status-buff-row.down {
+ display:flex;align-items:center;gap:4px;border:1px solid #658473;border-radius:0!important;
+ background:#14251e!important;color:#c4e7b7!important;padding:3px 6px;
+ box-shadow:inset 0 1px #bde3bf22;text-shadow:1px 1px #000;
+}
+.unit-status-buff-row.down {background:#2b1716!important;border-color:#986457;color:#ffbc9d!important;}
+.unit-status-buff-row .buff-glyph-v19 {width:14px;height:14px;flex:0 0 14px;}
+.unit-status-buff-row .buff-label-v19 {white-space:normal;font-size:12px;line-height:1.4;}
+.unit-status-buff-row .buff-stack-v19 {margin-left:auto;font-size:12px;}
+#mainline-node-row::before {background:rgba(0,0,0,.52)!important;}
+#screen-mainline > .mainline-idle-overlay {gap:6px!important;flex-wrap:nowrap!important;margin:2px 0 4px!important;}
+.mainline-idle-overlay #mainline-idle-status {flex:1 1 0!important;min-width:0!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#mainline-explore-drops {
+ flex:0 0 auto;white-space:nowrap;padding:3px 7px!important;font-size:12px!important;
+ border:7px solid transparent!important;border-image:var(--ui-frame-v2) 14% / 9px / 0 stretch!important;
+ border-radius:0!important;background:#17130f!important;color:#ead4a9;
+}
+#mainline-explore-drops[hidden] {display:none!important;}
+.mainline-idle-overlay #btn-claim-idle {flex:0 0 84px!important;width:84px!important;}
+#mainline-battle-area {padding:2px 6px!important;margin-bottom:3px!important;}
+#mainline-battle-area .mainline-side-row {margin:2px 0!important;min-height:0!important;}
+#mainline-battle-area .weapon-slot-row.mini {margin-bottom:0!important;}
+#mainline-stage-detail {min-height:112px!important;}
+#mini-battle-bar {padding:4px 7px!important;}
+#mini-battle-bar-log,#mini-battle-bar-log .mini-battle-bar-log-line {font-size:13.5px!important;line-height:1.4!important;}
+#mini-battle-bar-log {max-height:56.7px!important;}
+</style>
+<script id="codex-ui-v20-script">
+function statusBuffVisualV20(info,stack) {
+ const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ return battleBuffVisualV19(info,stack).replace(/<span class="buff-label-v19">.*?<\/span>/,()=>'<span class="buff-label-v19">'+escape(info.name)+'</span>');
 }
 </script>
 </body>
