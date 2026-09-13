@@ -528,8 +528,8 @@
       animation: card-prefeb-slash 3.5s infinite cubic-bezier(0.25, 1, 0.5, 1);
     }
     @keyframes card-prefeb-float {
-      0%, 100% { transform: translateY(0px) rotate(0deg); }
-      50% { transform: translateY(-6px) rotate(1deg); }
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(1deg); }
     }
     @keyframes card-prefeb-relic-glow {
       0% { filter: drop-shadow(0 0 4px rgba(100,200,255,0.3)); }
@@ -576,20 +576,20 @@
     }
 
     /* --- 共用的流光劃過位移(漂浮/變色霓虹共用同一條軌跡；金屬流光另用更銳利急促的draw-slash) --- */
-    /* 2026-09-13修正(Wei指示：拿掉所有x軸位移，只保留垂直方向的動態)：原本這裡left會從-120%移動到150%，
-       跟top一起變化做出「斜向劃過」的效果；改成left固定不變(只保留原本45%那個時間點附近的水平位置當
-       固定值)，只讓top繼續變化，讓流光變成單純垂直方向的效果，不再有任何水平移動。 */
+    /* 2026-09-13修正(Wei指示：x軸/y軸都固定不動，只保留原地的明暗變化)：原本這裡left/top都會隨時間移動
+       做出「劃過」的效果；改成left/top都固定在同一個位置不變，只剩下opacity在原地淡入淡出，變成單純的
+       原地閃爍效果，不再有任何方向的位移。 */
     @keyframes card-prefeb-slash {
-      0% { left: 30%; top: -120%; opacity: 0; }
+      0% { left: 30%; top: 30%; opacity: 0; }
       15% { opacity: 1; }
-      40% { left: 30%; top: 60%; opacity: 1; }
-      45%, 100% { left: 30%; top: 60%; opacity: 0; }
+      40% { left: 30%; top: 30%; opacity: 1; }
+      45%, 100% { left: 30%; top: 30%; opacity: 0; }
     }
     @keyframes card-prefeb-draw-slash {
-      0% { left: 30%; top: -100%; opacity: 0; }
+      0% { left: 30%; top: 30%; opacity: 0; }
       10% { opacity: 1; }
-      35% { left: 30%; top: 50%; opacity: 1; }
-      40%, 100% { left: 30%; top: 50%; opacity: 0; }
+      35% { left: 30%; top: 30%; opacity: 1; }
+      40%, 100% { left: 30%; top: 30%; opacity: 0; }
     }
 
     /* ============ 2026-09-13新增：12把武器各自專屬的card_prefeb特效(card_prefeb_10001~10012) ============
@@ -619,23 +619,25 @@
       filter: drop-shadow(0 0 8px rgba(255,255,255,0.9)) drop-shadow(0 0 15px rgba(255,170,0,0.7));
       animation: cp10001-sweep-up 5s infinite cubic-bezier(0.25, 1, 0.5, 1);
     }
+    /* 2026-09-13修正(Wei指示：y軸也固定)：拿掉translateY，只保留rotate */
     @keyframes cp10001-lift-shake {
-      0% { transform: translateY(0px) rotate(0deg); }
-      5% { transform: translateY(-12px) rotate(-1deg); }
-      10% { transform: translateY(-15px) rotate(1deg); }
-      15% { transform: translateY(-10px) rotate(-0.5deg); }
-      20%, 100% { transform: translateY(0px) rotate(0deg); }
+      0% { transform: rotate(0deg); }
+      5% { transform: rotate(-1deg); }
+      10% { transform: rotate(1deg); }
+      15% { transform: rotate(-0.5deg); }
+      20%, 100% { transform: rotate(0deg); }
     }
     @keyframes cp10001-red-breath {
       0% { transform: scale(0.97); filter: drop-shadow(0 0 8px rgba(255,50,50,0.25)) drop-shadow(0 0 18px rgba(180,0,0,0.15)); }
       50% { filter: drop-shadow(0 0 15px rgba(255,60,60,0.40)) drop-shadow(0 0 30px rgba(200,0,0,0.28)); }
       100% { transform: scale(1.04); filter: drop-shadow(0 0 24px rgba(255,40,40,0.55)) drop-shadow(0 0 45px rgba(220,0,0,0.35)); }
     }
+    /* y軸固定：bottom不再變化，只剩opacity原地淡入淡出 */
     @keyframes cp10001-sweep-up {
       0% { bottom: 25%; opacity: 0; }
       15% { opacity: 1; }
-      75% { bottom: 110%; opacity: 1; }
-      85%, 100% { bottom: 110%; opacity: 0; }
+      75% { bottom: 25%; opacity: 1; }
+      85%, 100% { bottom: 25%; opacity: 0; }
     }
 
     /* --- card_prefeb_10002 童子切安綱：紫光 + 6秒微動抬升與漂浮 + 紫色熱開流光 --- */
@@ -650,7 +652,8 @@
       filter: drop-shadow(0 0 12px rgba(190,0,255,0.75));
       animation: cp10002-heat-up 6s infinite cubic-bezier(0.25, 1, 0.5, 1);
     }
-    @keyframes cp10002-float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-16px); } }
+    /* 2026-09-13修正(Wei指示：y軸也固定)：拿掉translateY，容器不再有位移動畫，只留旋轉(cp10002-lift-shake) */
+    @keyframes cp10002-float { 0%, 100% { transform: translateY(0px); } }
     @keyframes cp10002-lift-shake {
       0% { rotate: 0deg; } 5% { rotate: -1deg; } 10% { rotate: 1deg; } 15% { rotate: -0.5deg; } 20%, 100% { rotate: 0deg; }
     }
@@ -658,8 +661,9 @@
       0%, 100% { filter: drop-shadow(0 0 4px rgba(170,40,240,0.45)) drop-shadow(0 0 10px rgba(100,0,200,0.3)); }
       50% { filter: drop-shadow(0 0 14px rgba(230,90,255,1)) drop-shadow(0 0 26px rgba(150,0,255,0.85)); }
     }
+    /* y軸固定：bottom不再變化，只剩opacity原地淡入淡出 */
     @keyframes cp10002-heat-up {
-      0% { bottom: -100%; opacity: 0; } 20% { opacity: 0.85; } 60% { bottom: 120%; opacity: 0.3; } 65%, 100% { bottom: 120%; opacity: 0; }
+      0% { bottom: -20%; opacity: 0; } 20% { opacity: 0.85; } 60% { bottom: -20%; opacity: 0.3; } 65%, 100% { bottom: -20%; opacity: 0; }
     }
 
     /* --- card_prefeb_10003 村雨：藍光 + 10秒慢速漂浮 + 由30%向下掃光(screen混合) --- */
@@ -675,13 +679,15 @@
       filter: drop-shadow(0 0 15px rgba(0,220,255,1)) drop-shadow(0 0 25px rgba(255,255,255,0.8));
       animation: cp10003-scan-down 10s infinite cubic-bezier(0.25, 1, 0.5, 1);
     }
-    @keyframes cp-float-10s { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-16px); } }
+    /* 2026-09-13修正(Wei指示：y軸也固定)：拿掉translateY，這個共用keyframe被10003/10005/10007/10009共用 */
+    @keyframes cp-float-10s { 0%, 100% { transform: translateY(0px); } }
     @keyframes cp10003-blue-glow {
       0%, 100% { filter: drop-shadow(0 0 6px rgba(0,140,255,0.6)) drop-shadow(0 0 14px rgba(0,70,200,0.45)); }
       50% { filter: drop-shadow(0 0 18px rgba(0,220,255,1)) drop-shadow(0 0 35px rgba(0,130,255,0.9)); }
     }
+    /* y軸固定：top不再變化，只剩opacity原地淡入淡出 */
     @keyframes cp10003-scan-down {
-      0% { top: 30%; opacity: 0; } 15% { opacity: 1; } 60% { top: 100%; opacity: 0.35; } 65%, 100% { top: 100%; opacity: 0; }
+      0% { top: 30%; opacity: 0; } 15% { opacity: 1; } 60% { top: 30%; opacity: 0.35; } 65%, 100% { top: 30%; opacity: 0; }
     }
 
     /* --- card_prefeb_10004 隆基努斯槍：紅光 + 垂直伸縮漂浮 + 上方40%寬光暈 + 疾速向上掃光(screen混合) --- */
@@ -704,16 +710,18 @@
       filter: drop-shadow(0 0 15px rgba(255,50,50,1)) drop-shadow(0 0 25px rgba(255,255,255,0.9));
       animation: cp10004-fast-scan-up 3s infinite cubic-bezier(0.1, 0.8, 0.3, 1);
     }
+    /* 2026-09-13修正(Wei指示：y軸也固定)：拿掉translateY，只保留scaleY(伸縮不算位移)。此keyframe由10004/10010共用 */
     @keyframes cp-float-stretch-10s {
-      0%, 100% { transform: translateY(0px) scaleY(0.98); } 50% { transform: translateY(-16px) scaleY(1.02); }
+      0%, 100% { transform: scaleY(0.98); } 50% { transform: scaleY(1.02); }
     }
     @keyframes cp-upper-wide-glow { 0%, 100% { opacity: 0.55; transform: scale(0.96); } 50% { opacity: 0.95; transform: scale(1.06); } }
     @keyframes cp10004-red-glow {
       0%, 100% { filter: drop-shadow(0 0 8px rgba(200,0,0,0.6)) drop-shadow(0 0 16px rgba(120,0,0,0.45)); }
       50% { filter: drop-shadow(0 0 20px rgba(255,50,50,1)) drop-shadow(0 0 40px rgba(200,0,0,0.95)); }
     }
+    /* y軸固定：bottom不再變化，只剩opacity原地淡入淡出 */
     @keyframes cp10004-fast-scan-up {
-      0% { bottom: -80%; opacity: 0; } 20% { opacity: 1; } 70% { bottom: 110%; opacity: 0.4; } 75%, 100% { bottom: 110%; opacity: 0; }
+      0% { bottom: -20%; opacity: 0; } 20% { opacity: 1; } 70% { bottom: -20%; opacity: 0.4; } 75%, 100% { bottom: -20%; opacity: 0; }
     }
 
     /* --- card_prefeb_10005 村正：赤紅氣場 + 10秒漂浮+7秒微傾旋轉 + 由下向上紅光掃光(screen混合) --- */
@@ -734,8 +742,9 @@
       0%, 100% { filter: drop-shadow(0 0 6px rgba(200,0,0,0.6)) drop-shadow(0 0 14px rgba(120,0,0,0.45)); }
       50% { filter: drop-shadow(0 0 18px rgba(255,50,50,1)) drop-shadow(0 0 35px rgba(200,0,0,0.9)); }
     }
+    /* y軸固定：bottom不再變化，只剩opacity原地淡入淡出 */
     @keyframes cp10005-scan-up {
-      0% { bottom: -100%; opacity: 0; } 15% { opacity: 1; } 60% { bottom: 30%; opacity: 0.35; } 65%, 100% { bottom: 30%; opacity: 0; }
+      0% { bottom: 30%; opacity: 0; } 15% { opacity: 1; } 60% { bottom: 30%; opacity: 0.35; } 65%, 100% { bottom: 30%; opacity: 0; }
     }
 
     /* --- card_prefeb_10006 天叢雲劍：純白光懸浮晃動 + 斜向純白金屬流光 --- */
@@ -750,67 +759,69 @@
       filter: drop-shadow(0 0 6px rgba(255,255,255,0.8));
       animation: cp10006-metallic-slash 5.5s infinite cubic-bezier(0.25, 1, 0.5, 1);
     }
+    /* 2026-09-13修正(Wei指示：y軸也固定)：拿掉translateY，只保留rotate的搖晃 */
     @keyframes cp10006-float-shake {
-      0%, 100% { transform: translateY(0px) rotate(0deg); }
-      20% { transform: translateY(-8px) rotate(-1.5deg); }
-      25% { transform: translateY(-12px) rotate(1.5deg); }
-      30% { transform: translateY(-16px) rotate(-1deg); }
-      35% { transform: translateY(-16px) rotate(0.5deg); }
-      50% { transform: translateY(-16px) rotate(0deg); }
-      70% { transform: translateY(-8px) rotate(1deg); }
-      75% { transform: translateY(-4px) rotate(-1deg); }
-      80% { transform: translateY(0px) rotate(0.5deg); }
+      0%, 100% { transform: rotate(0deg); }
+      20% { transform: rotate(-1.5deg); }
+      25% { transform: rotate(1.5deg); }
+      30% { transform: rotate(-1deg); }
+      35% { transform: rotate(0.5deg); }
+      50% { transform: rotate(0deg); }
+      70% { transform: rotate(1deg); }
+      75% { transform: rotate(-1deg); }
+      80% { transform: rotate(0.5deg); }
     }
     @keyframes cp10006-white-glow {
       0% { filter: drop-shadow(0 0 3px rgba(255,255,255,0.4)) drop-shadow(0 0 6px rgba(255,255,255,0.2)); }
       100% { filter: drop-shadow(0 0 6px rgba(255,255,255,0.85)) drop-shadow(0 0 13px rgba(255,255,255,0.45)); }
     }
+    /* y軸固定：top不再變化，只剩opacity原地淡入淡出 */
     @keyframes cp10006-metallic-slash {
-      0% { left: 30%; top: -120%; opacity: 0; } 12% { opacity: 0.4; } 35% { left: 30%; top: 60%; opacity: 0.2; } 40%, 100% { left: 30%; top: 60%; opacity: 0; }
+      0% { left: 30%; top: 30%; opacity: 0; } 12% { opacity: 0.4; } 35% { left: 30%; top: 30%; opacity: 0.2; } 40%, 100% { left: 30%; top: 30%; opacity: 0; }
     }
 
     /* --- card_prefeb_10007 干將莫邪：懸浮雙色流光(左右獨立紅/藍光暈時脈) --- */
     .card-prefeb-10007 { animation: cp-float-10s 4s infinite ease-in-out; }
     .card-prefeb-10007 > img {
-      filter: drop-shadow(0 -4px 5px rgba(255,30,80,0.5)) drop-shadow(0 4px 5px rgba(0,180,255,0.5));
+      filter: drop-shadow(0 0 5px rgba(255,30,80,0.5)) drop-shadow(0 0 5px rgba(0,180,255,0.5));
     }
     .card-prefeb-10007 .card-prefeb-glow-a {
-      filter: drop-shadow(0 -6px 8px rgba(255,30,80,0.7));
+      filter: drop-shadow(0 0 8px rgba(255,30,80,0.7));
       animation: cp10007-red-asym 3.8s infinite ease-in-out alternate;
     }
     .card-prefeb-10007 .card-prefeb-glow-b {
-      filter: drop-shadow(0 6px 8px rgba(0,180,255,0.7));
+      filter: drop-shadow(0 0 8px rgba(0,180,255,0.7));
       animation: cp10007-blue-asym 5.2s infinite ease-in-out alternate;
     }
-    /* 2026-09-13修正(Wei指示：拿掉x軸位移)：原本這兩層是水平方向從左/右兩側射入的對衝光束(用left/right
-       位置做水平移動)，改成上下對衝(一層從上往下、一層從下往上)，維持「兩道對衝光束」的視覺效果，
-       但改用top/bottom做垂直位移，不再有任何水平方向的移動。 */
+    /* 2026-09-13修正(Wei指示：x軸/y軸都固定不動)：原本用左右或上下位移做對衝光束的效果，兩者都拿掉後，
+       改成兩層在原地各自明暗變化(紅/藍分別用不同的呼吸節奏，維持「兩種顏色不同步」的視覺效果，但完全
+       沒有任何方向的位移)。 */
     .card-prefeb-10007 .card-prefeb-shine::before {
-      content: ""; position: absolute; top: -60%; left: -20%; width: 140%; height: 55%;
+      content: ""; position: absolute; top: 22%; left: -20%; width: 140%; height: 55%;
       background: linear-gradient(15deg, rgba(255,30,80,0) 0%, rgba(255,60,100,0.4) 40%, rgba(255,255,255,0.4) 60%, rgba(255,30,80,0) 100%);
       filter: drop-shadow(0 0 5px rgba(255,50,80,0.4));
       animation: cp10007-shoot-down 6s infinite cubic-bezier(0.25, 1, 0.5, 1);
     }
     .card-prefeb-10007 .card-prefeb-shine::after {
-      content: ""; position: absolute; bottom: -60%; left: -20%; width: 140%; height: 55%;
+      content: ""; position: absolute; top: 22%; left: -20%; width: 140%; height: 55%;
       background: linear-gradient(-15deg, rgba(0,180,255,0) 0%, rgba(0,200,255,0.4) 40%, rgba(255,255,255,0.4) 60%, rgba(0,150,255,0) 100%);
       filter: drop-shadow(0 0 5px rgba(0,180,255,0.4));
       animation: cp10007-shoot-up 6s infinite cubic-bezier(0.25, 1, 0.5, 1);
       animation-delay: 0.4s;
     }
     @keyframes cp10007-red-asym {
-      0% { filter: drop-shadow(0 -2px 3px rgba(255,30,80,0.2)); opacity: 0.3; }
-      100% { filter: drop-shadow(0 -7px 9px rgba(255,30,80,0.85)); opacity: 1; }
+      0% { filter: drop-shadow(0 0 3px rgba(255,30,80,0.2)); opacity: 0.3; }
+      100% { filter: drop-shadow(0 0 9px rgba(255,30,80,0.85)); opacity: 1; }
     }
     @keyframes cp10007-blue-asym {
-      0% { filter: drop-shadow(0 2px 3px rgba(0,180,255,0.2)); opacity: 0.3; }
-      100% { filter: drop-shadow(0 7px 9px rgba(0,180,255,0.85)); opacity: 1; }
+      0% { filter: drop-shadow(0 0 3px rgba(0,180,255,0.2)); opacity: 0.3; }
+      100% { filter: drop-shadow(0 0 9px rgba(0,180,255,0.85)); opacity: 1; }
     }
     @keyframes cp10007-shoot-down {
-      0% { top: -60%; opacity: 0; } 15% { opacity: 0.4; } 40% { top: 120%; opacity: 0.2; } 45%, 100% { top: 120%; opacity: 0; }
+      0% { opacity: 0; } 15% { opacity: 0.4; } 40% { opacity: 0.2; } 45%, 100% { opacity: 0; }
     }
     @keyframes cp10007-shoot-up {
-      0% { bottom: -60%; opacity: 0; } 15% { opacity: 0.4; } 40% { bottom: 120%; opacity: 0.2; } 45%, 100% { bottom: 120%; opacity: 0; }
+      0% { opacity: 0; } 15% { opacity: 0.4; } 40% { opacity: 0.2; } 45%, 100% { opacity: 0; }
     }
 
     /* --- card_prefeb_10008 埃斯卡利巴：固定劍體，3秒微幅搖動 + 8秒週期閃爍金屬光澤 --- */
@@ -836,9 +847,10 @@
       40% { transform: rotate(0.5deg); }
       50% { transform: rotate(0deg); }
     }
+    /* y軸固定：top不再變化，只剩opacity原地閃爍 */
     @keyframes cp10008-metallic-sweep-8s {
-      0% { top: 130%; opacity: 0; } 3% { opacity: 1; } 12% { top: 20%; opacity: 0.4; }
-      18% { top: 0%; opacity: 1; } 25% { top: -60%; opacity: 0; } 100% { top: -60%; opacity: 0; }
+      0% { top: 20%; opacity: 0; } 3% { opacity: 1; } 12% { top: 20%; opacity: 0.4; }
+      18% { top: 20%; opacity: 1; } 25% { top: 20%; opacity: 0; } 100% { top: 20%; opacity: 0; }
     }
     @keyframes cp10008-flicker-8s {
       0% { filter: drop-shadow(0 0 5px rgba(255,255,255,0.4)) drop-shadow(0 0 14px rgba(0,160,255,0.35)); }
@@ -866,8 +878,9 @@
       0%, 100% { filter: drop-shadow(0 0 6px rgba(150,0,220,0.6)) drop-shadow(0 0 14px rgba(80,0,150,0.45)); }
       50% { filter: drop-shadow(0 0 18px rgba(220,50,255,1)) drop-shadow(0 0 35px rgba(140,0,255,0.9)); }
     }
+    /* y軸固定：bottom不再變化，只剩opacity原地淡入淡出 */
     @keyframes cp10009-scan-up {
-      0% { bottom: -100%; opacity: 0; } 15% { opacity: 1; } 60% { bottom: 30%; opacity: 0.35; } 65%, 100% { bottom: 30%; opacity: 0; }
+      0% { bottom: 30%; opacity: 0; } 15% { opacity: 1; } 60% { bottom: 30%; opacity: 0.35; } 65%, 100% { bottom: 30%; opacity: 0; }
     }
 
     /* --- card_prefeb_10010 提爾鋒：淡藍光 + 垂直伸縮漂浮 + 中間50%起向上全白流光(screen混合) --- */
@@ -883,15 +896,17 @@
       filter: drop-shadow(0 0 12px rgba(255,255,255,1)) drop-shadow(0 0 25px rgba(255,255,255,0.85));
       animation: cp10010-white-scan-up 7s infinite cubic-bezier(0.25, 1, 0.5, 1);
     }
+    /* 2026-09-13修正(Wei指示：y軸也固定)：拿掉translateY，只保留scaleY */
     @keyframes cp10010-float-stretch {
-      0%, 100% { transform: translateY(0px) scaleY(0.98); } 50% { transform: translateY(-16px) scaleY(1.02); }
+      0%, 100% { transform: scaleY(0.98); } 50% { transform: scaleY(1.02); }
     }
     @keyframes cp10010-lightblue-glow {
       0%, 100% { filter: drop-shadow(0 0 6px rgba(100,180,240,0.6)) drop-shadow(0 0 14px rgba(50,120,200,0.45)); }
       50% { filter: drop-shadow(0 0 18px rgba(180,230,255,1)) drop-shadow(0 0 35px rgba(90,160,255,0.9)); }
     }
+    /* y軸固定：bottom不再變化，只剩opacity原地淡入淡出 */
     @keyframes cp10010-white-scan-up {
-      0% { bottom: -50%; opacity: 0; } 15% { opacity: 1; } 60% { bottom: 100%; opacity: 0.3; } 65%, 100% { bottom: 100%; opacity: 0; }
+      0% { bottom: 25%; opacity: 0; } 15% { opacity: 1; } 60% { bottom: 25%; opacity: 0.3; } 65%, 100% { bottom: 25%; opacity: 0; }
     }
 
     /* --- card_prefeb_10011 真十字架：慢速小範圍金光懸浮，由中心向外散開金光波紋(雙波錯開) --- */
@@ -908,7 +923,8 @@
     }
     .card-prefeb-10011 .card-prefeb-shine::before { animation: cp10011-center-burst 6s infinite cubic-bezier(0.1, 0.8, 0.3, 1); }
     .card-prefeb-10011 .card-prefeb-shine::after { animation: cp10011-center-burst 6s infinite cubic-bezier(0.1, 0.8, 0.3, 1); animation-delay: 3s; }
-    @keyframes cp-float-4s { 0%, 100% { transform: translateY(0px) rotate(0deg); } 50% { transform: translateY(-16px) rotate(1deg); } }
+    /* 2026-09-13修正(Wei指示：y軸也固定)：拿掉translateY，只保留rotate */
+    @keyframes cp-float-4s { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(1deg); } }
     @keyframes cp10011-glow {
       0% { filter: drop-shadow(0 0 6px rgba(255,215,0,0.1)); } 100% { filter: drop-shadow(0 0 16px rgba(255,215,0,0.6)); }
     }
@@ -940,18 +956,20 @@
       animation: cp10012-spread-up 7.5s infinite cubic-bezier(0.2, 0.8, 0.3, 1);
     }
     /* 2026-09-13修正(Wei指示：拿掉x軸位移)：拿掉translateX，只保留translateY/rotate/scaleY */
+    /* 2026-09-13修正(Wei指示：y軸也固定)：拿掉translateY，只保留rotate+scaleY */
     @keyframes cp10012-floating {
-      0%, 100% { transform: translateY(0px) rotate(0deg) scaleY(0.965); }
-      25% { transform: translateY(-14px) rotate(1deg) scaleY(1.01); }
-      50% { transform: translateY(-28px) rotate(0deg) scaleY(1.035); }
-      75% { transform: translateY(-14px) rotate(-1deg) scaleY(0.985); }
+      0%, 100% { transform: rotate(0deg) scaleY(0.965); }
+      25% { transform: rotate(1deg) scaleY(1.01); }
+      50% { transform: rotate(0deg) scaleY(1.035); }
+      75% { transform: rotate(-1deg) scaleY(0.985); }
     }
     @keyframes cp10012-orange-glow {
       0%, 100% { filter: drop-shadow(0 0 8px rgba(220,100,0,0.6)) drop-shadow(0 0 16px rgba(150,60,0,0.45)); }
       50% { filter: drop-shadow(0 0 20px rgba(255,160,0,1)) drop-shadow(0 0 40px rgba(255,90,0,0.95)); }
     }
+    /* y軸固定：bottom不再變化，只剩opacity原地淡入淡出 */
     @keyframes cp10012-spread-up {
-      0% { bottom: -90%; opacity: 0; } 12% { opacity: 1; } 38% { bottom: 110%; opacity: 0.4; } 42%, 100% { bottom: 110%; opacity: 0; }
+      0% { bottom: 10%; opacity: 0; } 12% { opacity: 1; } 38% { bottom: 10%; opacity: 0.4; } 42%, 100% { bottom: 10%; opacity: 0; }
     }
 
     /* 受擊動作：受擊者卡牌往後晃動 */
