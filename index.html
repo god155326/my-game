@@ -5391,7 +5391,7 @@
     const ENABLE_SQUARE_RARE_FRAME = false;
     // 稀有度徽章(SSR/SR/R)：獨立放在牌面右下角；R最小、SR略大(約+5%)、SSR再更大(約+5%)
     const RARE_BADGE_DATABASE = {
-      R: "assets/images/img_7aa5ea811a7d.png",
+      R: "assets/images/ui/rank-r.svg",
       SR: "assets/images/img_9f2ebdba6ab1.png",
       SSR: "assets/images/img_c9b38bff0899.png"
     };
@@ -10604,7 +10604,7 @@ let GOD_POINT_CURVE = [
       let skillsHtml = [card.s0, getCardCurrentSkillId(card, 1, starLevel), getCardCurrentSkillId(card, 2, starLevel)].filter(sid => sid).map(sid => {
         let s = SKILL_DATABASE[sid];
         if (!s) return '';
-        return `<div style="margin-bottom:6px;"><span class="weapon-menu-skill-icon" style="display:inline-flex;width:1.3em;height:1.3em;vertical-align:middle;align-items:center;justify-content:center;margin-right:4px;">${skillIconHtml(s)}</span><span class="weapon-menu-skill-name">${s.name}：</span>${formatSkillDesc(s)}</div>`;
+        return `<div style="margin-bottom:6px;"><span class="weapon-menu-skill-name">${s.name}：</span>${formatSkillDesc(s)}</div>`;
       }).join('');
       document.getElementById('weapon-menu-skills').innerHTML = skillsHtml || '（無額外技能資訊）';
 
@@ -11850,7 +11850,7 @@ let GOD_POINT_CURVE = [
       let skillsHtml = skillIds.map(sid => {
         let s = SKILL_DATABASE[sid];
         if (!s) return '';
-        return `<div style="margin-bottom:8px; font-size:12px;"><span class="weapon-menu-skill-icon" style="display:inline-flex;width:1.2em;height:1.2em;vertical-align:middle;align-items:center;justify-content:center;margin-right:3px;">${skillIconHtml(s)}</span><span class="weapon-menu-skill-name">${s.name}${s.cooldown ? `（冷卻${s.cooldown}回合）` : ''}：</span>${formatSkillDesc(s)}</div>`;
+        return `<div style="margin-bottom:8px; font-size:12px;"><span class="weapon-menu-skill-name">${s.name}${s.cooldown ? `（冷卻${s.cooldown}回合）` : ''}：</span>${formatSkillDesc(s)}</div>`;
       }).join('') || '（無額外技能資訊）';
 
       document.getElementById('star-preview-body').innerHTML = statsHtml + skillsHtml;
@@ -12977,7 +12977,7 @@ let GOD_POINT_CURVE = [
             if (!info) return '';
             if (info.invisible) return ''; // invisible=1的buff(魔法石/職業裝備固有被動、套裝效果等)不顯示圖標
             let styleClass = info.isUp ? 'buff-up' : 'buff-down';
-            return `<div class="buff-icon ${styleClass}" title="${info.name}">${info.icon}${b.stack > 1 ? b.stack : ''}</div>`;
+            return `<div class="buff-icon ${styleClass}" title="${info.name}">${battleBuffVisualV19(info, b.stack)}</div>`;
           }).join('');
         }
 
@@ -13493,7 +13493,7 @@ let GOD_POINT_CURVE = [
       let titleEl = document.getElementById('action-popup-title');
       let descEl = document.getElementById('action-popup-desc');
       let cdEl = document.getElementById('action-popup-cd');
-      if (titleEl) titleEl.innerText = skillObj.cost > 0 ? `技能：${skillObj.name} (消耗MP: ${skillObj.cost})` : `技能：${skillObj.name}`;
+      if (titleEl) titleEl.innerText = skillObj.name;
       if (descEl) descEl.innerText = formatSkillDesc(skillObj) || "無詳細說明";
       if (cdEl) { cdEl.innerText = `CD:${skillObj.cooldown || 0}`; cdEl.style.display = ''; }
     }
@@ -13584,7 +13584,7 @@ let GOD_POINT_CURVE = [
       let skillObj = SKILL_DATABASE[110000];
       let cdEl = document.getElementById('action-popup-cd');
       if (skillObj) {
-        document.getElementById('action-popup-title').innerText = `技能：${skillObj.name}`;
+        document.getElementById('action-popup-title').innerText = skillObj.name;
         document.getElementById('action-popup-desc').innerText = formatSkillDesc(skillObj) || "無詳細說明";
         cdEl.innerText = `CD:${skillObj.cooldown || 0}`;
         cdEl.style.display = '';
@@ -17502,5 +17502,75 @@ body .result-loot-item strong,body #result-loot .result-loot-item strong,body .r
  100% {opacity:0;transform:translateY(-30px) scale(1);}
 }
 </style>
+
+<style id="codex-ui-v19">
+/* Square iron panels with stepped bronze highlights. */
+#story-dialogue-box,#story-narration,#action-popup-icon,#action-popup .action-popup-info {
+ border:3px solid #634b31!important;border-image:none!important;border-radius:0!important;
+ background:linear-gradient(135deg,#211e18,#0d1013 60%)!important;
+ box-shadow:inset 1px 1px #c7a36b,inset -1px -1px #302517,0 0 0 1px #0a0907!important;
+}
+#story-dialogue-box,#story-narration {background-image:linear-gradient(115deg,#201c16e8,#090d11fa),repeating-linear-gradient(0deg,#ba99530a 0 1px,transparent 1px 8px)!important;}
+#story-speaker-name {
+ border:2px solid #937247!important;border-image:none!important;border-radius:0!important;
+ background:#211a12!important;color:#f0d69b!important;
+ box-shadow:inset 1px 1px #cdb17b,inset -1px -1px #100c08,2px 2px 0 #080808!important;
+}
+#story-next-hint {text-shadow:1px 1px #000;animation:none;}
+#action-popup-title {font-size:19.5px!important;line-height:1.25!important;color:#f1d395!important;}
+#action-popup-desc {font-size:14.4px!important;line-height:1.45!important;color:#e2d9c8!important;}
+#action-popup .action-popup-info {padding:8px!important;min-width:0;}
+#action-popup-icon {box-sizing:border-box;}
+#screen-battle .battle-faction,#screen-battle #turn-info {
+ border:2px solid #80623e!important;border-image:none!important;border-radius:0!important;
+ background:#151310!important;color:#e9d6af!important;
+ box-shadow:inset 1px 1px #b69a65,inset -1px -1px #352819!important;
+ text-shadow:1px 1px #000;
+}
+#screen-battle .enemy-faction {color:#e8b29a!important;border-left:4px solid #985b40!important;}
+#screen-battle .player-faction {color:#a9ced5!important;border-left:4px solid #4e8190!important;}
+/* A single thin black layer under the map controls. */
+#mainline-node-row {isolation:isolate;}
+#mainline-node-row::before {content:""!important;display:block!important;position:absolute;inset:0;background:#00000038!important;pointer-events:none;z-index:-1;}
+/* Preserve each rarity frame, using only outward light to mark the current actor. */
+#screen-battle .card.active {border-color:var(--actor-rare-edge,#765538)!important;box-shadow:0 0 9px 2px #ffe28a99,0 0 20px 1px #d8a54266!important;}
+#screen-battle .card[data-rare="R"] {--actor-rare-edge:#765538;}
+#screen-battle .card[data-rare="SR"] {--actor-rare-edge:#9ba8ad;}
+#screen-battle .card[data-rare="SSR"] {--actor-rare-edge:#d1a43e;}
+#screen-battle .card.active::before {filter:none!important;}
+#screen-battle .card.active::after {content:""!important;position:absolute!important;inset:-3px!important;width:auto!important;height:auto!important;background:transparent!important;border:0!important;border-image:none!important;box-shadow:0 0 10px #ffe39c99!important;pointer-events:none;}
+/* Semantic pixel glyphs plus short labels distinguish even effects that shared an emoji. */
+#screen-battle .buff-icon {
+ display:inline-flex!important;align-items:center;gap:1px!important;box-sizing:border-box;
+ border:1px solid #658473!important;border-radius:0!important;background:#14251e!important;color:#c4e7b7!important;
+ padding:1px 2px!important;font:700 10px/14px "Microsoft JhengHei",sans-serif!important;min-height:18px!important;
+ box-shadow:inset 0 1px #bde3bf22;text-shadow:1px 1px #000;
+}
+#screen-battle .buff-icon.buff-down {background:#2b1716!important;border-color:#986457!important;color:#ffbc9d!important;}
+.buff-glyph-v19 {width:12px;height:12px;flex:0 0 12px;}
+.buff-label-v19 {white-space:nowrap;}.buff-direction-v19 {font-size:8px;}.buff-stack-v19 {color:#fff;font:900 10px/12px Consolas,monospace;}
+body .card-rank-badge[data-rare="R"] {min-width:9px!important;image-rendering:pixelated;}
+</style>
+<script id="codex-ui-v19-script">
+function battleBuffVisualV19(info, stack) {
+ const name=String(info.name||'狀態');
+ const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const labels=[[/技能傷害/,'技傷'],[/技能抵抗/,'技抗'],[/爆傷抗性/,'爆抗'],[/爆擊抗性/,'暴抗'],[/爆擊/,'爆擊'],[/爆傷/,'爆傷'],[/魔攻/,'魔攻'],[/魔防/,'魔防'],[/攻擊/,'物攻'],[/防禦/,'物防'],[/持續恢復/,'回復'],[/持續回魔/,'回魔'],[/增加造成傷害/,'增傷'],[/減少受到傷害/,'減傷'],[/行動加快/,'加速'],[/人劍合一/,'人劍'],[/極.*炎帝/,'極炎'],[/極意鬼人/,'極鬼'],[/妖刀.*滅/,'刀滅'],[/傷害分擔/,'分擔'],[/受護衛/,'護衛']];
+ const label=labels.find(x=>x[0].test(name))?.[1]||name.replace(/[•●·]/g,'').slice(0,2);
+ const shapes={
+  sword:'M10 1H14V5H12V7H10V9H8V11H6V13H4V15H2V13H4V11H2V9H4V7H6V9H8V7H10Z',
+  shield:'M2 2H6V1H10V2H14V9H12V12H10V14H6V12H4V9H2Z M7 4V10H9V4Z',
+  magic:'M6 1H10V3H12V5H14V11H12V13H10V15H6V13H4V11H2V5H4V3H6Z M6 5V11H10V5Z',
+  scroll:'M3 1H12V3H14V14H4V12H2V3H3Z M5 5V6H11V5Z M5 8V9H11V8Z',
+  flame:'M8 1H10V5H12V3H14V11H12V14H4V12H2V7H4V9H6V5H8Z',
+  cross:'M6 1H10V6H15V10H10V15H6V10H1V6H6Z',
+  ice:'M7 1H9V5H11V3H13V5H11V7H15V9H11V11H13V13H11V11H9V15H7V11H5V13H3V11H5V9H1V7H5V5H3V3H5V5H7Z',
+  star:'M6 1H10V5H14V7H16V9H12V11H10V15H6V11H4V9H0V7H4V5H6Z'
+ };
+ let type=/灼|炎|火/.test(name)?'flame':/凍|冰/.test(name)?'ice':/恢復|回血|聖護/.test(name)?'cross':/技能|真言|真理/.test(name)?'scroll':/防|抗|護|分擔|減傷|不屈/.test(name)?'shield':/魔|回魔/.test(name)?'magic':/攻|劍|刀|傷/.test(name)?'sword':'star';
+ const arrow=/上升|增加/.test(name)?'▲':/下降|減少/.test(name)?'▼':'';
+ return '<svg class="buff-glyph-v19" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" fill-rule="evenodd" d="'+shapes[type]+'"/></svg><span class="buff-label-v19">'+escape(label)+'</span><span class="buff-direction-v19">'+arrow+'</span>'+(stack>1?'<b class="buff-stack-v19">'+Number(stack)+'</b>':'');
+}
+</script>
 </body>
 </html>
