@@ -17358,5 +17358,54 @@ let GOD_POINT_CURVE = [
 })();
 </script>
 
+
+<style id="codex-ui-v17">
+#screen-battle .battle-enemy-zone #enemy-row {margin-top:7px!important;overflow:visible!important;}
+#screen-battle .battle-enemy-zone {overflow:visible!important;}
+#screen-battle .battle-enemy-zone:has(.lunge-enemy) {z-index:80!important;}
+#screen-battle #enemy-row:has(.lunge-enemy) {z-index:80!important;isolation:auto!important;}
+#screen-battle #enemy-row > .card.lunge-enemy {z-index:81!important;}
+/* A compact icon tile with the quantity in its lower right corner. */
+body .result-loot-item,body #result-loot .result-loot-item,body .idle-result-icons .result-loot-item,
+body .reward-item.reward-quantity-v17 {
+ position:relative!important;display:block!important;box-sizing:border-box!important;
+ width:64px!important;height:64px!important;min-width:64px!important;flex:0 0 64px!important;
+ padding:4px!important;margin-bottom:0!important;border:2px solid #41372a!important;
+ border-image:none!important;background:#090909!important;border-radius:0!important;
+}
+body .result-loot-item .result-loot-icon,body .reward-quantity-v17 .reward-icon {
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ width:100%!important;height:100%!important;padding:0!important;margin:0!important;
+ background:transparent!important;border:0!important;
+}
+body .result-loot-item .result-loot-icon img,body .reward-quantity-v17 .reward-icon img {
+ width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;object-fit:contain!important;
+}
+body .result-loot-item strong,body #result-loot .result-loot-item strong,body .reward-quantity-v17 .reward-amount {
+ position:absolute!important;right:2px!important;bottom:1px!important;margin:0!important;
+ color:#fff!important;font:700 14px/1.1 Arial,sans-serif!important;white-space:nowrap;
+ -webkit-text-stroke:3px #000;paint-order:stroke fill;
+ text-shadow:1px 1px #000,-1px -1px #000,1px -1px #000,-1px 1px #000;
+}
+body .result-loot-item::after,body .reward-quantity-v17 .reward-name {display:none!important;content:none!important;}
+</style>
+<script id="codex-ui-v17-script">
+(()=>{
+ function updateRewards(){
+  document.querySelectorAll('.result-loot-item strong').forEach(n=>{
+   const clean=n.textContent.replace(/^[×x]\s*/, '');if(n.textContent!==clean)n.textContent=clean;
+  });
+  document.querySelectorAll('.cheat-modal .reward-item').forEach(n=>{
+   const amount=n.querySelector('.reward-amount');
+   if(!amount||!/^\s*[×x]?\s*[\d,]+\s*$/.test(amount.textContent))return;
+   n.classList.add('reward-quantity-v17');
+   n.title=n.querySelector('.reward-name')?.textContent||'';
+   const clean=amount.textContent.replace(/^\s*[×x]\s*/,'');if(clean!==amount.textContent)amount.textContent=clean;
+  });
+ }
+ const observer=new MutationObserver(updateRewards);
+ observer.observe(document.body,{childList:true,subtree:true,characterData:true});updateRewards();
+})();
+</script>
 </body>
 </html>
