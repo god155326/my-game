@@ -653,16 +653,30 @@ function buildBuffDatabaseAndSetTiers(wb) {
 // 找不到對應 id 時預設用 80%。圖片路徑一律由 id 直接組成，不需要另外維護路徑對照表：
 // 只要把圖放到 assets/images/card/card_<角色id>.png，遊戲就會自動讀到。
 const CARD_ICON_STYLE_MAP = {"10001":80.5,"10002":80.5,"10003":80.5,"10004":80.5,"10005":80.5,"10006":80.5,"10007":80.5,"10008":80.5,"10009":80.5,"10010":80.5,"10011":80.5,"10012":80.5,"10013":63,"10014":63,"10015":63,"10016":63,"10017":63,"10018":63,"10019":63,"10020":63,"10021":63,"10022":70,"10023":70,"10024":70,"10025":70,"10026":70,"10027":70,"10028":70,"10029":70,"10030":70,"10031":70,"40001":80,"40002":80,"40003":80,"40004":80,"40005":80,"40006":80,"40007":80,"40008":80,"40009":80,"40010":80,"40011":80,"40012":80,"40013":80,"40014":80,"40015":80,"50000":80,"50001":72,"50002":72,"50003":72,"90001":80,"90002":80,"90003":80,"90004":80,"90005":80,"90006":80,"90007":80,"90008":80,"90009":80,"90010":80,"90011":80,"90012":80,"90013":80};
-// 目前支援的三種常駐卡面特效(card分頁card_prefeb欄位可填的值)：漂浮/金屬流光/變色霓虹，樣式定義見index.html
+// 目前支援的三種通用常駐卡面特效(card分頁card_prefeb欄位可填的值)：漂浮/金屬流光/變色霓虹，樣式定義見index.html
 const CARD_PREFEB_CLASSES = new Set(['card_floating', 'card_metal', 'card_magic']);
+// 2026-09-13新增：Wei針對特定武器逐一設計了專屬特效(card_prefeb_{武器id}，例如card_prefeb_10001對應
+// 武器id=10001火之迦具土)，這裡新增這個命名規則的解析，直接取欄位值後面的數字當class後綴(例如"10001")，
+// 對應到index.html裡各自專屬撰寫的.card-prefeb-10001 ~ .card-prefeb-10012這幾組CSS。
+function resolvePrefebClass(prefeb) {
+  const val = String(prefeb || '').trim();
+  if (!val) return null;
+  const perCardMatch = val.match(/^card_prefeb_(\d+)$/);
+  if (perCardMatch) return perCardMatch[1];
+  if (CARD_PREFEB_CLASSES.has(val)) return val.replace(/^card_/, '');
+  return null;
+}
+// 少數專屬特效(目前只有干將莫邪id=10007)需要「額外兩層獨立紅/藍光暈」，這兩層是直接疊上完整的武器圖片
+// (background-image，不是mask遮罩)、各自套用不同顏色的drop-shadow動畫，做出左右分色的效果，跟其餘特效
+// 「單一shine疊層＋mask」的結構不一樣，需要額外多兩個div。
+const EXTRA_GLOW_LAYER_CARD_IDS = new Set([10007]);
 function buildCardIconHtml(id, prefeb) {
   const pct = CARD_ICON_STYLE_MAP[id] !== undefined ? CARD_ICON_STYLE_MAP[id] : 80;
   const src = `assets/images/card/card_${id}.png?v=${ASSET_VERSION}`;
   const imgTag = `<img src='${src}' style='max-width:${pct}%;max-height:${pct}%;width:auto;height:auto;min-width:0;min-height:0;object-fit:contain;pointer-events:none;' onerror="this.style.display='none'">`;
-  // 2026-09-10新增：card分頁的card_prefeb欄位(card_floating/card_metal/card_magic)，讓卡面本身疊加一層
-  // 常駐(不需要觸發，永遠在播放)的視覺特效(流光劃過/呼吸輝光/變色)。沒有填/填的值不是這三種之一，
-  // 就完全比照原本純<img>的輸出，不受影響。這裡統一忽略前後空白，避免xlsx儲存格不小心多打空格導致比對失敗。
-  const prefebClass = CARD_PREFEB_CLASSES.has(String(prefeb || '').trim()) ? String(prefeb).trim().replace(/^card_/, '') : null;
+  // 2026-09-10新增：card分頁的card_prefeb欄位，讓卡面本身疊加一層常駐(不需要觸發，永遠在播放)的視覺特效。
+  // 沒有填/解析不出對應class時，就完全比照原本純<img>的輸出，不受影響。
+  const prefebClass = resolvePrefebClass(prefeb);
   if (!prefebClass) return imgTag;
   // 2026-09-11修正：曾經用<span style="display:contents">包裝，讓瀏覽器「當作這層包裝不存在」、直接沿用
   // 父層既有的position:relative當定位基準——但手機實機測試發現display:contents在部分瀏覽器上不可靠，
@@ -678,8 +692,14 @@ function buildCardIconHtml(id, prefeb) {
   // 讓動畫不管DOM被重建幾次，都會定位到「這個真實時間點理論上該播放到的畫面」，讓特效播放速度固定不變。
   const elapsedSec = (typeof gameState !== 'undefined' && gameState.battleStartTime) ? (Date.now() - gameState.battleStartTime) / 1000 : 0;
   const delayStyle = `animation-delay:-${elapsedSec}s;`;
+  let extraLayers = '';
+  if (EXTRA_GLOW_LAYER_CARD_IDS.has(id)) {
+    extraLayers = `<div class="card-prefeb-glow-a" style="background-image:url('${src}');${delayStyle}"></div>`
+      + `<div class="card-prefeb-glow-b" style="background-image:url('${src}');${delayStyle}"></div>`;
+  }
   return `<span class="card-icon-wrap card-prefeb-${prefebClass}" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">`
     + `<img src='${src}' style='max-width:${pct}%;max-height:${pct}%;width:auto;height:auto;min-width:0;min-height:0;object-fit:contain;pointer-events:none;${delayStyle}' onerror="this.style.display='none'">`
+    + extraLayers
     + `<div class="card-prefeb-shine" style="--card-mask-url:url('${src}');${delayStyle}"></div>`
     + `</span>`;
 }

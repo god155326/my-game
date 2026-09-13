@@ -589,6 +589,363 @@
       40%, 100% { left: 150%; top: 50%; opacity: 0; }
     }
 
+    /* ============ 2026-09-13新增：12把武器各自專屬的card_prefeb特效(card_prefeb_10001~10012) ============
+       每一把都是Wei個別設計、測試過的獨立效果，完全比照上傳的html內容逐一搬進來，數值/時間/顏色/曲線
+       一律不做任何調整；只有「置中」相關的結構(wrapper改成position:absolute+inset:0+flex置中、mask的
+       圖片來源改成該武器自己的card icon而不是外部Google Drive連結)配合遊戲既有的顯示規則做調整。
+       .card-prefeb-glow-a / .card-prefeb-glow-b 這兩個共用的基礎定位規則，只有干將莫邪(10007)真的會
+       產生對應的div、用得到，其餘武器的wrapper不會產生這兩個div，不影響任何顯示。 */
+    .card-prefeb-glow-a, .card-prefeb-glow-b {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    /* --- card_prefeb_10001 火之迦具土：紅色外光暈 + 短暫舉起微動 + 由下1/4處向上金屬流光 --- */
+    .card-prefeb-10001 { animation: cp10001-lift-shake 6s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+    .card-prefeb-10001 > img {
+      filter: drop-shadow(0 0 12px rgba(255, 50, 50, 0.4)) drop-shadow(0 0 28px rgba(220, 0, 0, 0.25));
+      animation: cp10001-red-breath 3.5s infinite ease-in-out alternate;
+    }
+    .card-prefeb-10001 .card-prefeb-shine::after {
+      content: ""; position: absolute; left: -20%; width: 140%; height: 30%;
+      background: linear-gradient(0deg, rgba(255,200,100,0) 0%, rgba(255,215,0,0.4) 25%, rgba(255,255,255,0.95) 50%, rgba(255,180,60,0.5) 75%, rgba(255,140,0,0) 100%);
+      filter: drop-shadow(0 0 8px rgba(255,255,255,0.9)) drop-shadow(0 0 15px rgba(255,170,0,0.7));
+      animation: cp10001-sweep-up 5s infinite cubic-bezier(0.25, 1, 0.5, 1);
+    }
+    @keyframes cp10001-lift-shake {
+      0% { transform: translateY(0px) rotate(0deg); }
+      5% { transform: translateY(-12px) rotate(-1deg); }
+      10% { transform: translateY(-15px) rotate(1deg); }
+      15% { transform: translateY(-10px) rotate(-0.5deg); }
+      20%, 100% { transform: translateY(0px) rotate(0deg); }
+    }
+    @keyframes cp10001-red-breath {
+      0% { transform: scale(0.97); filter: drop-shadow(0 0 8px rgba(255,50,50,0.25)) drop-shadow(0 0 18px rgba(180,0,0,0.15)); }
+      50% { filter: drop-shadow(0 0 15px rgba(255,60,60,0.40)) drop-shadow(0 0 30px rgba(200,0,0,0.28)); }
+      100% { transform: scale(1.04); filter: drop-shadow(0 0 24px rgba(255,40,40,0.55)) drop-shadow(0 0 45px rgba(220,0,0,0.35)); }
+    }
+    @keyframes cp10001-sweep-up {
+      0% { bottom: 25%; opacity: 0; }
+      15% { opacity: 1; }
+      75% { bottom: 110%; opacity: 1; }
+      85%, 100% { bottom: 110%; opacity: 0; }
+    }
+
+    /* --- card_prefeb_10002 童子切安綱：紫光 + 6秒微動抬升與漂浮 + 紫色熱開流光 --- */
+    .card-prefeb-10002 { animation: cp10002-lift-shake 6s infinite cubic-bezier(0.4, 0, 0.2, 1), cp10002-float 6s infinite ease-in-out; }
+    .card-prefeb-10002 > img {
+      filter: drop-shadow(0 0 6px rgba(190,60,255,0.85)) drop-shadow(0 0 15px rgba(120,0,255,0.55));
+      animation: cp10002-glow-pulse 6s infinite ease-in-out;
+    }
+    .card-prefeb-10002 .card-prefeb-shine::after {
+      content: ""; position: absolute; bottom: -100%; left: -20%; width: 140%; height: 100%;
+      background: linear-gradient(0deg, rgba(130,0,255,0) 0%, rgba(180,20,255,0.45) 25%, rgba(230,110,255,0.8) 55%, rgba(255,230,255,0.95) 85%, rgba(255,255,255,0) 100%);
+      filter: drop-shadow(0 0 12px rgba(190,0,255,0.75));
+      animation: cp10002-heat-up 6s infinite cubic-bezier(0.25, 1, 0.5, 1);
+    }
+    @keyframes cp10002-float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-16px); } }
+    @keyframes cp10002-lift-shake {
+      0% { rotate: 0deg; } 5% { rotate: -1deg; } 10% { rotate: 1deg; } 15% { rotate: -0.5deg; } 20%, 100% { rotate: 0deg; }
+    }
+    @keyframes cp10002-glow-pulse {
+      0%, 100% { filter: drop-shadow(0 0 4px rgba(170,40,240,0.45)) drop-shadow(0 0 10px rgba(100,0,200,0.3)); }
+      50% { filter: drop-shadow(0 0 14px rgba(230,90,255,1)) drop-shadow(0 0 26px rgba(150,0,255,0.85)); }
+    }
+    @keyframes cp10002-heat-up {
+      0% { bottom: -100%; opacity: 0; } 20% { opacity: 0.85; } 60% { bottom: 120%; opacity: 0.3; } 65%, 100% { bottom: 120%; opacity: 0; }
+    }
+
+    /* --- card_prefeb_10003 村雨：藍光 + 10秒慢速漂浮 + 由30%向下掃光(screen混合) --- */
+    .card-prefeb-10003 { animation: cp-float-10s 10s infinite ease-in-out; }
+    .card-prefeb-10003 > img {
+      filter: drop-shadow(0 0 10px rgba(0,180,255,0.9)) drop-shadow(0 0 22px rgba(0,100,255,0.75));
+      animation: cp10003-blue-glow 10s infinite ease-in-out;
+    }
+    .card-prefeb-10003 .card-prefeb-shine { mix-blend-mode: screen; }
+    .card-prefeb-10003 .card-prefeb-shine::after {
+      content: ""; position: absolute; top: 30%; left: -20%; width: 140%; height: 100%;
+      background: linear-gradient(180deg, rgba(0,160,255,0) 0%, rgba(0,200,255,0.5) 15%, rgba(220,245,255,0.95) 40%, rgba(0,180,255,0.6) 70%, rgba(0,90,255,0) 100%);
+      filter: drop-shadow(0 0 15px rgba(0,220,255,1)) drop-shadow(0 0 25px rgba(255,255,255,0.8));
+      animation: cp10003-scan-down 10s infinite cubic-bezier(0.25, 1, 0.5, 1);
+    }
+    @keyframes cp-float-10s { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-16px); } }
+    @keyframes cp10003-blue-glow {
+      0%, 100% { filter: drop-shadow(0 0 6px rgba(0,140,255,0.6)) drop-shadow(0 0 14px rgba(0,70,200,0.45)); }
+      50% { filter: drop-shadow(0 0 18px rgba(0,220,255,1)) drop-shadow(0 0 35px rgba(0,130,255,0.9)); }
+    }
+    @keyframes cp10003-scan-down {
+      0% { top: 30%; opacity: 0; } 15% { opacity: 1; } 60% { top: 100%; opacity: 0.35; } 65%, 100% { top: 100%; opacity: 0; }
+    }
+
+    /* --- card_prefeb_10004 隆基努斯槍：紅光 + 垂直伸縮漂浮 + 上方40%寬光暈 + 疾速向上掃光(screen混合) --- */
+    .card-prefeb-10004 { animation: cp-float-stretch-10s 10s infinite ease-in-out; }
+    .card-prefeb-10004 > img {
+      position: relative; z-index: 2;
+      filter: drop-shadow(0 0 10px rgba(255,40,40,0.85)) drop-shadow(0 0 22px rgba(180,0,0,0.7));
+      animation: cp10004-red-glow 5s infinite ease-in-out;
+    }
+    .card-prefeb-10004 .card-prefeb-shine { mix-blend-mode: screen; z-index: 3; }
+    .card-prefeb-10004 .card-prefeb-shine::before {
+      content: ""; position: absolute; top: 0; left: -40%; width: 180%; height: 40%;
+      background: radial-gradient(ellipse at 50% 35%, rgba(255,90,90,0.95) 0%, rgba(255,30,30,0.75) 35%, rgba(200,0,0,0.35) 65%, rgba(150,0,0,0) 100%);
+      filter: drop-shadow(0 0 16px rgba(255,50,50,0.9)) drop-shadow(0 0 28px rgba(220,0,0,0.75));
+      animation: cp-upper-wide-glow 4s infinite ease-in-out;
+    }
+    .card-prefeb-10004 .card-prefeb-shine::after {
+      content: ""; position: absolute; bottom: -100%; left: -20%; width: 140%; height: 80%;
+      background: linear-gradient(0deg, rgba(255,0,0,0) 0%, rgba(255,60,60,0.6) 20%, rgba(255,230,230,0.95) 50%, rgba(220,0,0,0.7) 80%, rgba(150,0,0,0) 100%);
+      filter: drop-shadow(0 0 15px rgba(255,50,50,1)) drop-shadow(0 0 25px rgba(255,255,255,0.9));
+      animation: cp10004-fast-scan-up 3s infinite cubic-bezier(0.1, 0.8, 0.3, 1);
+    }
+    @keyframes cp-float-stretch-10s {
+      0%, 100% { transform: translateY(0px) scaleY(0.98); } 50% { transform: translateY(-16px) scaleY(1.02); }
+    }
+    @keyframes cp-upper-wide-glow { 0%, 100% { opacity: 0.55; transform: scale(0.96); } 50% { opacity: 0.95; transform: scale(1.06); } }
+    @keyframes cp10004-red-glow {
+      0%, 100% { filter: drop-shadow(0 0 8px rgba(200,0,0,0.6)) drop-shadow(0 0 16px rgba(120,0,0,0.45)); }
+      50% { filter: drop-shadow(0 0 20px rgba(255,50,50,1)) drop-shadow(0 0 40px rgba(200,0,0,0.95)); }
+    }
+    @keyframes cp10004-fast-scan-up {
+      0% { bottom: -80%; opacity: 0; } 20% { opacity: 1; } 70% { bottom: 110%; opacity: 0.4; } 75%, 100% { bottom: 110%; opacity: 0; }
+    }
+
+    /* --- card_prefeb_10005 村正：赤紅氣場 + 10秒漂浮+7秒微傾旋轉 + 由下向上紅光掃光(screen混合) --- */
+    .card-prefeb-10005 { animation: cp-float-10s 10s infinite ease-in-out, cp-rotate-7s 7s infinite ease-in-out; }
+    .card-prefeb-10005 > img {
+      filter: drop-shadow(0 0 10px rgba(255,30,30,0.9)) drop-shadow(0 0 22px rgba(180,0,0,0.75));
+      animation: cp10005-red-glow-pulse 7s infinite ease-in-out;
+    }
+    .card-prefeb-10005 .card-prefeb-shine { mix-blend-mode: screen; }
+    .card-prefeb-10005 .card-prefeb-shine::after {
+      content: ""; position: absolute; bottom: -100%; left: -20%; width: 140%; height: 100%;
+      background: linear-gradient(0deg, rgba(255,0,0,0) 0%, rgba(255,50,50,0.5) 15%, rgba(255,220,220,0.95) 40%, rgba(230,0,0,0.6) 70%, rgba(150,0,0,0) 100%);
+      filter: drop-shadow(0 0 15px rgba(255,60,60,1)) drop-shadow(0 0 25px rgba(255,255,255,0.8));
+      animation: cp10005-scan-up 7s infinite cubic-bezier(0.25, 1, 0.5, 1);
+    }
+    @keyframes cp-rotate-7s { 0% { transform: rotate(0deg); } 14.3% { transform: rotate(-3.5deg); } 28.6% { transform: rotate(0deg); } 100% { transform: rotate(0deg); } }
+    @keyframes cp10005-red-glow-pulse {
+      0%, 100% { filter: drop-shadow(0 0 6px rgba(200,0,0,0.6)) drop-shadow(0 0 14px rgba(120,0,0,0.45)); }
+      50% { filter: drop-shadow(0 0 18px rgba(255,50,50,1)) drop-shadow(0 0 35px rgba(200,0,0,0.9)); }
+    }
+    @keyframes cp10005-scan-up {
+      0% { bottom: -100%; opacity: 0; } 15% { opacity: 1; } 60% { bottom: 30%; opacity: 0.35; } 65%, 100% { bottom: 30%; opacity: 0; }
+    }
+
+    /* --- card_prefeb_10006 天叢雲劍：純白光懸浮晃動 + 斜向純白金屬流光 --- */
+    .card-prefeb-10006 { animation: cp10006-float-shake 4.5s infinite ease-in-out; }
+    .card-prefeb-10006 > img {
+      filter: drop-shadow(0 0 5px rgba(255,255,255,0.6)) drop-shadow(0 0 10px rgba(255,255,255,0.3));
+      animation: cp10006-white-glow 3.5s infinite ease-in-out alternate;
+    }
+    .card-prefeb-10006 .card-prefeb-shine::after {
+      content: ""; position: absolute; top: -100%; left: -100%; width: 45%; height: 300%;
+      background: linear-gradient(115deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 30%, rgba(255,255,255,0.95) 50%, rgba(255,255,255,0.35) 70%, rgba(255,255,255,0) 100%);
+      filter: drop-shadow(0 0 6px rgba(255,255,255,0.8));
+      animation: cp10006-metallic-slash 5.5s infinite cubic-bezier(0.25, 1, 0.5, 1);
+    }
+    @keyframes cp10006-float-shake {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      20% { transform: translateY(-8px) rotate(-1.5deg); }
+      25% { transform: translateY(-12px) rotate(1.5deg); }
+      30% { transform: translateY(-16px) rotate(-1deg); }
+      35% { transform: translateY(-16px) rotate(0.5deg); }
+      50% { transform: translateY(-16px) rotate(0deg); }
+      70% { transform: translateY(-8px) rotate(1deg); }
+      75% { transform: translateY(-4px) rotate(-1deg); }
+      80% { transform: translateY(0px) rotate(0.5deg); }
+    }
+    @keyframes cp10006-white-glow {
+      0% { filter: drop-shadow(0 0 3px rgba(255,255,255,0.4)) drop-shadow(0 0 6px rgba(255,255,255,0.2)); }
+      100% { filter: drop-shadow(0 0 6px rgba(255,255,255,0.85)) drop-shadow(0 0 13px rgba(255,255,255,0.45)); }
+    }
+    @keyframes cp10006-metallic-slash {
+      0% { left: -120%; top: -120%; opacity: 0; } 12% { opacity: 0.4; } 35% { left: 150%; top: 60%; opacity: 0.2; } 40%, 100% { left: 150%; top: 60%; opacity: 0; }
+    }
+
+    /* --- card_prefeb_10007 干將莫邪：懸浮雙色流光(左右獨立紅/藍光暈時脈) --- */
+    .card-prefeb-10007 { animation: cp-float-10s 4s infinite ease-in-out; }
+    .card-prefeb-10007 > img {
+      filter: drop-shadow(-4px 0 5px rgba(255,30,80,0.5)) drop-shadow(4px 0 5px rgba(0,180,255,0.5));
+    }
+    .card-prefeb-10007 .card-prefeb-glow-a {
+      filter: drop-shadow(-6px 0 8px rgba(255,30,80,0.7));
+      animation: cp10007-red-asym 3.8s infinite ease-in-out alternate;
+    }
+    .card-prefeb-10007 .card-prefeb-glow-b {
+      filter: drop-shadow(6px 0 8px rgba(0,180,255,0.7));
+      animation: cp10007-blue-asym 5.2s infinite ease-in-out alternate;
+    }
+    .card-prefeb-10007 .card-prefeb-shine::before {
+      content: ""; position: absolute; top: -20%; left: -60%; width: 55%; height: 140%;
+      background: linear-gradient(75deg, rgba(255,30,80,0) 0%, rgba(255,60,100,0.4) 40%, rgba(255,255,255,0.4) 60%, rgba(255,30,80,0) 100%);
+      filter: drop-shadow(0 0 5px rgba(255,50,80,0.4));
+      animation: cp10007-shoot-right 6s infinite cubic-bezier(0.25, 1, 0.5, 1);
+    }
+    .card-prefeb-10007 .card-prefeb-shine::after {
+      content: ""; position: absolute; top: -20%; right: -60%; width: 55%; height: 140%;
+      background: linear-gradient(-75deg, rgba(0,180,255,0) 0%, rgba(0,200,255,0.4) 40%, rgba(255,255,255,0.4) 60%, rgba(0,150,255,0) 100%);
+      filter: drop-shadow(0 0 5px rgba(0,180,255,0.4));
+      animation: cp10007-shoot-left 6s infinite cubic-bezier(0.25, 1, 0.5, 1);
+      animation-delay: 0.4s;
+    }
+    @keyframes cp10007-red-asym {
+      0% { filter: drop-shadow(-2px 0 3px rgba(255,30,80,0.2)); opacity: 0.3; }
+      100% { filter: drop-shadow(-7px 0 9px rgba(255,30,80,0.85)); opacity: 1; }
+    }
+    @keyframes cp10007-blue-asym {
+      0% { filter: drop-shadow(2px 0 3px rgba(0,180,255,0.2)); opacity: 0.3; }
+      100% { filter: drop-shadow(7px 0 9px rgba(0,180,255,0.85)); opacity: 1; }
+    }
+    @keyframes cp10007-shoot-right {
+      0% { left: -60%; opacity: 0; } 15% { opacity: 0.4; } 40% { left: 120%; opacity: 0.2; } 45%, 100% { left: 120%; opacity: 0; }
+    }
+    @keyframes cp10007-shoot-left {
+      0% { right: -60%; opacity: 0; } 15% { opacity: 0.4; } 40% { right: 120%; opacity: 0.2; } 45%, 100% { right: 120%; opacity: 0; }
+    }
+
+    /* --- card_prefeb_10008 埃斯卡利巴：固定劍體，3秒微幅搖動 + 8秒週期閃爍金屬光澤 --- */
+    .card-prefeb-10008 { transform-origin: center center; animation: cp10008-shake-3s 3s infinite ease-in-out; }
+    .card-prefeb-10008 > img {
+      filter: drop-shadow(0 0 5px rgba(255,255,255,0.4)) drop-shadow(0 0 14px rgba(0,160,255,0.35));
+      animation: cp10008-flicker-8s 8s infinite ease-in-out;
+    }
+    .card-prefeb-10008 .card-prefeb-shine::after {
+      content: ""; position: absolute; left: -30%; width: 160%; height: 35%;
+      background: linear-gradient(45deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 35%, rgba(255,255,255,0.95) 50%, rgba(150,220,255,0.8) 65%, rgba(255,255,255,0) 100%);
+      filter: drop-shadow(0 0 10px rgba(255,255,255,0.9)) drop-shadow(0 0 18px rgba(0,200,255,0.7));
+      transform: rotate(-25deg);
+      opacity: 0;
+      animation: cp10008-metallic-sweep-8s 8s infinite cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    @keyframes cp10008-shake-3s {
+      0%, 100% { transform: rotate(0deg) translateX(0px); }
+      10% { transform: rotate(-1.5deg) translateX(-1.5px); }
+      20% { transform: rotate(1.2deg) translateX(1.2px); }
+      30% { transform: rotate(-0.8deg) translateX(-0.8px); }
+      40% { transform: rotate(0.5deg) translateX(0.5px); }
+      50% { transform: rotate(0deg) translateX(0px); }
+    }
+    @keyframes cp10008-metallic-sweep-8s {
+      0% { top: 130%; opacity: 0; } 3% { opacity: 1; } 12% { top: 20%; opacity: 0.4; }
+      18% { top: 0%; opacity: 1; } 25% { top: -60%; opacity: 0; } 100% { top: -60%; opacity: 0; }
+    }
+    @keyframes cp10008-flicker-8s {
+      0% { filter: drop-shadow(0 0 5px rgba(255,255,255,0.4)) drop-shadow(0 0 14px rgba(0,160,255,0.35)); }
+      3% { filter: drop-shadow(0 0 8px rgba(255,255,255,0.95)) drop-shadow(0 0 20px rgba(0,200,255,0.8)); }
+      7% { filter: drop-shadow(0 0 4px rgba(255,255,255,0.5)) drop-shadow(0 0 12px rgba(0,160,255,0.4)); }
+      12% { filter: drop-shadow(0 0 10px rgba(255,255,255,1)) drop-shadow(0 0 24px rgba(0,215,255,0.9)); }
+      18% { filter: drop-shadow(0 0 6px rgba(255,255,255,0.6)) drop-shadow(0 0 15px rgba(0,170,255,0.5)); }
+      25%, 100% { filter: drop-shadow(0 0 5px rgba(255,255,255,0.4)) drop-shadow(0 0 14px rgba(0,160,255,0.35)); }
+    }
+
+    /* --- card_prefeb_10009 布都御魂：紫光 + 10秒漂浮+7秒微傾旋轉 + 由下向上紫光掃光(screen混合) --- */
+    .card-prefeb-10009 { animation: cp-float-10s 10s infinite ease-in-out, cp-rotate-7s 7s infinite ease-in-out; }
+    .card-prefeb-10009 > img {
+      filter: drop-shadow(0 0 10px rgba(180,0,255,0.9)) drop-shadow(0 0 22px rgba(100,0,200,0.75));
+      animation: cp10009-purple-glow 7s infinite ease-in-out;
+    }
+    .card-prefeb-10009 .card-prefeb-shine { mix-blend-mode: screen; }
+    .card-prefeb-10009 .card-prefeb-shine::after {
+      content: ""; position: absolute; bottom: -100%; left: -20%; width: 140%; height: 100%;
+      background: linear-gradient(0deg, rgba(160,0,255,0) 0%, rgba(200,50,255,0.5) 15%, rgba(240,220,255,0.95) 40%, rgba(180,0,255,0.6) 70%, rgba(100,0,255,0) 100%);
+      filter: drop-shadow(0 0 15px rgba(210,80,255,1)) drop-shadow(0 0 25px rgba(255,255,255,0.8));
+      animation: cp10009-scan-up 7s infinite cubic-bezier(0.25, 1, 0.5, 1);
+    }
+    @keyframes cp10009-purple-glow {
+      0%, 100% { filter: drop-shadow(0 0 6px rgba(150,0,220,0.6)) drop-shadow(0 0 14px rgba(80,0,150,0.45)); }
+      50% { filter: drop-shadow(0 0 18px rgba(220,50,255,1)) drop-shadow(0 0 35px rgba(140,0,255,0.9)); }
+    }
+    @keyframes cp10009-scan-up {
+      0% { bottom: -100%; opacity: 0; } 15% { opacity: 1; } 60% { bottom: 30%; opacity: 0.35; } 65%, 100% { bottom: 30%; opacity: 0; }
+    }
+
+    /* --- card_prefeb_10010 提爾鋒：淡藍光 + 垂直伸縮漂浮 + 中間50%起向上全白流光(screen混合) --- */
+    .card-prefeb-10010 { animation: cp10010-float-stretch 10s infinite ease-in-out; }
+    .card-prefeb-10010 > img {
+      filter: drop-shadow(0 0 10px rgba(135,206,250,0.9)) drop-shadow(0 0 22px rgba(70,130,240,0.75));
+      animation: cp10010-lightblue-glow 7s infinite ease-in-out;
+    }
+    .card-prefeb-10010 .card-prefeb-shine { mix-blend-mode: screen; }
+    .card-prefeb-10010 .card-prefeb-shine::after {
+      content: ""; position: absolute; bottom: -100%; left: -20%; width: 140%; height: 100%;
+      background: linear-gradient(0deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.45) 20%, rgba(255,255,255,0.95) 50%, rgba(255,255,255,0.5) 80%, rgba(255,255,255,0) 100%);
+      filter: drop-shadow(0 0 12px rgba(255,255,255,1)) drop-shadow(0 0 25px rgba(255,255,255,0.85));
+      animation: cp10010-white-scan-up 7s infinite cubic-bezier(0.25, 1, 0.5, 1);
+    }
+    @keyframes cp10010-float-stretch {
+      0%, 100% { transform: translateY(0px) scaleY(0.98); } 50% { transform: translateY(-16px) scaleY(1.02); }
+    }
+    @keyframes cp10010-lightblue-glow {
+      0%, 100% { filter: drop-shadow(0 0 6px rgba(100,180,240,0.6)) drop-shadow(0 0 14px rgba(50,120,200,0.45)); }
+      50% { filter: drop-shadow(0 0 18px rgba(180,230,255,1)) drop-shadow(0 0 35px rgba(90,160,255,0.9)); }
+    }
+    @keyframes cp10010-white-scan-up {
+      0% { bottom: -50%; opacity: 0; } 15% { opacity: 1; } 60% { bottom: 100%; opacity: 0.3; } 65%, 100% { bottom: 100%; opacity: 0; }
+    }
+
+    /* --- card_prefeb_10011 真十字架：慢速小範圍金光懸浮，由中心向外散開金光波紋(雙波錯開) --- */
+    .card-prefeb-10011 { animation: cp-float-4s 4s infinite ease-in-out; }
+    .card-prefeb-10011 > img {
+      filter: drop-shadow(0 0 10px rgba(255,215,0,0.6));
+      animation: cp10011-glow 4.5s infinite ease-in-out alternate;
+    }
+    .card-prefeb-10011 .card-prefeb-shine::before, .card-prefeb-10011 .card-prefeb-shine::after {
+      content: ""; position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; border-radius: 50%;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, rgba(255,255,230,0.6) 0%, rgba(255,215,0,0.4) 35%, rgba(218,165,32,0.2) 60%, rgba(255,215,0,0) 75%);
+      filter: drop-shadow(0 0 12px rgba(255,215,0,0.6));
+    }
+    .card-prefeb-10011 .card-prefeb-shine::before { animation: cp10011-center-burst 6s infinite cubic-bezier(0.1, 0.8, 0.3, 1); }
+    .card-prefeb-10011 .card-prefeb-shine::after { animation: cp10011-center-burst 6s infinite cubic-bezier(0.1, 0.8, 0.3, 1); animation-delay: 3s; }
+    @keyframes cp-float-4s { 0%, 100% { transform: translateY(0px) rotate(0deg); } 50% { transform: translateY(-16px) rotate(1deg); } }
+    @keyframes cp10011-glow {
+      0% { filter: drop-shadow(0 0 6px rgba(255,215,0,0.1)); } 100% { filter: drop-shadow(0 0 16px rgba(255,215,0,0.6)); }
+    }
+    @keyframes cp10011-center-burst {
+      0% { width: 8px; height: 8px; opacity: 0.1; }
+      20% { opacity: 0.6; }
+      80% { width: 440px; height: 440px; opacity: 0.25; }
+      100% { width: 520px; height: 520px; opacity: 0.1; }
+    }
+
+    /* --- card_prefeb_10012 阿斯卡隆：熾橙武器，8秒動態漂浮 + 上方40%橙色呼吸光暈 + 由下向上橙色流光(screen混合) --- */
+    .card-prefeb-10012 { animation: cp10012-floating 8s infinite ease-in-out; }
+    .card-prefeb-10012 > img {
+      position: relative; z-index: 2;
+      filter: drop-shadow(0 0 10px rgba(255,140,0,0.9)) drop-shadow(0 0 22px rgba(255,90,0,0.75));
+      animation: cp10012-orange-glow 7.5s infinite ease-in-out;
+    }
+    .card-prefeb-10012 .card-prefeb-shine { mix-blend-mode: screen; z-index: 3; }
+    .card-prefeb-10012 .card-prefeb-shine::before {
+      content: ""; position: absolute; top: 0; left: -40%; width: 180%; height: 40%;
+      background: radial-gradient(ellipse at 50% 35%, rgba(255,210,100,0.95) 0%, rgba(255,140,0,0.8) 35%, rgba(210,80,0,0.35) 65%, rgba(150,50,0,0) 100%);
+      filter: drop-shadow(0 0 16px rgba(255,160,0,0.9)) drop-shadow(0 0 28px rgba(255,100,0,0.75));
+      animation: cp-upper-wide-glow 7.5s infinite ease-in-out;
+    }
+    .card-prefeb-10012 .card-prefeb-shine::after {
+      content: ""; position: absolute; bottom: -100%; left: -20%; width: 140%; height: 90%;
+      background: linear-gradient(0deg, rgba(255,120,0,0) 0%, rgba(255,140,0,0.6) 20%, rgba(255,240,200,0.95) 50%, rgba(255,90,0,0.75) 80%, rgba(180,50,0,0) 100%);
+      filter: drop-shadow(0 0 15px rgba(255,160,0,1)) drop-shadow(0 0 25px rgba(255,230,180,0.9));
+      animation: cp10012-spread-up 7.5s infinite cubic-bezier(0.2, 0.8, 0.3, 1);
+    }
+    @keyframes cp10012-floating {
+      0%, 100% { transform: translateY(0px) translateX(0px) rotate(0deg) scaleY(0.965); }
+      25% { transform: translateY(-14px) translateX(3px) rotate(1deg) scaleY(1.01); }
+      50% { transform: translateY(-28px) translateX(0px) rotate(0deg) scaleY(1.035); }
+      75% { transform: translateY(-14px) translateX(-3px) rotate(-1deg) scaleY(0.985); }
+    }
+    @keyframes cp10012-orange-glow {
+      0%, 100% { filter: drop-shadow(0 0 8px rgba(220,100,0,0.6)) drop-shadow(0 0 16px rgba(150,60,0,0.45)); }
+      50% { filter: drop-shadow(0 0 20px rgba(255,160,0,1)) drop-shadow(0 0 40px rgba(255,90,0,0.95)); }
+    }
+    @keyframes cp10012-spread-up {
+      0% { bottom: -90%; opacity: 0; } 12% { opacity: 1; } 38% { bottom: 110%; opacity: 0.4; } 42%, 100% { bottom: 110%; opacity: 0; }
+    }
+
     /* 受擊動作：受擊者卡牌往後晃動 */
     .card.hit-recoil, .role-hp-block.hit-recoil { animation: cardHitRecoil calc(0.4s / var(--speed, 1)) ease-out; }
 
