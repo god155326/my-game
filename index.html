@@ -2338,7 +2338,6 @@
       justify-content: center;
       padding: 18px 6px 8px;
       background:
-        linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)),
         url('assets/images/chapter/chapter1_banner.jpg');
       background-size: cover;
       background-position: center;
@@ -4052,7 +4051,7 @@
     </div>
 
       <div class="top-header">
-        <div class="top-header-avatar" id="header-avatar-icon" onclick="openAvatarMenu()" style="cursor:pointer;">👤<span class="lv-badge" id="header-lv-badge">lv.5</span></div>
+        <div class="top-header-avatar" id="header-avatar-icon" onclick="openAvatarMenu()" style="cursor:pointer;"><img class="default-hero-icon" src="assets/images/ui/default-hero.png?v=ui18" alt="勇者"><span class="lv-badge" id="header-lv-badge">lv.5</span></div>
         <div class="top-header-info">
           <div class="top-header-name-row">
             <div class="top-header-name" id="header-player-name">匿名的勇者</div>
@@ -5390,7 +5389,7 @@
     // 依card的rare欄位與容器形狀(square/circle)取得對應卡框的<img>標籤；card.rare未定義或找不到對應圖片時回傳空字串(不顯示卡框)
     // 顯示開關：關閉正方形卡框顯示(僅關閉顯示，不刪除程式碼)；圓形卡框不受影響
     const ENABLE_SQUARE_RARE_FRAME = false;
-    // 稀有度徽章(SSR/SR/R)：疊加在牌面右上角；R最小、SR略大(約+5%)、SSR再更大(約+5%)
+    // 稀有度徽章(SSR/SR/R)：獨立放在牌面右下角；R最小、SR略大(約+5%)、SSR再更大(約+5%)
     const RARE_BADGE_DATABASE = {
       R: "assets/images/img_7aa5ea811a7d.png",
       SR: "assets/images/img_9f2ebdba6ab1.png",
@@ -5400,7 +5399,7 @@
     function rareBadgeHtml(card) {
       if (!card || !card.rare || !RARE_BADGE_DATABASE[card.rare]) return '';
       let h = RARE_BADGE_SIZE[card.rare];
-      return `<img src="${RARE_BADGE_DATABASE[card.rare]}" class="card-rank-badge" style="height:${h}px;" alt="" />`;
+      return `<img src="${RARE_BADGE_DATABASE[card.rare]}" class="card-rank-badge" data-rare="${card.rare}" style="height:${h}px;" alt="${card.rare}" />`;
     }
 
     // 半張卡面(武器清單/召喚結果共用)：僅顯示圖示(含稀有度徽章)、名稱、LV、目前星等，不顯示HP/MP血條
@@ -5410,7 +5409,7 @@
       let starLv = Math.min(5, gameState.weaponStars[card.id] || 0);
       return `
         ${cardTopOrnamentHtml(card, 17, 10)}
-        <div class="weapon-slot-badge">${card.icon}${rareBadgeHtml(card)}</div>
+        <div class="weapon-slot-badge">${card.icon}</div>${rareBadgeHtml(card)}
         <div class="half-card-footer">
           ${hideLvAndStars ? '' : `<div class="weapon-slot-lv">LV.${getWeaponLevel(card.id)}</div>`}
           <div class="weapon-slot-name">${elNameHtml(card, 4)}</div>
@@ -8493,7 +8492,7 @@ let GOD_POINT_CURVE = [
       const FALLBACK_URL = `assets/images/chapter/chapter1_banner.jpg?v=${ASSET_VERSION}`;
       const targetUrl = `assets/images/chapter/chapter${chapter}_banner.jpg?v=${ASSET_VERSION}`;
       const applyBg = (url) => {
-        row.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${url}')`;
+        row.style.backgroundImage = `url('${url}')`;
       };
       if (chapter === 1) { applyBg(FALLBACK_URL); _mainlineChapterBannerLoadedFor = chapter; return; }
       const img = new Image();
@@ -8552,7 +8551,7 @@ let GOD_POINT_CURVE = [
       return `
         <div class="weapon-slot-card compact-hp ${unit.isDead ? 'empty' : ''}" id="mini-card-${unit.id}">
           ${cardTopOrnamentHtml(unit, 17, 10)}
-          <div class="weapon-slot-badge">${unit.icon}${rareBadgeHtml(unit)}</div>
+          <div class="weapon-slot-badge">${unit.icon}</div>${rareBadgeHtml(unit)}
           <div class="weapon-slot-lv">LV.${unit.level != null ? unit.level : getWeaponLevel(unit.id)}</div>
           <div class="weapon-slot-name">${elNameHtml(unit, 4)}</div>
           <div class="weapon-slot-bars">
@@ -8569,7 +8568,7 @@ let GOD_POINT_CURVE = [
       return `
         <div class="weapon-slot-card compact-hp">
           ${cardTopOrnamentHtml(c, 17, 10)}
-          <div class="weapon-slot-badge">${c.icon}${rareBadgeHtml(c)}</div>
+          <div class="weapon-slot-badge">${c.icon}</div>${rareBadgeHtml(c)}
           <div class="weapon-slot-lv">LV.${getWeaponLevel(c.id)}</div>
           <div class="weapon-slot-name">${elNameHtml(c, 4)}</div>
           <div class="weapon-slot-bars">
@@ -9941,7 +9940,7 @@ let GOD_POINT_CURVE = [
         }).join('');
         el.innerHTML = `
           ${cardTopOrnamentHtml(c, 17, 10)}
-          <div class="weapon-slot-badge">${c.icon}${rareBadgeHtml(c)}</div>
+          <div class="weapon-slot-badge">${c.icon}</div>${rareBadgeHtml(c)}
           <div class="weapon-slot-lv">LV.${getWeaponLevel(c.id)}</div>
           <div class="weapon-slot-name">${elNameHtml(c, 4)}</div>
           <div class="weapon-slot-gemrow">${slotsHtml}</div>
@@ -10516,7 +10515,7 @@ let GOD_POINT_CURVE = [
         return `
           <div class="weapon-slot-card clickable ${owned ? '' : 'locked'} ${isSelected ? 'selected' : ''}" onclick="selectWeaponMenuItem(${c.id})" style="position:relative;">
             ${cardTopOrnamentHtml(c, 17, 10)}
-            <div class="weapon-slot-badge">${c.icon}${rareBadgeHtml(c)}</div>
+            <div class="weapon-slot-badge">${c.icon}</div>${rareBadgeHtml(c)}
             ${showReadyDot ? '<span class="red-dot-badge" style="top:-4px; right:-4px;"></span>' : ''}
             <div class="half-card-footer">
               ${owned ? `<div class="weapon-slot-lv">LV.${getWeaponLevel(c.id)}</div>` : ''}
@@ -10976,7 +10975,7 @@ let GOD_POINT_CURVE = [
       if (roleCard) {
         avatarEl.innerHTML = `${roleCard.icon}<span class="lv-badge" id="header-lv-badge">lv.${getClassLevel(roleId)}</span>`;
       } else {
-        avatarEl.innerHTML = `👤<span class="lv-badge" id="header-lv-badge">lv.${p.level}</span>`;
+        avatarEl.innerHTML = `<img class="default-hero-icon" src="assets/images/ui/default-hero.png?v=ui18" alt="勇者"><span class="lv-badge" id="header-lv-badge">lv.${p.level}</span>`;
       }
       document.getElementById('header-gold').innerText = getItemAmount(1000).toLocaleString();
       document.getElementById('header-diamond').innerText = getItemAmount(1001).toLocaleString();
@@ -11645,7 +11644,7 @@ let GOD_POINT_CURVE = [
           el.innerHTML = `
             ${cardTopOrnamentHtml(c, 17, 10)}
             ${isSelected ? '<div class="roster-selected-badge">✓</div>' : ''}
-            <div class="weapon-slot-badge">${c.icon}${rareBadgeHtml(c)}</div>
+            <div class="weapon-slot-badge">${c.icon}</div>${rareBadgeHtml(c)}
             <div class="half-card-footer">
               <div class="weapon-slot-lv">LV.${getWeaponLevel(c.id)}</div>
               <div class="weapon-slot-name">${elNameHtml(c, 4)}</div>
@@ -11692,7 +11691,7 @@ let GOD_POINT_CURVE = [
           html += `
             <div class="weapon-slot-card">
               ${cardTopOrnamentHtml(c, 17, 10)}
-              <div class="weapon-slot-badge">${c.icon}${rareBadgeHtml(c)}</div>
+              <div class="weapon-slot-badge">${c.icon}</div>${rareBadgeHtml(c)}
               <div class="weapon-slot-lv">LV.${getWeaponLevel(c.id)}</div>
               <div class="weapon-slot-name">${elNameHtml(c, 4)}</div>
               <div class="weapon-slot-bars">
@@ -11991,7 +11990,7 @@ let GOD_POINT_CURVE = [
     function renderResultLoot(gained) {
       if (!gained.length) return '沒有獲得獎勵';
       const escape = value => String(value).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-      return gained.map(g => '<div class="result-loot-item" title="' + escape(g.name) + '" aria-label="' + escape(g.name + ' ×' + g.amount) + '"><span class="result-loot-icon">' + (g.id ? itemIcon(g.id, 'inline') : escape(g.icon || '📦')) + '</span><strong>×' + escape(g.amount) + '</strong></div>').join('');
+      return gained.map(g => '<div class="result-loot-item" title="' + escape(g.name) + '" aria-label="' + escape(g.name + ' ×' + g.amount) + '"><span class="result-loot-icon">' + (g.id ? itemIcon(g.id, 'box') : escape(g.icon || '📦')) + '</span><strong>×' + escape(g.amount) + '</strong></div>').join('');
     }
 
     function grantLoot(lootId, amount) {
@@ -12984,7 +12983,7 @@ let GOD_POINT_CURVE = [
 
         card.innerHTML = `
           ${cardTopOrnamentHtml(unit)}
-          <div class="hero-avatar">${unit.icon}${positionBadgeHtml(unit.position)}${rareBadgeHtml(unit)}</div>
+          <div class="hero-avatar">${unit.icon}${positionBadgeHtml(unit.position)}</div>${rareBadgeHtml(unit)}
           <div class="card-lv">LV.${unit.level || 0}</div>
           <div class="card-name">${elNameHtml(unit, 4)}</div>
           <div class="buff-container">${buffHtml}</div>
@@ -14986,7 +14985,7 @@ let GOD_POINT_CURVE = [
       wrap.style.top = `${y - 20 - targetH / 2}px`;
       wrap.style.height = `${targetH}px`;
       // 數字間距：維持「間距增加約10%」的比例(以底圖高度換算負間距)，讓字體縮放時間距也同步等比例縮放
-      let marginPx = -(targetH * 0.071);
+      let marginPx = -(targetH * 0.055);
       for (let i = 0; i < digitsOnly.length; i++) {
         let d = parseInt(digitsOnly[i], 10);
         let info = sprites[d];
@@ -17358,7 +17357,6 @@ let GOD_POINT_CURVE = [
 })();
 </script>
 
-
 <style id="codex-ui-v17">
 #screen-battle .battle-enemy-zone #enemy-row {margin-top:7px!important;overflow:visible!important;}
 #screen-battle .battle-enemy-zone {overflow:visible!important;}
@@ -17407,5 +17405,102 @@ body .result-loot-item::after,body .reward-quantity-v17 .reward-name {display:no
  observer.observe(document.body,{childList:true,subtree:true,characterData:true});updateRewards();
 })();
 </script>
+
+<style id="codex-ui-v18">
+/* An inset footer keeps rank lettering clear of artwork, bars, and card edges. */
+body .card > .card-rank-badge,
+body .weapon-slot-card > .card-rank-badge {
+ position:absolute!important;top:auto!important;left:auto!important;right:5px!important;bottom:4px!important;
+ margin:0!important;width:auto!important;max-width:34px!important;max-height:12px!important;
+ display:block!important;object-fit:contain!important;z-index:6!important;pointer-events:none;
+ image-rendering:pixelated;filter:drop-shadow(1px 1px 0 #000)!important;
+}
+#screen-battle .card:has(> .card-rank-badge) {padding-bottom:18px!important;}
+#screen-battle .card .buff-container {flex:1 1 auto!important;min-height:0!important;height:auto!important;max-height:38px!important;}
+body .weapon-slot-card:has(> .card-rank-badge) {padding-bottom:18px!important;}
+body .weapon-slot-card.compact-hp {padding-bottom:16px!important;}
+body .weapon-slot-card.compact-hp:has(> .card-rank-badge) {padding-bottom:16px!important;}
+body .weapon-slot-card.compact-hp .weapon-slot-bars {width:100%!important;}
+body .weapon-slot-card.compact-hp > .card-rank-badge {right:4px!important;bottom:3px!important;max-width:24px!important;max-height:9px!important;}
+body .weapon-slot-card:not(.empty):not(.selected):not(.active) {
+ background-color:#08090c!important;
+ background-image:linear-gradient(180deg,#251f1d99,#0a0b0ee0 38%,#040508fa),
+  repeating-linear-gradient(90deg,#d5a46009 0 1px,transparent 1px 8px),
+  repeating-linear-gradient(0deg,#d5a46007 0 1px,transparent 1px 8px)!important;
+}
+body .weapon-slot-card:has(> .card-rank-badge[data-rare="R"]):not(.selected):not(.active) {box-shadow:inset 0 0 0 1px #be8a5038,inset 0 0 11px #4127185c!important;}
+body .weapon-slot-card:has(> .card-rank-badge[data-rare="SR"]):not(.selected):not(.active) {border-color:#9ba8ad!important;box-shadow:inset 0 0 0 1px #dde8eb7a,inset 0 0 13px #6b8b963d!important;}
+body .weapon-slot-card:has(> .card-rank-badge[data-rare="SSR"]):not(.selected):not(.active) {border-color:#d1a43e!important;box-shadow:inset 0 0 0 1px #ffe89db8,inset 0 0 15px #cd8e2157!important;}
+/* The independent scale property preserves existing weapon animation transforms. */
+.card .hero-avatar > img:not(.card-rank-badge):not(.card-position-badge),
+.card .hero-avatar > span:has(> img[src*="/card/"]),
+.weapon-slot-badge > img:not(.card-rank-badge),
+.weapon-slot-badge > span:has(> img[src*="/card/"]) {scale:1.05;}
+#header-avatar-icon > .default-hero-icon {display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;image-rendering:pixelated;}
+/* The chapter art is unobscured, with a flat bronze edge. */
+#screen-mainline .mainline-map-banner {
+ border:1px solid #6a5133!important;border-image:none!important;border-radius:0!important;
+ box-shadow:none!important;filter:none!important;outline:none!important;background-color:transparent!important;
+}
+#screen-mainline .mainline-map-banner::before,#screen-mainline .mainline-map-banner::after {
+ content:none!important;display:none!important;box-shadow:none!important;background:none!important;
+}
+/* Low contrast stone and an engraved compass give the information panel a quiet surface. */
+#mainline-stage-detail {
+ position:relative;isolation:isolate;
+ background-color:#0b0d11!important;
+ background-image:linear-gradient(115deg,#26221b99,#0c1012dd 54%,#151619b3),
+   repeating-linear-gradient(0deg,transparent 0 23px,#b7955410 23px 24px),
+   repeating-linear-gradient(90deg,transparent 0 47px,#b795540b 47px 48px)!important;
+ background-size:auto!important;
+ box-shadow:inset 0 0 0 1px #ad86472b!important;
+}
+#mainline-stage-detail::before {
+ content:"";position:absolute;inset:8px;pointer-events:none;z-index:-1;
+ border:1px solid #b99b5d1f;
+ background:linear-gradient(#b99b5d40,#b99b5d40) left top/20px 1px no-repeat,
+  linear-gradient(#b99b5d40,#b99b5d40) left top/1px 20px no-repeat,
+  linear-gradient(#b99b5d40,#b99b5d40) right bottom/20px 1px no-repeat,
+  linear-gradient(#b99b5d40,#b99b5d40) right bottom/1px 20px no-repeat;
+}
+#mainline-stage-detail::after {
+ content:"";position:absolute;width:130px;height:130px;right:20px;bottom:14px;
+ background:url('assets/images/ui/stage-engraving.svg') center/contain no-repeat;
+ opacity:.19;pointer-events:none;z-index:-1;
+}
+#mainline-stage-detail > .quest-card {background:transparent!important;box-shadow:none!important;}
+/* Full-frame item artwork, with a hard black outline around the unchanged quantity position. */
+body .result-loot-item,body #result-loot .result-loot-item,body .idle-result-icons .result-loot-item,
+body .reward-item.reward-quantity-v17 {padding:0!important;}
+body #result-loot .result-loot-item .result-loot-icon,
+body #result-loot .result-loot-item .result-loot-icon > span,
+body #result-loot .result-loot-item .result-loot-icon img,
+body .result-loot-item .result-loot-icon > span,body .reward-quantity-v17 .reward-icon > span {
+ width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;vertical-align:0!important;
+}
+body .result-loot-item strong,body #result-loot .result-loot-item strong,body .reward-quantity-v17 .reward-amount {
+ color:#fff!important;-webkit-text-stroke:4px #000!important;paint-order:stroke fill!important;
+ text-shadow:-1px 0 #000,1px 0 #000,0 -1px #000,0 1px #000,-1px -1px #000,1px -1px #000,-1px 1px #000,1px 1px #000!important;
+ z-index:2;
+}
+/* Preserve the latest four digit sprite sets and their timing; sharpen the dark edge and reduce overshoot. */
+.pop-num-sprite {
+ filter:drop-shadow(1px 0 0 #110d09) drop-shadow(-1px 0 0 #110d09) drop-shadow(0 2px 0 #080808)!important;
+ animation-name:pixelNumberRiseV18!important;animation-timing-function:steps(16,end)!important;
+}
+.pop-num-sprite img {image-rendering:pixelated;}
+.dmg-num:not(.pop-num-sprite),.cri-num:not(.pop-num-sprite),.heal-num:not(.pop-num-sprite),
+.mp-num:not(.pop-num-sprite),.shield-num,.buff-num {
+ font-family:Consolas,"Microsoft JhengHei",monospace;font-weight:900;
+ -webkit-text-stroke:3px #090807;paint-order:stroke fill;text-shadow:2px 2px 0 #20160e;
+}
+.cri-num:not(.pop-num-sprite) {color:#ffd493;}
+@keyframes pixelNumberRiseV18 {
+ 0% {opacity:1;transform:translateY(0) scale(.92);}
+ 24% {opacity:1;transform:translateY(-7px) scale(1.08);}
+ 66% {opacity:1;transform:translateY(-19px) scale(1);}
+ 100% {opacity:0;transform:translateY(-30px) scale(1);}
+}
+</style>
 </body>
 </html>
